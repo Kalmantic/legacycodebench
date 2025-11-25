@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>LegacyCodeBench | Datasets</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <header>
+    <div class="container" style="display:flex;justify-content:space-between;align-items:center;padding:1.25rem 1.25rem 1rem;">
+      <div class="logo">LegacyCodeBench</div>
+      <nav aria-label="Primary">
+        <a href="index.html">Overview</a>
+        <a href="leaderboard.html">Leaderboard</a>
+        <a href="datasets.html" class="active">Datasets</a>
+        <a href="scoring.html">Scoring</a>
+        <a href="docs.html">Docs</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero" aria-labelledby="datasets-title">
+      <h1 id="datasets-title">Datasets</h1>
+      <p>LegacyCodeBench ships with a curated collection of open source, synthetic, and anonymized COBOL systems. All downloads are available via GitHub and mirrored in the CLI.</p>
+      <div class="code-block" aria-label="CLI command to load datasets">
+        legacycodebench load-datasets
+      </div>
+      <p class="table-hint">Compatible with Windows, macOS, and Linux. Requires Git and Python 3.10+.</p>
+    </section>
+
+    <section aria-labelledby="dataset-list">
+      <h2 class="section-title" id="dataset-list">Available Datasets</h2>
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem;">
+        <article class="dataset-card">
+          <header>
+            <h3>AWS Card Demo</h3>
+            <div class="dataset-meta">
+              <span>Banking · 2.4K LOC</span>
+              <span>License: Apache-2.0</span>
+            </div>
+          </header>
+          <p>Card authorization workload with CICS, IMS, VSAM, and DB2 components. Includes copybooks and JCL jobs.</p>
+          <div class="dataset-meta">
+            <span>Checksum: <code>835c1a…</code></span>
+          </div>
+          <div class="btn-group" style="margin-top:0;">
+            <a class="button" href="https://github.com/aws-samples/aws-mainframe-modernization-carddemo" target="_blank" rel="noreferrer">View Repo</a>
+          </div>
+        </article>
+
+        <article class="dataset-card">
+          <header>
+            <h3>Woodgrove Legacy</h3>
+            <div class="dataset-meta">
+              <span>Finance · 3.1K LOC</span>
+              <span>License: MIT</span>
+            </div>
+          </header>
+          <p>Hybrid ATM + 3270 banking application. Includes transaction, customer care, and ATM sub-systems.</p>
+          <div class="dataset-meta">
+            <span>Checksum: <code>f19c4b…</code></span>
+          </div>
+          <div class="btn-group" style="margin-top:0;">
+            <a class="button" href="https://github.com/bhbandam/AZ-Legacy-Engineering" target="_blank" rel="noreferrer">View Repo</a>
+          </div>
+        </article>
+
+        <article class="dataset-card">
+          <header>
+            <h3>Rocket Bank Demo</h3>
+            <div class="dataset-meta">
+              <span>Core Banking · 4.6K LOC</span>
+              <span>License: BSD-3</span>
+            </div>
+          </header>
+          <p>Mainframe banking workload with COBOL, BMS maps, JCL, and VSAM datasets. Mirrors real enterprise layouts.</p>
+          <div class="dataset-meta">
+            <span>Checksum: <code>a51b09…</code></span>
+          </div>
+          <div class="btn-group" style="margin-top:0;">
+            <a class="button" href="https://github.com/RocketSoftwareCOBOLandMainframe/BankDemo" target="_blank" rel="noreferrer">View Repo</a>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="task-stats">
+      <h2 class="section-title" id="task-stats">Task Statistics</h2>
+      <div class="grid grid-3">
+        <div class="card">
+          <h3>15 Tasks</h3>
+          <p>8 documentation + 7 understanding, calibrated for difficulty.</p>
+        </div>
+        <div class="card">
+          <h3>LOC Range</h3>
+          <p>Tasks include files between 500 and 2,000 lines to ensure rich business logic.</p>
+        </div>
+        <div class="card">
+          <h3>Multi-file Coverage</h3>
+          <p>Tasks include copybooks, subprograms, and sample I/O artifacts when required.</p>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="structure">
+      <h2 class="section-title" id="structure">Dataset Structure</h2>
+      <div class="code-block" aria-label="Example dataset structure">
+        datasets/<br>
+        ├── aws-carddemo/<br>
+        │   ├── cbl/<br>
+        │   ├── cpy/<br>
+        │   ├── jcl/<br>
+        │   └── data/<br>
+        ├── az-legacy/<br>
+        └── rocket-bank/
+      </div>
+      <p class="table-hint">Each dataset retains original directory layout to preserve context (copybooks, JCL jobs, data files).</p>
+    </section>
+
+    <section aria-labelledby="no-datasets" style="margin-top:3rem;">
+      <h2 class="section-title" id="no-datasets">Dataset Availability</h2>
+      <div class="datasets-placeholder">If datasets fail to load, confirm Git is installed and rerun <code>legacycodebench load-datasets</code>.</div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container" style="display:flex;flex-wrap:wrap;gap:1rem;justify-content:space-between;">
+      <span>© 2025 LegacyCodeBench · Kalmantic Applied AI Lab</span>
+      <span>GitHub · <a href="https://github.com/kalmantic/legacycodebench" target="_blank" rel="noreferrer">kalmantic/legacycodebench</a></span>
+      <span>Contact · <a href="mailto:team@kalmantic.ai">team@kalmantic.ai</a></span>
+    </div>
+  </footer>
+</body>
+</html>
+

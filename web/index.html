@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>LegacyCodeBench | Overview</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <header>
+    <div class="container" style="display:flex;justify-content:space-between;align-items:center;padding:1.25rem 1.25rem 1rem;">
+      <div class="logo">LegacyCodeBench</div>
+      <nav aria-label="Primary">
+        <a href="index.html" class="active">Overview</a>
+        <a href="leaderboard.html">Leaderboard</a>
+        <a href="datasets.html">Datasets</a>
+        <a href="scoring.html">Scoring</a>
+        <a href="docs.html">Docs</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero" aria-labelledby="overview-title">
+      <h1 id="overview-title">What is LegacyCodeBench?</h1>
+      <p>LegacyCodeBench is the benchmark designed to evaluate how well AI systems can understand and document decades-old legacy software, especially COBOL.</p>
+      <p>Modernization fails not because conversion is hard, but because the business rules, the intent, the quiet rules are buried inside the legacy code.</p>
+      <p>You can’t modernize what you don’t understand. Yet no one measures whether AI actually understands these systems. That’s why LegacyCodeBench tests whether AI can accurately extract and explain that knowledge.</p>
+      <div class="btn-group" role="group" aria-label="Primary quick links">
+        <a class="button primary" href="leaderboard.html">View Leaderboard</a>
+        <a class="button" href="datasets.html">Download Datasets</a>
+        <a class="button" href="docs.html">Read Documentation</a>
+        <a class="button" href="https://github.com/Kalmantic/legacycodebench" target="_blank" rel="noreferrer">GitHub Repo</a>
+      </div>
+    </section>
+
+    <section aria-labelledby="measures">
+      <h2 class="section-title" id="measures">What LegacyCodeBench Measures</h2>
+      <p>LegacyCodeBench evaluates two core capabilities:</p>
+      <ol class="list-muted">
+        <li><strong>Documentation Quality</strong> — Can AI explain the program clearly?</li>
+        <li><strong>Program Understanding</strong> — Can AI extract the structure of the system?</li>
+      </ol>
+    </section>
+
+    <section aria-labelledby="benchmark-summary">
+      <h2 class="section-title" id="benchmark-summary">Why Understanding Matters</h2>
+      <p>Modernization projects often rush into COBOL→Java translation, automated refactoring, or AI code generation without first understanding:</p>
+      <ul class="list-muted">
+        <li>How the system works</li>
+        <li>What the business rules mean</li>
+        <li>Why exceptions exist</li>
+        <li>What domain logic must not break</li>
+      </ul>
+      <p>This lack of understanding leads to failed migration.</p>
+      <div class="grid grid-3">
+        <div class="card">
+          <h3>Documentation Tasks</h3>
+          <p>Explain business purpose, rules, edge cases, and data structures for legacy programs.</p>
+        </div>
+        <div class="card">
+          <h3>Understanding Tasks</h3>
+          <p>Extract dependency graphs, business rules, and data flows. Scored via F1 precision/recall.</p>
+        </div>
+        <div class="card">
+          <h3>Evaluation</h3>
+          <p>50% documentation + 50% understanding. Weighted metrics with expert validation.</p>
+        </div>
+      </div>
+      <div class="diagram-placeholder" role="img" aria-label="Data flow diagram showing datasets feeding tasks, AI models, scoring, and leaderboard">
+        Dataset → Task Selection → AI Submissions → Evaluation → Leaderboard
+      </div>
+    </section>
+
+    <section aria-labelledby="methodology">
+      <h2 class="section-title" id="methodology">Methodology Highlights</h2>
+      <ul class="list-muted">
+        <li>Hand-curated tasks from open source, synthetic, and anonymized enterprise COBOL.</li>
+        <li>Deterministic scoring scripts inside Docker to ensure reproducibility.</li>
+        <li>Reference documentation created by COBOL experts with inter-annotator agreement ≥ 0.80.</li>
+        <li>Leaderboards updated via CLI submissions, mirroring SWE-bench workflow.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container" style="display:flex;flex-wrap:wrap;gap:1rem;justify-content:space-between;">
+      <span>© 2025 LegacyCodeBench · Kalmantic Applied AI Lab</span>
+      <span>GitHub · <a href="https://github.com/kalmantic/legacycodebench" target="_blank" rel="noreferrer">kalmantic/legacycodebench</a></span>
+      <span>Contact · <a href="mailto:team@kalmantic.ai">team@kalmantic.ai</a></span>
+    </div>
+  </footer>
+</body>
+</html>
+

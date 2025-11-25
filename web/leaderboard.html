@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>LegacyCodeBench | Leaderboard</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="assets/styles.css">
+  <script defer src="leaderboard.js"></script>
+</head>
+<body>
+  <header>
+    <div class="container" style="display:flex;justify-content:space-between;align-items:center;padding:1.25rem 1.25rem 1rem;">
+      <div class="logo">LegacyCodeBench</div>
+      <nav aria-label="Primary">
+        <a href="index.html">Overview</a>
+        <a href="leaderboard.html" class="active">Leaderboard</a>
+        <a href="datasets.html">Datasets</a>
+        <a href="scoring.html">Scoring</a>
+        <a href="docs.html">Docs</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero" aria-labelledby="leaderboard-title">
+      <h1 id="leaderboard-title">Leaderboard</h1>
+      <p>Official benchmark results. Scores are updated when participants run the CLI evaluator and submit JSON outputs.</p>
+      <p class="table-hint">Overall = 0.50 × Documentation + 0.50 × Understanding.</p>
+    </section>
+
+    <section aria-labelledby="current-results">
+      <h2 class="section-title" id="current-results">Current Results</h2>
+      <div id="leaderboard-state" class="state" role="status">Loading leaderboard...</div>
+      <div class="leaderboard-placeholder" id="leaderboard-empty" hidden>No submissions available yet.</div>
+      <div class="state" id="leaderboard-error" hidden>
+        Unable to load leaderboard. Ensure <code>results/leaderboard.json</code> exists or re-run <code>legacycodebench evaluate</code>.
+      </div>
+
+      <div class="table-wrapper" style="overflow-x:auto;margin-top:1rem;">
+        <table aria-describedby="leaderboard-title" id="leaderboard-table" hidden>
+          <thead>
+            <tr>
+              <th scope="col">Rank</th>
+              <th scope="col">Model</th>
+              <th scope="col">Version</th>
+              <th scope="col">Overall (%)</th>
+              <th scope="col">Documentation (%)</th>
+              <th scope="col">Understanding (%)</th>
+              <th scope="col">Tasks Solved</th>
+              <th scope="col">Date</th>
+              <th scope="col">Paper</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="submission-notes">
+      <h2 class="section-title" id="submission-notes">Submission Workflow</h2>
+      <ol class="list-muted">
+        <li>Run models via CLI (<code>legacycodebench run-ai --model gpt-4o</code>).</li>
+        <li>Generate JSON results (<code>legacycodebench evaluate</code>).</li>
+        <li>Open a pull request adding your result JSON to the repository.</li>
+        <li>Maintainers review and update this leaderboard.</li>
+      </ol>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container" style="display:flex;flex-wrap:wrap;gap:1rem;justify-content:space-between;">
+      <span>© 2025 LegacyCodeBench · Kalmantic Applied AI Lab</span>
+      <span>GitHub · <a href="https://github.com/kalmanticlegacycodebench" target="_blank" rel="noreferrer">ac/legacycodebench</a></span>
+      <span>Contact · <a href="mailto:team@kalmantic.ai">team@kalmantic.ai</a></span>
+    </div>
+  </footer>
+
+  <script>
+    (function initLeaderboard() {
+      const stateEl = document.getElementById('leaderboard-state');
+      const table = document.getElementById('leaderboard-table');
+      const body = document.getElementById('leaderboard-body');
+      const empty = document.getElementById('leaderboard-empty');
+      const error = document.getElementById('leaderboard-error');
+
+      fetch('../results/leaderboard.json')
+        .then(res => {
+          if (!res.ok) throw new Error('Network response was not ok');
+          return res.json();
+        })
+        .then(data => {
+          stateEl.hidden = true;
+          if (!data.leaderboard || data.leaderboard.length === 0) {
+            empty.hidden = false;
+            return;
+          }
+          data.leaderboard.forEach(entry => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${entry.rank ?? ''}</td>
+              <td>${entry.submitter ?? ''}</td>
+              <td>${entry.model ?? ''}</td>
+              <td>${(entry.overall_score ?? 0).toFixed(2)}</td>
+              <td>${(entry.documentation_score ?? 0).toFixed(2)}</td>
+              <td>${(entry.understanding_score ?? 0).toFixed(2)}</td>
+              <td>${entry.tasks_completed ?? ''}</td>
+              <td>${entry.date ?? ''}</td>
+              <td>${entry.paper ? `<a href="${entry.paper}" target="_blank" rel="noreferrer">Paper</a>` : '—'}</td>
+            `;
+            body.appendChild(tr);
+          });
+          table.hidden = false;
+        })
+        .catch(() => {
+          stateEl.hidden = true;
+          error.hidden = false;
+        });
+    })();
+  </script>
+</body>
+</html>
+
