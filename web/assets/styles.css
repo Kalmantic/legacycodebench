@@ -152,7 +152,7 @@ td {
 
 th {
     position: sticky;
-    top: 65px;
+    top: 0;
     background: #f8fafc;
     font-size: 0.9rem;
     color: #0f172a;

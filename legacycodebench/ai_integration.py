@@ -1,6 +1,7 @@
 """AI model integration for LegacyCodeBench"""
 
 import os
+import re
 from pathlib import Path
 from typing import Dict, Optional, List
 import json
@@ -23,6 +24,20 @@ from legacycodebench.config import AI_MODELS
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Token limits for different models (input context windows)
+MODEL_CONTEXT_LIMITS = {
+    "gpt-4o": 128000,
+    "gpt-4": 8192,
+    "claude-sonnet-4-20250514": 200000,
+    "transform": 8000,
+}
+
+# Approximate chars per token (conservative estimate for COBOL)
+CHARS_PER_TOKEN = 3.5
+
+# Maximum input tokens to use (leave room for output)
+MAX_INPUT_RATIO = 0.6  # Use 60% of context for input, leave 40% for output
+
 
 class AIModelInterface:
     """Interface for AI models"""
@@ -34,28 +49,27 @@ class AIModelInterface:
         self.model_id = model_id
         self.config = AI_MODELS[model_id]
         self.provider = self.config["provider"]
+        
+        # Calculate max input chars based on model context window
+        model_name = self.config["model"]
+        context_limit = MODEL_CONTEXT_LIMITS.get(model_name, 8000)
+        max_input_tokens = int(context_limit * MAX_INPUT_RATIO)
+        self.max_input_chars = int(max_input_tokens * CHARS_PER_TOKEN)
+        logger.info(f"Model {model_id}: context={context_limit}, max_input_chars={self.max_input_chars}")
     
     def generate_documentation(self, task, input_files: List[Path]) -> str:
         """Generate documentation for a task"""
         # Read input files
-        code_content = ""
-        for file_path in input_files:
-            if file_path.exists():
-                try:
-                    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                        code_content += f"\n\n=== {file_path.name} ===\n\n"
-                        code_content += f.read()
-                except Exception as e:
-                    logger.warning(f"Failed to read {file_path}: {e}")
+        code_content = self._read_input_files(input_files)
         
-        # Create prompt
+        # Create prompt with dynamic sizing
         prompt = self._create_documentation_prompt(task, code_content)
         
         # Call appropriate API (check for API keys first)
         if self.provider == "openai" and OPENAI_AVAILABLE and os.getenv("OPENAI_API_KEY"):
-            return self._call_openai(prompt)
+            return self._call_openai_with_continuation(prompt, is_documentation=True)
         elif self.provider == "anthropic" and ANTHROPIC_AVAILABLE and os.getenv("ANTHROPIC_API_KEY"):
-            return self._call_anthropic(prompt)
+            return self._call_anthropic_with_continuation(prompt, is_documentation=True)
         elif self.provider == "aws":
             return self._call_aws_transform(prompt)
         else:
@@ -65,26 +79,18 @@ class AIModelInterface:
     def generate_understanding(self, task, input_files: List[Path]) -> str:
         """Generate understanding output (JSON) for a task"""
         # Read input files
-        code_content = ""
-        for file_path in input_files:
-            if file_path.exists():
-                try:
-                    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                        code_content += f"\n\n=== {file_path.name} ===\n\n"
-                        code_content += f.read()
-                except Exception as e:
-                    logger.warning(f"Failed to read {file_path}: {e}")
+        code_content = self._read_input_files(input_files)
         
-        # Create prompt
+        # Create prompt with dynamic sizing
         prompt = self._create_understanding_prompt(task, code_content)
         
         # Call appropriate API (check for API keys first)
         if self.provider == "openai" and OPENAI_AVAILABLE and os.getenv("OPENAI_API_KEY"):
-            response = self._call_openai(prompt)
+            response = self._call_openai_with_continuation(prompt, is_documentation=False)
             # Try to extract JSON from response
             return self._extract_json(response)
         elif self.provider == "anthropic" and ANTHROPIC_AVAILABLE and os.getenv("ANTHROPIC_API_KEY"):
-            response = self._call_anthropic(prompt)
+            response = self._call_anthropic_with_continuation(prompt, is_documentation=False)
             return self._extract_json(response)
         elif self.provider == "aws":
             response = self._call_aws_transform(prompt)
@@ -93,49 +99,108 @@ class AIModelInterface:
             # Fallback: return mock response
             return self._generate_mock_understanding(task, input_files)
     
+    def _read_input_files(self, input_files: List[Path]) -> str:
+        """Read input files with size limit based on model context"""
+        code_content = ""
+        total_chars = 0
+        
+        for file_path in input_files:
+            if file_path.exists() and total_chars < self.max_input_chars:
+                try:
+                    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                        file_content = f.read()
+                    
+                    # Check if we can fit this file
+                    header = f"\n\n=== {file_path.name} ===\n\n"
+                    remaining_chars = self.max_input_chars - total_chars - len(header)
+                    
+                    if remaining_chars > 0:
+                        code_content += header
+                        if len(file_content) <= remaining_chars:
+                            code_content += file_content
+                            total_chars += len(header) + len(file_content)
+                        else:
+                            # Truncate this file but add note
+                            code_content += file_content[:remaining_chars]
+                            code_content += f"\n\n... [File truncated, {len(file_content) - remaining_chars} chars omitted] ..."
+                            total_chars = self.max_input_chars
+                            logger.info(f"Truncated {file_path.name} to fit context window")
+                except Exception as e:
+                    logger.warning(f"Failed to read {file_path}: {e}")
+        
+        logger.info(f"Total input size: {total_chars} chars ({total_chars / CHARS_PER_TOKEN:.0f} est. tokens)")
+        return code_content
+    
     def _create_documentation_prompt(self, task, code_content: str) -> str:
         """Create prompt for documentation task"""
-        return f"""You are a technical documentation expert. Analyze the following COBOL code and generate comprehensive documentation.
+        return f"""You are a technical documentation expert specializing in legacy COBOL systems. Analyze the following COBOL code and generate comprehensive documentation.
 
 Task: {task.task_description}
 
 COBOL Code:
-{code_content[:5000]}  # Limit to avoid token limits
+{code_content}
 
 Requirements:
-- Explain business purpose
-- Document all business rules
-- Identify edge cases
-- Describe data structures
-- Use Markdown format
-- Minimum 3-5 pages of documentation
+1. **Business Purpose**: Explain what the program does and its role in the system
+2. **Business Rules**: Document ALL business rules, conditions, and logic (be thorough)
+3. **Edge Cases**: Identify error handling, boundary conditions, and special cases
+4. **Data Structures**: Describe all records, fields, copybooks, and data layouts
+5. **Algorithm Overview**: Explain the program flow step by step
+
+Output Format:
+- Use Markdown format with clear headers (##)
+- Include code snippets where helpful
+- Minimum 5 pages of detailed documentation
+- Be specific - cite actual variable names and conditions from the code
+
+IMPORTANT: Generate the COMPLETE documentation. Do not stop early or summarize. Include every business rule you find in the code.
 
 Generate the documentation now:"""
     
     def _create_understanding_prompt(self, task, code_content: str) -> str:
         """Create prompt for understanding task"""
-        return f"""You are a code analysis expert. Analyze the following COBOL code and extract its structure.
+        return f"""You are a code analysis expert specializing in legacy COBOL systems. Analyze the following COBOL code and extract its complete structure.
 
 Task: {task.task_description}
 
 COBOL Code:
-{code_content[:5000]}  # Limit to avoid token limits
+{code_content}
 
 Requirements:
-- Extract dependency graph (CALL and COPY relationships)
-- Identify business rules (IF conditions, logic)
-- Map data flow (file I/O operations)
-- Output as JSON following this schema:
+1. Extract ALL dependency relationships:
+   - CALL statements (program calls)
+   - COPY statements (copybook includes)
+2. Extract ALL business rules:
+   - IF/EVALUATE conditions
+   - PERFORM logic
+   - Calculation rules
+3. Extract ALL data flow:
+   - File OPEN/READ/WRITE/CLOSE operations
+   - Data transformations
+
+Output ONLY valid JSON following this exact schema:
 {{
-  "dependencies": [{{"type": "CALL|COPY", "source": "...", "target": "..."}}],
-  "business_rules": [{{"condition": "..."}}],
-  "data_flow": [{{"operation": "OPEN|READ|WRITE|CLOSE", "file": "..."}}]
+  "dependencies": [
+    {{"type": "CALL", "source": "program.cbl", "target": "subprogram-name"}},
+    {{"type": "COPY", "source": "program.cbl", "target": "copybook-name"}}
+  ],
+  "business_rules": [
+    {{"condition": "IF ACCOUNT-BALANCE < MINIMUM-BALANCE", "description": "Check minimum balance requirement"}},
+    {{"condition": "EVALUATE TRANSACTION-TYPE", "description": "Route based on transaction type"}}
+  ],
+  "data_flow": [
+    {{"operation": "OPEN", "file": "CUSTOMER-FILE", "mode": "INPUT"}},
+    {{"operation": "READ", "file": "CUSTOMER-FILE"}},
+    {{"operation": "WRITE", "file": "REPORT-FILE"}}
+  ]
 }}
+
+IMPORTANT: Include ALL dependencies, rules, and data flows you find. Be comprehensive.
 
 Generate the JSON output now:"""
     
     def _call_openai(self, prompt: str) -> str:
-        """Call OpenAI API"""
+        """Call OpenAI API (single request)"""
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             logger.warning("OPENAI_API_KEY not set, using mock response")
@@ -154,8 +219,59 @@ Generate the JSON output now:"""
             logger.error(f"OpenAI API error: {e}, using mock response")
             return self._generate_mock_response()
     
+    def _call_openai_with_continuation(self, prompt: str, is_documentation: bool = True, max_continuations: int = 3) -> str:
+        """Call OpenAI API with automatic continuation for long outputs"""
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            logger.warning("OPENAI_API_KEY not set, using mock response")
+            return self._generate_mock_response()
+        
+        try:
+            client = openai.OpenAI(api_key=api_key)
+            messages = [{"role": "user", "content": prompt}]
+            full_response = ""
+            
+            for i in range(max_continuations + 1):
+                response = client.chat.completions.create(
+                    model=self.config["model"],
+                    messages=messages,
+                    temperature=self.config["temperature"],
+                    max_tokens=self.config["max_tokens"],
+                )
+                
+                content = response.choices[0].message.content
+                full_response += content
+                finish_reason = response.choices[0].finish_reason
+                
+                logger.info(f"OpenAI response {i+1}: {len(content)} chars, finish_reason={finish_reason}")
+                
+                # Check if output is complete
+                if finish_reason == "stop":
+                    break
+                
+                # Check if we should continue (length limit hit)
+                if finish_reason == "length" and i < max_continuations:
+                    logger.info(f"Output truncated, requesting continuation {i+1}/{max_continuations}")
+                    
+                    # Add assistant's partial response and continuation request
+                    messages.append({"role": "assistant", "content": content})
+                    
+                    if is_documentation:
+                        messages.append({"role": "user", "content": "Continue the documentation from where you left off. Do not repeat previous content."})
+                    else:
+                        messages.append({"role": "user", "content": "Continue the JSON from where you left off. Ensure valid JSON structure."})
+                else:
+                    break
+            
+            logger.info(f"Total OpenAI response: {len(full_response)} chars")
+            return full_response
+            
+        except Exception as e:
+            logger.error(f"OpenAI API error: {e}, using mock response")
+            return self._generate_mock_response()
+    
     def _call_anthropic(self, prompt: str) -> str:
-        """Call Anthropic API"""
+        """Call Anthropic API (single request)"""
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
             logger.warning("ANTHROPIC_API_KEY not set, using mock response")
@@ -170,6 +286,57 @@ Generate the JSON output now:"""
                 messages=[{"role": "user", "content": prompt}],
             )
             return response.content[0].text
+        except Exception as e:
+            logger.error(f"Anthropic API error: {e}, using mock response")
+            return self._generate_mock_response()
+    
+    def _call_anthropic_with_continuation(self, prompt: str, is_documentation: bool = True, max_continuations: int = 3) -> str:
+        """Call Anthropic API with automatic continuation for long outputs"""
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            logger.warning("ANTHROPIC_API_KEY not set, using mock response")
+            return self._generate_mock_response()
+        
+        try:
+            client = anthropic.Anthropic(api_key=api_key)
+            messages = [{"role": "user", "content": prompt}]
+            full_response = ""
+            
+            for i in range(max_continuations + 1):
+                response = client.messages.create(
+                    model=self.config["model"],
+                    max_tokens=self.config["max_tokens"],
+                    temperature=self.config["temperature"],
+                    messages=messages,
+                )
+                
+                content = response.content[0].text
+                full_response += content
+                stop_reason = response.stop_reason
+                
+                logger.info(f"Anthropic response {i+1}: {len(content)} chars, stop_reason={stop_reason}")
+                
+                # Check if output is complete
+                if stop_reason == "end_turn":
+                    break
+                
+                # Check if we should continue (max_tokens limit hit)
+                if stop_reason == "max_tokens" and i < max_continuations:
+                    logger.info(f"Output truncated, requesting continuation {i+1}/{max_continuations}")
+                    
+                    # Add assistant's partial response and continuation request
+                    messages.append({"role": "assistant", "content": content})
+                    
+                    if is_documentation:
+                        messages.append({"role": "user", "content": "Continue the documentation from where you left off. Do not repeat previous content."})
+                    else:
+                        messages.append({"role": "user", "content": "Continue the JSON from where you left off. Ensure valid JSON structure."})
+                else:
+                    break
+            
+            logger.info(f"Total Anthropic response: {len(full_response)} chars")
+            return full_response
+            
         except Exception as e:
             logger.error(f"Anthropic API error: {e}, using mock response")
             return self._generate_mock_response()

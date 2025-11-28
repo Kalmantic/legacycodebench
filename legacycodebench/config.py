@@ -101,24 +101,25 @@ TASK_SELECTION_CONFIG = {
 }
 
 # AI model configurations
+# Note: max_tokens is for OUTPUT only. Input uses model's context window.
 AI_MODELS = {
     "claude-sonnet-4": {
         "provider": "anthropic",
         "model": "claude-sonnet-4-20250514",
         "temperature": 0.2,
-        "max_tokens": 8000,
+        "max_tokens": 16000,  # Claude supports up to 8192 per response, but we use continuation
     },
     "gpt-4o": {
         "provider": "openai",
         "model": "gpt-4o",
         "temperature": 0.2,
-        "max_tokens": 8000,
+        "max_tokens": 16384,  # GPT-4o max output
     },
     "gpt-4": {
         "provider": "openai",
         "model": "gpt-4",
         "temperature": 0.2,
-        "max_tokens": 8000,
+        "max_tokens": 8192,  # GPT-4 max output
     },
     "aws-transform": {
         "provider": "aws",

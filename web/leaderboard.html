@@ -70,7 +70,7 @@
   <footer>
     <div class="container" style="display:flex;flex-wrap:wrap;gap:1rem;justify-content:space-between;">
       <span>© 2025 LegacyCodeBench · Kalmantic Applied AI Lab</span>
-      <span>GitHub · <a href="https://github.com/kalmanticlegacycodebench" target="_blank" rel="noreferrer">ac/legacycodebench</a></span>
+      <span>GitHub · <a href="https://github.com/kalmantic/legacycodebench" target="_blank" rel="noreferrer">kalmantic/legacycodebench</a></span>
       <span>Contact · <a href="mailto:team@kalmantic.ai">team@kalmantic.ai</a></span>
     </div>
   </footer>
@@ -83,32 +83,46 @@
       const empty = document.getElementById('leaderboard-empty');
       const error = document.getElementById('leaderboard-error');
 
-      fetch('../results/leaderboard.json')
+      const leaderboardUrl = new URL('../results/leaderboard.json', window.location.href);
+      leaderboardUrl.searchParams.set('t', Date.now());
+
+      fetch(leaderboardUrl)
         .then(res => {
           if (!res.ok) throw new Error('Network response was not ok');
           return res.json();
         })
         .then(data => {
           stateEl.hidden = true;
-          if (!data.leaderboard || data.leaderboard.length === 0) {
+          const entries = Array.isArray(data.leaderboard) ? data.leaderboard : [];
+          console.log('Leaderboard entries', entries);
+          if (entries.length === 0) {
             empty.hidden = false;
             return;
           }
-          data.leaderboard.forEach(entry => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td>${entry.rank ?? ''}</td>
+
+          // Clear any previous rows (helps during hot reloads)
+          body.innerHTML = '';
+
+          entries.forEach((entry, idx) => {
+            console.log('render row', idx, entry);
+            const row = document.createElement('tr');
+            const overall = Number(entry.overall_score ?? 0);
+            const doc = Number(entry.documentation_score ?? 0);
+            const und = Number(entry.understanding_score ?? 0);
+            row.innerHTML = `
+              <td>${entry.rank ?? idx + 1}</td>
               <td>${entry.submitter ?? ''}</td>
               <td>${entry.model ?? ''}</td>
-              <td>${(entry.overall_score ?? 0).toFixed(2)}</td>
-              <td>${(entry.documentation_score ?? 0).toFixed(2)}</td>
-              <td>${(entry.understanding_score ?? 0).toFixed(2)}</td>
+              <td>${overall.toFixed(2)}</td>
+              <td>${doc.toFixed(2)}</td>
+              <td>${und.toFixed(2)}</td>
               <td>${entry.tasks_completed ?? ''}</td>
               <td>${entry.date ?? ''}</td>
               <td>${entry.paper ? `<a href="${entry.paper}" target="_blank" rel="noreferrer">Paper</a>` : '—'}</td>
             `;
-            body.appendChild(tr);
+            body.appendChild(row);
           });
+
           table.hidden = false;
         })
         .catch(() => {

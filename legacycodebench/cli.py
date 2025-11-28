@@ -242,6 +242,37 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
     manager.save_all(tasks)
     click.echo(f"✓ Created {len(tasks)} tasks")
     
+    # Prepare a small, representative task slice (at least one doc + one understanding when possible)
+    def _select_representative_tasks(all_tasks: List[Task], limit: int = 3) -> List[Task]:
+        docs = [task for task in all_tasks if task.category == "documentation"]
+        unds = [task for task in all_tasks if task.category == "understanding"]
+
+        selected: List[Task] = []
+
+        if docs:
+            selected.append(docs.pop(0))
+        if unds:
+            selected.append(unds.pop(0))
+
+        remaining_slots = max(0, limit - len(selected))
+        if remaining_slots:
+            remaining_pool = docs + unds
+            selected.extend(remaining_pool[:remaining_slots])
+
+        # Fallback: if we still don't have enough tasks (e.g., only docs exist), pad from original order
+        if len(selected) < min(limit, len(all_tasks)):
+            seen_ids = {task.task_id for task in selected}
+            for task in all_tasks:
+                if len(selected) >= limit:
+                    break
+                if task.task_id not in seen_ids:
+                    selected.append(task)
+                    seen_ids.add(task.task_id)
+
+        return selected[:limit]
+
+    balanced_tasks = _select_representative_tasks(tasks)
+
     # Step 3: Run AI models
     click.echo("\n[3/5] Running AI models...")
     
@@ -250,8 +281,8 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
         try:
             ai_model = get_ai_model(model_id)
             
-            # Run on first 3 tasks
-            for task in tasks[:3]:
+            # Run on representative tasks (balanced doc/understanding when available)
+            for task in balanced_tasks:
                 input_files = task.get_input_files_absolute()
                 if not input_files:
                     continue
@@ -315,7 +346,7 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
 @main.command()
 def evaluate():
     """Run full evaluation with default model suite"""
-    default_models = ["claude-sonnet-4", "gpt-4o", "aws-transform"]
+    default_models = ["claude-sonnet-4", "gpt-4o"]
     _run_benchmark(default_models)
 
 
@@ -350,8 +381,6 @@ def interactive():
         available_models.extend(["gpt-4o", "gpt-4"])
     if os.getenv("ANTHROPIC_API_KEY"):
         available_models.append("claude-sonnet-4")
-    # Always allow mock AWS path as fallback
-    available_models.append("aws-transform")
     # Deduplicate while preserving order
     seen = []
     models_unique = []
@@ -359,6 +388,13 @@ def interactive():
         if model not in seen:
             models_unique.append(model)
             seen.append(model)
+    
+    if not models_unique:
+        click.echo("✗ No API keys detected. Please provide an OpenAI or Anthropic key to continue.")
+        click.echo("  - Set OPENAI_API_KEY for GPT models")
+        click.echo("  - Set ANTHROPIC_API_KEY for Claude models")
+        click.echo("Alternatively, run 'legacycodebench run-ai --model <id>' once keys are configured.")
+        return
     
     model_choice = click.prompt(
         "Choose a model to run",
