@@ -19,6 +19,12 @@ try:
 except ImportError:
     ANTHROPIC_AVAILABLE = False
 
+try:
+    import google.generativeai as genai
+    GOOGLE_AVAILABLE = True
+except ImportError:
+    GOOGLE_AVAILABLE = False
+
 from legacycodebench.config import AI_MODELS
 
 logging.basicConfig(level=logging.INFO)
@@ -28,8 +34,14 @@ logger = logging.getLogger(__name__)
 MODEL_CONTEXT_LIMITS = {
     "gpt-4o": 128000,
     "gpt-4": 8192,
+    "gpt-4-turbo": 128000,
+    "o1": 200000,
     "claude-sonnet-4-20250514": 200000,
+    "claude-opus-4-20250514": 200000,
+    "gemini-1.5-pro": 1000000,
+    "gemini-2.0-flash-exp": 1000000,
     "transform": 8000,
+    "codemolt": 4000,
 }
 
 # Approximate chars per token (conservative estimate for COBOL)
@@ -70,8 +82,13 @@ class AIModelInterface:
             return self._call_openai_with_continuation(prompt, is_documentation=True)
         elif self.provider == "anthropic" and ANTHROPIC_AVAILABLE and os.getenv("ANTHROPIC_API_KEY"):
             return self._call_anthropic_with_continuation(prompt, is_documentation=True)
+        elif self.provider == "google" and GOOGLE_AVAILABLE and os.getenv("GOOGLE_API_KEY"):
+            return self._call_google(prompt)
         elif self.provider == "aws":
             return self._call_aws_transform(prompt)
+        elif self.provider == "hexaview":
+            logger.warning("CodeMolt (Hexaview) requires manual web UI - no API available")
+            return self._generate_mock_documentation(task)
         else:
             # Fallback: return mock response
             return self._generate_mock_documentation(task)
@@ -80,24 +97,58 @@ class AIModelInterface:
         """Generate understanding output (JSON) for a task"""
         # Read input files
         code_content = self._read_input_files(input_files)
-        
+
         # Create prompt with dynamic sizing
         prompt = self._create_understanding_prompt(task, code_content)
-        
+
         # Call appropriate API (check for API keys first)
         if self.provider == "openai" and OPENAI_AVAILABLE and os.getenv("OPENAI_API_KEY"):
             response = self._call_openai_with_continuation(prompt, is_documentation=False)
-            # Try to extract JSON from response
             return self._extract_json(response)
         elif self.provider == "anthropic" and ANTHROPIC_AVAILABLE and os.getenv("ANTHROPIC_API_KEY"):
             response = self._call_anthropic_with_continuation(prompt, is_documentation=False)
             return self._extract_json(response)
+        elif self.provider == "google" and GOOGLE_AVAILABLE and os.getenv("GOOGLE_API_KEY"):
+            response = self._call_google(prompt)
+            return self._extract_json(response)
         elif self.provider == "aws":
             response = self._call_aws_transform(prompt)
             return self._extract_json(response)
+        elif self.provider == "hexaview":
+            logger.warning("CodeMolt (Hexaview) requires manual web UI - no API available")
+            return self._generate_mock_understanding(task, input_files)
         else:
             # Fallback: return mock response
             return self._generate_mock_understanding(task, input_files)
+
+    def generate_conversion(self, task, input_files: List[Path]) -> str:
+        """Generate converted code for a conversion task"""
+        # Read input files
+        code_content = self._read_input_files(input_files)
+
+        # Create prompt with dynamic sizing
+        target_language = task.target_language or "java"
+        prompt = self._create_conversion_prompt(task, code_content, target_language)
+
+        # Call appropriate API (check for API keys first)
+        if self.provider == "openai" and OPENAI_AVAILABLE and os.getenv("OPENAI_API_KEY"):
+            response = self._call_openai_with_continuation(prompt, is_documentation=False)
+            return self._extract_code(response, target_language)
+        elif self.provider == "anthropic" and ANTHROPIC_AVAILABLE and os.getenv("ANTHROPIC_API_KEY"):
+            response = self._call_anthropic_with_continuation(prompt, is_documentation=False)
+            return self._extract_code(response, target_language)
+        elif self.provider == "google" and GOOGLE_AVAILABLE and os.getenv("GOOGLE_API_KEY"):
+            response = self._call_google(prompt)
+            return self._extract_code(response, target_language)
+        elif self.provider == "aws":
+            response = self._call_aws_transform(prompt)
+            return self._extract_code(response, target_language)
+        elif self.provider == "hexaview":
+            logger.warning("CodeMolt (Hexaview) requires manual web UI - no API available")
+            return self._generate_mock_conversion(task, target_language)
+        else:
+            # Fallback: return mock response
+            return self._generate_mock_conversion(task, target_language)
     
     def _read_input_files(self, input_files: List[Path]) -> str:
         """Read input files with size limit based on model context"""
@@ -198,6 +249,147 @@ Output ONLY valid JSON following this exact schema:
 IMPORTANT: Include ALL dependencies, rules, and data flows you find. Be comprehensive.
 
 Generate the JSON output now:"""
+
+    def _create_conversion_prompt(self, task, code_content: str, target_language: str) -> str:
+        """Create prompt for conversion task"""
+        lang_specifics = {
+            "java": {
+                "naming": "Use camelCase for methods/variables, PascalCase for classes",
+                "types": "Use appropriate Java types (int, long, double, String, BigDecimal for currency)",
+                "structure": "Create a proper class structure with main method",
+                "io": "Use BufferedReader/BufferedWriter for file I/O",
+            },
+            "python": {
+                "naming": "Use snake_case for functions/variables, PascalCase for classes",
+                "types": "Use type hints where appropriate",
+                "structure": "Create a proper module with if __name__ == '__main__' guard",
+                "io": "Use context managers (with open(...)) for file I/O",
+            },
+            "csharp": {
+                "naming": "Use PascalCase for methods/classes, camelCase for local variables",
+                "types": "Use appropriate C# types (int, long, decimal for currency, string)",
+                "structure": "Create a proper class within a namespace",
+                "io": "Use StreamReader/StreamWriter for file I/O",
+            },
+        }
+
+        specifics = lang_specifics.get(target_language, lang_specifics["java"])
+
+        return f"""You are an expert legacy code modernization engineer. Convert the following COBOL program to {target_language.upper()}.
+
+Task: {task.task_description}
+
+COBOL Code to Convert:
+{code_content}
+
+Conversion Requirements:
+1. **Functional Equivalence**: The converted code MUST produce identical output for identical input
+2. **Data Structures**: Convert COBOL records and fields to appropriate {target_language} data structures
+3. **Business Logic**: Preserve ALL business rules, calculations, and conditions exactly
+4. **File I/O**: Convert file operations to {target_language} equivalents
+5. **Error Handling**: Implement proper exception handling for all error conditions
+
+{target_language.capitalize()}-Specific Guidelines:
+- {specifics['naming']}
+- {specifics['types']}
+- {specifics['structure']}
+- {specifics['io']}
+
+Output Requirements:
+- Generate ONLY the converted {target_language} code
+- Include necessary imports/using statements
+- Add comments explaining complex business logic
+- The code should be complete and compilable/runnable
+- Do NOT include explanations outside of code comments
+
+IMPORTANT: Generate the COMPLETE converted code. Do not use placeholders like "// TODO" or "pass". Implement all functionality.
+
+Generate the {target_language} code now:"""
+
+    def _extract_code(self, response: str, target_language: str) -> str:
+        """Extract code from response, removing markdown code blocks if present"""
+        # Try to extract from markdown code block
+        lang_markers = {
+            "java": ["java", "Java"],
+            "python": ["python", "Python", "py"],
+            "csharp": ["csharp", "c#", "cs", "C#"],
+        }
+
+        markers = lang_markers.get(target_language, [target_language])
+
+        # Try each marker
+        for marker in markers:
+            pattern = rf'```{marker}\s*\n(.*?)```'
+            match = re.search(pattern, response, re.DOTALL | re.IGNORECASE)
+            if match:
+                return match.group(1).strip()
+
+        # Try generic code block
+        pattern = r'```\s*\n(.*?)```'
+        match = re.search(pattern, response, re.DOTALL)
+        if match:
+            return match.group(1).strip()
+
+        # No code block found, return as-is (might already be clean code)
+        return response.strip()
+
+    def _generate_mock_conversion(self, task, target_language: str) -> str:
+        """Generate mock conversion output for testing"""
+        if target_language == "java":
+            return '''import java.io.*;
+import java.util.*;
+
+public class ConvertedProgram {
+    // Mock converted COBOL program
+    private static final String INPUT_FILE = "input.dat";
+    private static final String OUTPUT_FILE = "output.dat";
+
+    public static void main(String[] args) {
+        ConvertedProgram program = new ConvertedProgram();
+        program.run();
+    }
+
+    public void run() {
+        System.out.println("Mock conversion - replace with actual converted code");
+        // TODO: Implement actual conversion
+    }
+}
+'''
+        elif target_language == "python":
+            return '''#!/usr/bin/env python3
+"""Mock converted COBOL program"""
+
+INPUT_FILE = "input.dat"
+OUTPUT_FILE = "output.dat"
+
+def main():
+    """Main entry point"""
+    print("Mock conversion - replace with actual converted code")
+    # TODO: Implement actual conversion
+
+if __name__ == "__main__":
+    main()
+'''
+        else:  # csharp
+            return '''using System;
+using System.IO;
+
+namespace ConvertedProgram
+{
+    class Program
+    {
+        // Mock converted COBOL program
+        private const string InputFile = "input.dat";
+        private const string OutputFile = "output.dat";
+
+        static void Main(string[] args)
+        {
+            Console.WriteLine("Mock conversion - replace with actual converted code");
+            // TODO: Implement actual conversion
+        }
+    }
+}
+'''
     
     def _call_openai(self, prompt: str) -> str:
         """Call OpenAI API (single request)"""
@@ -345,7 +537,39 @@ Generate the JSON output now:"""
         """Call AWS Transform (placeholder - would need actual API)"""
         logger.warning("AWS Transform API not implemented, using mock response")
         return self._generate_mock_response()
-    
+
+    def _call_google(self, prompt: str) -> str:
+        """Call Google Gemini API"""
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            logger.warning("GOOGLE_API_KEY not set, using mock response")
+            return self._generate_mock_response()
+
+        try:
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel(self.config["model"])
+
+            generation_config = genai.types.GenerationConfig(
+                temperature=self.config["temperature"],
+                max_output_tokens=self.config["max_tokens"],
+            )
+
+            response = model.generate_content(
+                prompt,
+                generation_config=generation_config,
+            )
+
+            if response.text:
+                logger.info(f"Google response: {len(response.text)} chars")
+                return response.text
+            else:
+                logger.warning("Empty response from Google API")
+                return self._generate_mock_response()
+
+        except Exception as e:
+            logger.error(f"Google API error: {e}, using mock response")
+            return self._generate_mock_response()
+
     def _extract_json(self, text: str) -> str:
         """Extract JSON from text response"""
         # Try to find JSON block

@@ -6,6 +6,10 @@ from pathlib import Path
 from typing import Optional, List
 import logging
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 from legacycodebench.config import (
     TASKS_DIR, DATASETS_DIR, SUBMISSIONS_DIR, RESULTS_DIR,
@@ -163,22 +167,33 @@ def run_ai(model: str, task_id: Optional[str], submitter_name: Optional[str]):
         elif task.category == "understanding":
             output = ai_model.generate_understanding(task, input_files)
             output_file = SUBMISSIONS_DIR / f"{task.task_id}_{model}.json"
+        elif task.category == "conversion":
+            output = ai_model.generate_conversion(task, input_files)
+            # Use appropriate extension based on target language
+            ext_map = {"java": ".java", "python": ".py", "csharp": ".cs"}
+            ext = ext_map.get(task.target_language, ".txt")
+            output_file = SUBMISSIONS_DIR / f"{task.task_id}_{model}{ext}"
         else:
             click.echo(f"  ✗ Unknown category: {task.category}")
             continue
-        
+
         # Save submission
         output_file.parent.mkdir(parents=True, exist_ok=True)
         with open(output_file, 'w', encoding='utf-8') as f:
             f.write(output)
-        
+
         click.echo(f"  ✓ Generated submission: {output_file}")
-        
+
         # Evaluate
         if task.category == "documentation":
             evaluator = DocumentationEvaluator()
-        else:
+        elif task.category == "understanding":
             evaluator = UnderstandingEvaluator()
+        elif task.category == "conversion":
+            from legacycodebench.evaluators.conversion import ConversionEvaluator
+            evaluator = ConversionEvaluator()
+        else:
+            evaluator = DocumentationEvaluator()  # fallback
         
         result = evaluator.evaluate(output_file, task)
         

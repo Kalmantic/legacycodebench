@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class Task:
     """Represents a single benchmark task"""
     task_id: str
-    category: str  # "documentation" or "understanding"
+    category: str  # "documentation", "understanding", or "conversion"
     difficulty: str  # "easy", "medium", "hard"
     language: str  # "COBOL"
     domain: str  # "banking", "finance", etc.
@@ -25,6 +25,8 @@ class Task:
     task_description: str
     evaluation_criteria: Dict
     reference_solution: Optional[str] = None  # Path to reference solution
+    target_language: Optional[str] = None  # For conversion tasks: "java", "python", "csharp"
+    test_cases: Optional[List[Dict]] = None  # For conversion tasks: input/output test cases
     
     def to_dict(self) -> Dict:
         """Convert to dictionary"""
@@ -99,6 +101,7 @@ class TaskManager:
         max_loc = config["loc_ranges"]["max"]
         num_doc = config["task_distribution"]["documentation_tasks"]
         num_und = config["task_distribution"]["understanding_tasks"]
+        num_cnv = config["task_distribution"].get("conversion_tasks", 0)
         
         # Generate all candidates
         logger.info(f"Analyzing COBOL files (LOC range: {min_loc}-{max_loc})...")
@@ -109,14 +112,18 @@ class TaskManager:
             return self.create_tasks_simple(datasets_dir)
         
         # Select best tasks
-        logger.info(f"Selecting top {num_doc} documentation + {num_und} understanding tasks...")
+        logger.info(f"Selecting top {num_doc} documentation + {num_und} understanding + {num_cnv} conversion tasks...")
         doc_candidates, und_candidates = generator.select_best_tasks(
             all_candidates, num_doc, num_und
         )
-        
+
+        # For conversion, select from same pool with different criteria
+        # Prefer files with clear business logic for conversion
+        cnv_candidates = generator.select_conversion_candidates(all_candidates, num_cnv)
+
         # Convert candidates to tasks
         tasks = []
-        
+
         # Documentation tasks
         for i, candidate in enumerate(doc_candidates, 1):
             task = self._candidate_to_task(
@@ -124,7 +131,7 @@ class TaskManager:
             )
             tasks.append(task)
             logger.info(f"  Created {task.task_id}: {task.difficulty} - {task.domain} - {candidate.analysis['loc']} LOC")
-        
+
         # Understanding tasks
         for i, candidate in enumerate(und_candidates, 1):
             task = self._candidate_to_task(
@@ -132,7 +139,22 @@ class TaskManager:
             )
             tasks.append(task)
             logger.info(f"  Created {task.task_id}: {task.difficulty} - {task.domain} - {candidate.analysis['dependencies']['total']} dependencies")
-        
+
+        # Conversion tasks
+        target_dist = config["task_distribution"].get("conversion_target_distribution", {"java": 1.0})
+        target_counts = {lang: int(num_cnv * pct) for lang, pct in target_dist.items()}
+
+        cnv_idx = 1
+        for target_lang, count in target_counts.items():
+            for candidate in cnv_candidates[:count]:
+                task = self._candidate_to_conversion_task(
+                    candidate, f"LCB-CNV-{cnv_idx:03d}", datasets_dir, target_lang
+                )
+                tasks.append(task)
+                logger.info(f"  Created {task.task_id}: {task.difficulty} - COBOL→{target_lang} - {candidate.analysis['loc']} LOC")
+                cnv_idx += 1
+                cnv_candidates = cnv_candidates[1:]  # Remove used candidate
+
         logger.info(f"Created {len(tasks)} tasks using intelligent selection")
         return tasks
     
@@ -188,7 +210,67 @@ class TaskManager:
             task_description=task_description,
             evaluation_criteria=evaluation_criteria,
         )
-    
+
+    def _candidate_to_conversion_task(self, candidate, task_id: str, datasets_dir: Path, target_language: str) -> Task:
+        """Convert TaskCandidate to Conversion Task"""
+        from legacycodebench.config import CONVERSION_TARGETS
+
+        # Get relative path from dataset root
+        dataset_dir = datasets_dir / candidate.dataset_name
+        rel_path = candidate.main_file.relative_to(dataset_dir)
+
+        # Collect all input files
+        input_files = [str(rel_path)]
+        for related_file in candidate.related_files:
+            try:
+                rel_related = related_file.relative_to(dataset_dir)
+                input_files.append(str(rel_related))
+            except ValueError:
+                pass
+
+        # Get target language config
+        target_config = CONVERSION_TARGETS.get(target_language, {})
+        target_ext = target_config.get("extension", ".java")
+
+        # Create task description
+        task_description = (
+            f"Convert {candidate.main_file.name} from COBOL to {target_language.capitalize()}. "
+            f"Preserve all business logic, data structures, and program flow. "
+            f"The converted code must be functionally equivalent to the original COBOL program."
+        )
+        if len(input_files) > 1:
+            task_description += f" Include conversions for {len(input_files)-1} related copybook(s)."
+
+        # Evaluation criteria for conversion
+        evaluation_criteria = {
+            "target_language": target_language,
+            "output_format": target_ext,
+            "requirements": [
+                "compilation_success",
+                "functional_equivalence",
+                "proper_data_types",
+                "business_logic_preserved",
+            ],
+            "code_quality": [
+                "no_hardcoded_values",
+                "proper_naming_conventions",
+                "appropriate_error_handling",
+            ],
+        }
+
+        return Task(
+            task_id=task_id,
+            category="conversion",
+            difficulty=candidate.difficulty_level,
+            language="COBOL",
+            domain=candidate.domain,
+            input_files=input_files,
+            task_description=task_description,
+            evaluation_criteria=evaluation_criteria,
+            target_language=target_language,
+            test_cases=[],  # Will be populated with actual test cases
+        )
+
     def create_tasks_simple(self, datasets_dir: Path = DATASETS_DIR) -> List[Task]:
         """Simple sequential task selection (legacy method)"""
         logger.info("Using simple task selection (legacy)")

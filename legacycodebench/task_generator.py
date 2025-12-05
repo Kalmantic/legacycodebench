@@ -100,9 +100,79 @@ class TaskCandidateGenerator:
         selected_und = self._select_diverse_tasks(und_candidates, num_und)
         
         logger.info(f"Selected {len(selected_doc)} documentation + {len(selected_und)} understanding tasks")
-        
+
         return selected_doc, selected_und
-    
+
+    def select_conversion_candidates(self, candidates: List[TaskCandidate], num_tasks: int) -> List[TaskCandidate]:
+        """Select best candidates for conversion tasks.
+
+        Conversion tasks prefer files with:
+        - Clear business logic (high business_rules count)
+        - Moderate complexity (not too simple, not too complex)
+        - File I/O operations (demonstrable input/output)
+        - Self-contained logic (fewer external dependencies)
+        """
+        if num_tasks <= 0:
+            return []
+
+        # Filter to documentation candidates (they have business logic requirements)
+        doc_candidates = [c for c in candidates if c.category == "documentation"]
+
+        # Score candidates for conversion suitability
+        conversion_scored = []
+        for candidate in doc_candidates:
+            analysis = candidate.analysis
+
+            # Conversion suitability score
+            score = 0.0
+
+            # Prefer files with business rules (good for conversion validation)
+            score += min(analysis.get("business_rules", 0) * 5, 30)
+
+            # Prefer files with file I/O (testable input/output)
+            score += min(analysis.get("file_io_operations", 0) * 10, 30)
+
+            # Prefer moderate LOC (not too simple, not too complex)
+            loc = analysis.get("loc", 0)
+            if 500 <= loc <= 1500:
+                score += 20  # Ideal range
+            elif 300 <= loc <= 2000:
+                score += 10  # Acceptable range
+
+            # Prefer fewer external dependencies (more self-contained)
+            deps = analysis.get("dependencies", {}).get("total", 0)
+            if deps <= 3:
+                score += 15
+            elif deps <= 6:
+                score += 5
+
+            # Prefer files with computations (arithmetic operations)
+            if analysis.get("has_computations", False):
+                score += 10
+
+            conversion_scored.append((candidate, score))
+
+        # Sort by conversion score
+        conversion_scored.sort(key=lambda x: x[1], reverse=True)
+
+        # Select diverse candidates
+        selected = []
+        used_files = set()
+
+        for candidate, score in conversion_scored:
+            if len(selected) >= num_tasks:
+                break
+
+            # Avoid duplicate files
+            if str(candidate.main_file) in used_files:
+                continue
+
+            selected.append(candidate)
+            used_files.add(str(candidate.main_file))
+
+        logger.info(f"Selected {len(selected)} conversion task candidates")
+        return selected
+
     def _create_documentation_candidate(self, main_file: Path, analysis: Dict, 
                                        dataset_name: str) -> TaskCandidate:
         """Create documentation task candidate"""
