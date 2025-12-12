@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Datasets — LegacyCodeBench</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="header-inner">
+      <a href="swe-bench-style.html" class="logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+        LegacyCodeBench
+        <span class="version-badge">v2.0</span>
+      </a>
+      <nav>
+        <a href="swe-bench-style.html">Leaderboard</a>
+        <a href="tasks.html">Tasks</a>
+        <a href="datasets.html" class="active">Datasets</a>
+        <a href="submit.html">Submit</a>
+        <a href="paper.html">Paper</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- Page Header -->
+    <div class="page-header">
+      <h1 class="page-title">Datasets</h1>
+      <p class="page-description">
+        Download benchmark datasets for local evaluation. Current release: 200 open-source COBOL programs 
+        with automated ground truth and test harnesses for execution-based validation.
+      </p>
+    </div>
+
+    <!-- Dataset Sources -->
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">Current Dataset</h2>
+      </div>
+      
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Source</th>
+              <th class="num">Volume</th>
+              <th>Ground Truth Method</th>
+              <th>Expert Involvement</th>
+              <th>Access</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Open-source COBOL repos</strong></td>
+              <td class="num">200</td>
+              <td>Fully automated extraction</td>
+              <td>None</td>
+              <td><span class="badge badge-verified">Public</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <div class="callout" style="margin-top: 16px;">
+        <strong>Roadmap:</strong> Future releases will include synthetic COBOL programs, partner contributions, 
+        and obfuscated production code to scale to 10,000+ tasks.
+      </div>
+    </section>
+
+    <!-- Downloads -->
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">Available Downloads</h2>
+      </div>
+      
+      <div class="download-grid">
+        <div class="download-card">
+          <div class="download-header">
+            <h3>LegacyCodeBench-200</h3>
+            <span class="badge badge-verified">Current Release</span>
+          </div>
+          <p>200 open-source COBOL programs across 4 difficulty tiers with ground truth.</p>
+          <div class="download-meta">
+            <span>~45 MB</span>
+            <span>·</span>
+            <span>v2.0.0</span>
+          </div>
+          <a href="#" class="download-btn">Download .tar.gz</a>
+        </div>
+        
+        <div class="download-card">
+          <div class="download-header">
+            <h3>Test Harnesses</h3>
+          </div>
+          <p>Execution environment, GnuCOBOL setup, and validation scripts.</p>
+          <div class="download-meta">
+            <span>~25 MB</span>
+            <span>·</span>
+            <span>v2.0.0</span>
+          </div>
+          <a href="#" class="download-btn">Download .tar.gz</a>
+        </div>
+        
+        <div class="download-card">
+          <div class="download-header">
+            <h3>Ground Truth Tools</h3>
+          </div>
+          <p>Static analysis pipeline for extracting ground truth from your own COBOL.</p>
+          <div class="download-meta">
+            <span>~15 MB</span>
+            <span>·</span>
+            <span>v2.0.0</span>
+          </div>
+          <a href="#" class="download-btn">Download .tar.gz</a>
+        </div>
+        
+        <div class="download-card">
+          <div class="download-header">
+            <h3>Evaluation Kit</h3>
+          </div>
+          <p>Python package with all evaluators: SC, BF, SQ, TR scoring and critical failure detection.</p>
+          <div class="download-meta">
+            <span>~8 MB</span>
+            <span>·</span>
+            <span>v2.0.0</span>
+          </div>
+          <a href="#" class="download-btn">pip install legacycodebench</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Contamination Prevention -->
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">Contamination Prevention</h2>
+      </div>
+      
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Strategy</th>
+              <th>Implementation</th>
+              <th>Verification</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Synthetic isolation</strong></td>
+              <td>Generated programs never published to public repos</td>
+              <td>Internal access only</td>
+            </tr>
+            <tr>
+              <td><strong>Temporal holdout</strong></td>
+              <td>Use programs created after AI training cutoff dates</td>
+              <td>Creation date verification</td>
+            </tr>
+            <tr>
+              <td><strong>Obfuscation</strong></td>
+              <td>Variable/paragraph renaming, structure shuffling</td>
+              <td>N-gram novelty check</td>
+            </tr>
+            <tr>
+              <td><strong>Fingerprinting</strong></td>
+              <td>Embed unique markers to detect memorization</td>
+              <td>Marker presence check in outputs</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Data Format -->
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">Data Format</h2>
+      </div>
+      <div class="formula">
+legacycodebench-full/
+├── tasks/
+│   ├── T1/
+│   │   ├── T1-CALC-0001/
+│   │   │   ├── source.cbl          # Original COBOL source
+│   │   │   ├── ground_truth.json   # Extracted elements + confidence
+│   │   │   ├── tests/              # Synthetic test inputs/outputs
+│   │   │   └── metadata.json       # Task info, anti-pattern config
+│   │   └── ...
+│   ├── T2/
+│   ├── T3/
+│   └── T4/
+├── tools/
+│   ├── static_analyzer/            # Ground truth extraction
+│   ├── test_generator/             # Synthetic test creation
+│   └── constrained_generator/      # Documentation → code validator
+└── README.md</div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <span>© 2025 LegacyCodeBench v2.0 · Kalmantic Applied AI Lab</span>
+      <div class="footer-links">
+        <a href="#">GitHub</a>
+        <a href="paper.html">Paper</a>
+        <a href="#">API Docs</a>
+        <a href="#">Contact</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
+

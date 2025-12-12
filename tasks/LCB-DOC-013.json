@@ -1,0 +1,22 @@
+{
+  "task_id": "LCB-DOC-013",
+  "category": "documentation",
+  "difficulty": "easy",
+  "language": "COBOL",
+  "domain": "enterprise",
+  "input_files": [
+    "tools\\GCSORT\\tests\\src\\viewfiledate2.cbl"
+  ],
+  "task_description": "Generate comprehensive documentation for viewfiledate2.cbl explaining business purpose, business rules, edge cases, and data structures.",
+  "evaluation_criteria": {
+    "required_sections": [
+      "business_purpose",
+      "business_rules",
+      "edge_cases",
+      "data_structures"
+    ],
+    "min_length_pages": 3,
+    "format": "markdown"
+  },
+  "reference_solution": null
+}

@@ -1,0 +1,20 @@
+{
+  "task_id": "LCB-UND-092",
+  "category": "understanding",
+  "difficulty": "hard",
+  "language": "COBOL",
+  "domain": "enterprise",
+  "input_files": [
+    "tools\\JC-SQL-Precompiler\\Variations\\prtschema2o.cbl"
+  ],
+  "task_description": "Extract dependency graph, business rules, and data flow from prtschema2o.cbl.",
+  "evaluation_criteria": {
+    "output_format": "json",
+    "required_fields": [
+      "dependencies",
+      "business_rules",
+      "data_flow"
+    ]
+  },
+  "reference_solution": null
+}

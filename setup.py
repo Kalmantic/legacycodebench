@@ -17,6 +17,8 @@ setup(
         "beautifulsoup4>=4.12.2",
         "openai>=1.12.0",
         "anthropic>=0.18.0",
+        "boto3>=1.34.0",
+        "botocore>=1.34.0",
         "click>=8.1.7",
         "tqdm>=4.66.1",
         "pandas>=2.1.4",

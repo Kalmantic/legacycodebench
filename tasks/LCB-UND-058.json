@@ -1,0 +1,21 @@
+{
+  "task_id": "LCB-UND-058",
+  "category": "understanding",
+  "difficulty": "medium",
+  "language": "COBOL",
+  "domain": "banking",
+  "input_files": [
+    "app\\cbl\\CBCUS01C.cbl",
+    "app\\cpy\\CVCUS01Y.cpy"
+  ],
+  "task_description": "Extract dependency graph, business rules, and data flow from CBCUS01C.cbl. Analyze relationships across 2 files.",
+  "evaluation_criteria": {
+    "output_format": "json",
+    "required_fields": [
+      "dependencies",
+      "business_rules",
+      "data_flow"
+    ]
+  },
+  "reference_solution": null
+}

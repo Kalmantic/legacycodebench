@@ -1,0 +1,21 @@
+{
+  "task_id": "LCB-UND-002",
+  "category": "understanding",
+  "difficulty": "easy",
+  "language": "COBOL",
+  "domain": "enterprise",
+  "input_files": [
+    "samples\\DBsample\\DB2\\example2\\DB2TEST2.cob",
+    "tools\\GCic\\v2.01-4\\SCREENIO.cpy"
+  ],
+  "task_description": "Extract dependency graph, business rules, and data flow from DB2TEST2.cob. Analyze relationships across 2 files.",
+  "evaluation_criteria": {
+    "output_format": "json",
+    "required_fields": [
+      "dependencies",
+      "business_rules",
+      "data_flow"
+    ]
+  },
+  "reference_solution": null
+}

@@ -1,0 +1,20 @@
+{
+  "task_id": "LCB-UND-026",
+  "category": "understanding",
+  "difficulty": "medium",
+  "language": "COBOL",
+  "domain": "enterprise",
+  "input_files": [
+    "samples\\socket\\connecttoserver.cbl"
+  ],
+  "task_description": "Extract dependency graph, business rules, and data flow from connecttoserver.cbl.",
+  "evaluation_criteria": {
+    "output_format": "json",
+    "required_fields": [
+      "dependencies",
+      "business_rules",
+      "data_flow"
+    ]
+  },
+  "reference_solution": null
+}

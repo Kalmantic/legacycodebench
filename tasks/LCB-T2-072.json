@@ -1,0 +1,35 @@
+{
+  "task_id": "LCB-T2-072",
+  "category": "documentation",
+  "difficulty": "medium",
+  "language": "COBOL",
+  "domain": "banking",
+  "input_files": [
+    "app\\cbl\\CBSTM03A.CBL",
+    "app\\cpy\\COSTM01.cpy",
+    "app\\cpy\\CVACT03Y.cpy",
+    "app\\cpy\\CUSTREC.cpy",
+    "app\\cpy\\CVACT01Y.cpy"
+  ],
+  "task_description": "Generate comprehensive documentation for CBSTM03A.CBL including business purpose, data structures, control flow, file operations, and business rules. Include analysis of 4 related copybook(s).",
+  "evaluation_criteria": {
+    "version": "2.0",
+    "tier": "T2",
+    "required_sections": [
+      "business_purpose",
+      "business_rules",
+      "data_structures",
+      "control_flow",
+      "file_operations"
+    ],
+    "format": "markdown",
+    "evaluation_method": "ground_truth_based",
+    "scoring_weights": {
+      "structural_completeness": 0.3,
+      "behavioral_fidelity": 0.35,
+      "semantic_quality": 0.25,
+      "traceability": 0.1
+    }
+  },
+  "reference_solution": null
+}

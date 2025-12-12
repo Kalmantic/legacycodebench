@@ -1,0 +1,20 @@
+{
+  "task_id": "LCB-UND-069",
+  "category": "understanding",
+  "difficulty": "medium",
+  "language": "COBOL",
+  "domain": "enterprise",
+  "input_files": [
+    "samples\\shared_mem\\mmul.cob"
+  ],
+  "task_description": "Extract dependency graph, business rules, and data flow from mmul.cob.",
+  "evaluation_criteria": {
+    "output_format": "json",
+    "required_fields": [
+      "dependencies",
+      "business_rules",
+      "data_flow"
+    ]
+  },
+  "reference_solution": null
+}

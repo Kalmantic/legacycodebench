@@ -19,7 +19,16 @@ try:
 except ImportError:
     ANTHROPIC_AVAILABLE = False
 
-from legacycodebench.config import AI_MODELS
+try:
+    import boto3
+    from botocore.exceptions import ClientError, NoCredentialsError
+    AWS_AVAILABLE = True
+except ImportError:
+    AWS_AVAILABLE = False
+    ClientError = Exception  # Fallback for type hints
+    NoCredentialsError = Exception
+
+from legacycodebench.config import AI_MODELS, DOCMOLT_CONFIG
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -29,7 +38,8 @@ MODEL_CONTEXT_LIMITS = {
     "gpt-4o": 128000,
     "gpt-4": 8192,
     "claude-sonnet-4-20250514": 200000,
-    "transform": 8000,
+    "anthropic.claude-3-sonnet-20240229-v1:0": 200000,  # AWS Bedrock Claude 3 Sonnet
+    "transform": 8000,  # Deprecated, kept for backward compatibility
 }
 
 # Approximate chars per token (conservative estimate for COBOL)
@@ -342,9 +352,66 @@ Generate the JSON output now:"""
             return self._generate_mock_response()
     
     def _call_aws_transform(self, prompt: str) -> str:
-        """Call AWS Transform (placeholder - would need actual API)"""
-        logger.warning("AWS Transform API not implemented, using mock response")
-        return self._generate_mock_response()
+        """Call AWS Bedrock Converse API for code analysis"""
+        if not AWS_AVAILABLE:
+            logger.warning("boto3 not available, using mock response")
+            return self._generate_mock_response()
+
+        # Check for AWS credentials
+        region = os.getenv("AWS_REGION", self.config.get("region", "us-east-1"))
+        model_id = os.getenv("AWS_BEDROCK_MODEL_ID", self.config["model"])
+
+        try:
+            # Create Bedrock Runtime client
+            bedrock_client = boto3.client(
+                service_name='bedrock-runtime',
+                region_name=region
+            )
+
+            logger.info(f"Calling AWS Bedrock: model={model_id}, region={region}")
+
+            # Call Converse API
+            response = bedrock_client.converse(
+                modelId=model_id,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [{"text": prompt}]
+                    }
+                ],
+                inferenceConfig={
+                    "maxTokens": self.config["max_tokens"],
+                    "temperature": self.config["temperature"],
+                    "topP": 0.9
+                }
+            )
+
+            # Extract response text
+            output_text = response['output']['message']['content'][0]['text']
+
+            # Log metrics
+            usage = response.get('usage', {})
+            metrics = response.get('metrics', {})
+            logger.info(f"AWS Bedrock response: {len(output_text)} chars, "
+                       f"tokens={usage.get('totalTokens', 'N/A')}, "
+                       f"latency={metrics.get('latencyMs', 'N/A')}ms")
+
+            return output_text
+
+        except NoCredentialsError:
+            logger.error("AWS credentials not found. Please configure AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY")
+            logger.info("Using mock response as fallback")
+            return self._generate_mock_response()
+        except ClientError as e:
+            error_code = e.response.get('Error', {}).get('Code', 'Unknown')
+            error_msg = e.response.get('Error', {}).get('Message', str(e))
+            logger.error(f"AWS Bedrock API error [{error_code}]: {error_msg}")
+            logger.info("Using mock response as fallback")
+            return self._generate_mock_response()
+        except Exception as e:
+            logger.error(f"Unexpected error calling AWS Bedrock: {e}")
+            logger.info("Using mock response as fallback")
+            return self._generate_mock_response()
     
     def _extract_json(self, text: str) -> str:
         """Extract JSON from text response"""
@@ -460,7 +527,178 @@ This COBOL program handles financial transactions in a legacy banking system. It
         return "Mock AI response (API key not configured)"
 
 
+class DocMoltInterface(AIModelInterface):
+    """
+    Interface for DocMolt API - Specialized documentation generation service
+
+    DocMolt is a specialized documentation generation service that supports
+    multiple backend models (GPT-4o, GPT-4o-mini, Claude, etc.) and various
+    documentation formats (technical specs, API docs, TDD, etc.).
+
+    For fair comparison in LegacyCodeBench, we use the same evaluation pipeline
+    (DocumentationEvaluatorV2) as other models.
+    """
+
+    def __init__(self, model_id: str):
+        super().__init__(model_id)
+        self.api_endpoint = self.config["api_endpoint"]
+        self.docmolt_model = self.config["model"]
+        self.artefact = self.config.get("artefact", DOCMOLT_CONFIG["default_artefact"])
+        self.language = self.config.get("language", DOCMOLT_CONFIG["language"])
+        self.timeout = DOCMOLT_CONFIG["timeout_seconds"]
+        self.max_retries = DOCMOLT_CONFIG["max_retries"]
+        self.retry_delay = DOCMOLT_CONFIG["retry_delay_seconds"]
+
+        logger.info(f"DocMolt initialized: model={self.docmolt_model}, artefact={self.artefact}")
+
+    def generate_documentation(self, task, input_files: List[Path]) -> str:
+        """Generate documentation using DocMolt API"""
+        # Read input files
+        code_content = self._read_input_files(input_files)
+
+        # Determine filename
+        filename = input_files[0].name if input_files else "program.cbl"
+
+        # Call DocMolt API with retry logic
+        return self._call_docmolt_with_retry(code_content, filename, task)
+
+    def generate_understanding(self, task, input_files: List[Path]) -> str:
+        """
+        DocMolt is designed for documentation, not understanding tasks.
+
+        NOTE: v2.0 doesn't have understanding tasks anyway (documentation-only).
+        This method is here for v1.0 compatibility but should not be used with DocMolt.
+        """
+        logger.warning("DocMolt is not designed for understanding tasks. Falling back to mock response.")
+        return self._generate_mock_understanding(task, input_files)
+
+    def _call_docmolt_with_retry(self, code: str, filename: str, task) -> str:
+        """Call DocMolt API with retry logic"""
+        import time
+
+        for attempt in range(self.max_retries + 1):
+            try:
+                result = self._call_docmolt(code, filename)
+                return result
+            except Exception as e:
+                if attempt < self.max_retries:
+                    logger.warning(f"DocMolt API call failed (attempt {attempt + 1}/{self.max_retries + 1}): {e}")
+                    logger.info(f"Retrying in {self.retry_delay} seconds...")
+                    time.sleep(self.retry_delay)
+                else:
+                    logger.error(f"DocMolt API failed after {self.max_retries + 1} attempts: {e}")
+                    logger.info("Falling back to mock documentation")
+                    return self._generate_mock_documentation(task)
+
+    def _call_docmolt(self, code: str, filename: str) -> str:
+        """Call DocMolt API with proper error handling"""
+        import requests
+
+        # Prepare payload
+        payload = {
+            "code": code,
+            "filename": filename,
+            "language": self.language,
+            "artefact": self.artefact,
+            "model": self.docmolt_model,
+        }
+
+        # Prepare headers
+        headers = {"Content-Type": "application/json"}
+        api_key = os.getenv(DOCMOLT_CONFIG["api_key_env_var"])
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+            logger.info("Using DocMolt API key from environment")
+        else:
+            logger.warning(f"No {DOCMOLT_CONFIG['api_key_env_var']} found - attempting unauthenticated request")
+
+        logger.info(f"Calling DocMolt API: model={self.docmolt_model}, artefact={self.artefact}, code_size={len(code)} chars")
+
+        try:
+            response = requests.post(
+                self.api_endpoint,
+                json=payload,
+                headers=headers,
+                timeout=self.timeout
+            )
+
+            # Log response details
+            logger.info(f"DocMolt response: status={response.status_code}, content_length={len(response.content)}")
+
+            if response.status_code == 200:
+                result = response.json()
+                documentation = self._extract_documentation_from_response(result)
+                logger.info(f"DocMolt documentation extracted: {len(documentation)} chars")
+                return documentation
+            elif response.status_code == 401:
+                raise Exception("Authentication failed - check DOCMOLT_API_KEY")
+            elif response.status_code == 429:
+                raise Exception("Rate limit exceeded - too many requests")
+            elif response.status_code >= 500:
+                raise Exception(f"Server error: {response.status_code}")
+            else:
+                raise Exception(f"Unexpected status code: {response.status_code}, body: {response.text[:200]}")
+
+        except requests.exceptions.Timeout:
+            raise Exception(f"Request timed out after {self.timeout} seconds")
+        except requests.exceptions.ConnectionError as e:
+            raise Exception(f"Connection error: {e}")
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"Request failed: {e}")
+
+    def _extract_documentation_from_response(self, result: dict) -> str:
+        """
+        Extract documentation from DocMolt API response
+
+        Note: The actual response structure needs to be determined from API testing.
+        This method tries common key patterns.
+        """
+        # Try common response keys
+        for key in ['documentation', 'output', 'content', 'result', 'data', 'text', 'markdown']:
+            if key in result:
+                content = result[key]
+                if isinstance(content, str):
+                    return content
+                elif isinstance(content, dict):
+                    # If nested, try to extract text
+                    for subkey in ['text', 'content', 'value']:
+                        if subkey in content:
+                            return str(content[subkey])
+
+        # If no known key found, try to stringify the whole response
+        logger.warning(f"Unknown DocMolt response structure. Keys: {list(result.keys())}")
+
+        # Try to find any string value that looks like documentation
+        for key, value in result.items():
+            if isinstance(value, str) and len(value) > 100:  # Likely documentation
+                logger.info(f"Using response key '{key}' as documentation")
+                return value
+
+        # Last resort: return JSON representation
+        import json
+        logger.warning("Could not extract documentation string, returning JSON representation")
+        return json.dumps(result, indent=2)
+
+
 def get_ai_model(model_id: str) -> AIModelInterface:
-    """Get AI model interface"""
-    return AIModelInterface(model_id)
+    """
+    Get AI model interface - supports OpenAI, Anthropic, DocMolt, AWS
+
+    Routes to appropriate interface based on provider:
+    - openai → AIModelInterface (OpenAI GPT models)
+    - anthropic → AIModelInterface (Anthropic Claude models)
+    - docmolt → DocMoltInterface (DocMolt documentation service)
+    - aws → AIModelInterface (AWS Transform)
+    """
+    if model_id not in AI_MODELS:
+        raise ValueError(f"Unknown model: {model_id}")
+
+    config = AI_MODELS[model_id]
+    provider = config["provider"]
+
+    # Route to appropriate interface
+    if provider == "docmolt":
+        return DocMoltInterface(model_id)
+    else:
+        return AIModelInterface(model_id)
 

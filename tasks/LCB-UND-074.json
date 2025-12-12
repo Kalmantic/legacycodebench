@@ -1,0 +1,21 @@
+{
+  "task_id": "LCB-UND-074",
+  "category": "understanding",
+  "difficulty": "hard",
+  "language": "COBOL",
+  "domain": "banking",
+  "input_files": [
+    "app\\app-transaction-type-db2\\cbl\\COTRTUPC.cbl",
+    "app\\cpy\\CVCRD01Y.cpy"
+  ],
+  "task_description": "Extract dependency graph, business rules, and data flow from COTRTUPC.cbl. Analyze relationships across 2 files.",
+  "evaluation_criteria": {
+    "output_format": "json",
+    "required_fields": [
+      "dependencies",
+      "business_rules",
+      "data_flow"
+    ]
+  },
+  "reference_solution": null
+}

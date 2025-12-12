@@ -1,0 +1,20 @@
+{
+  "task_id": "LCB-UND-022",
+  "category": "understanding",
+  "difficulty": "easy",
+  "language": "COBOL",
+  "domain": "banking",
+  "input_files": [
+    "app\\cbl\\CSUTLDTC.cbl"
+  ],
+  "task_description": "Extract dependency graph, business rules, and data flow from CSUTLDTC.cbl.",
+  "evaluation_criteria": {
+    "output_format": "json",
+    "required_fields": [
+      "dependencies",
+      "business_rules",
+      "data_flow"
+    ]
+  },
+  "reference_solution": null
+}

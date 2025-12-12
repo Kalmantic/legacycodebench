@@ -1,0 +1,33 @@
+{
+  "task_id": "LCB-T3-004",
+  "category": "documentation",
+  "difficulty": "hard",
+  "language": "COBOL",
+  "domain": "enterprise",
+  "input_files": [
+    "samples\\DBsample\\PostgreSQL\\example7\\PGMOD7.cbl"
+  ],
+  "task_description": "Generate detailed technical documentation for PGMOD7.cbl covering business purpose, all data structures, control flow, external dependencies, business rules, and error handling.",
+  "evaluation_criteria": {
+    "version": "2.0",
+    "tier": "T3",
+    "required_sections": [
+      "business_purpose",
+      "business_rules",
+      "data_structures",
+      "control_flow",
+      "file_operations",
+      "dependencies",
+      "error_handling"
+    ],
+    "format": "markdown",
+    "evaluation_method": "ground_truth_based",
+    "scoring_weights": {
+      "structural_completeness": 0.3,
+      "behavioral_fidelity": 0.35,
+      "semantic_quality": 0.25,
+      "traceability": 0.1
+    }
+  },
+  "reference_solution": null
+}

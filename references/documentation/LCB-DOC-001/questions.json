@@ -1,0 +1,59 @@
+{
+  "task_id": "LCB-DOC-001",
+  "version": "1.0",
+  "questions": [
+    {
+      "id": "LCB-DOC-001-Q001",
+      "type": "factual",
+      "question": "What is the main purpose of this program?",
+      "expected_answer": "",
+      "keywords": [
+        "purpose",
+        "function",
+        "program"
+      ],
+      "acceptable_answers": [],
+      "difficulty": "easy"
+    },
+    {
+      "id": "LCB-DOC-001-Q002",
+      "type": "business_rule",
+      "question": "What conditions trigger the main business action?",
+      "expected_answer": "",
+      "keywords": [
+        "condition",
+        "if",
+        "when"
+      ],
+      "acceptable_answers": [],
+      "difficulty": "medium"
+    },
+    {
+      "id": "LCB-DOC-001-Q003",
+      "type": "edge_case",
+      "question": "How does the program handle invalid input?",
+      "expected_answer": "",
+      "keywords": [
+        "invalid",
+        "error",
+        "exception"
+      ],
+      "acceptable_answers": [],
+      "difficulty": "medium"
+    },
+    {
+      "id": "LCB-DOC-001-Q004",
+      "type": "control_flow",
+      "question": "In what order are the main operations performed?",
+      "expected_answer": "",
+      "keywords": [
+        "first",
+        "then",
+        "finally",
+        "order"
+      ],
+      "acceptable_answers": [],
+      "difficulty": "hard"
+    }
+  ]
+}

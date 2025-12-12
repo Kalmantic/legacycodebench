@@ -1,0 +1,22 @@
+{
+  "task_id": "LCB-UND-096",
+  "category": "understanding",
+  "difficulty": "hard",
+  "language": "COBOL",
+  "domain": "banking",
+  "input_files": [
+    "app\\cbl\\CBACT01C.cbl",
+    "app\\cpy\\CVACT01Y.cpy",
+    "app\\cpy\\CODATECN.cpy"
+  ],
+  "task_description": "Extract dependency graph, business rules, and data flow from CBACT01C.cbl. Analyze relationships across 3 files.",
+  "evaluation_criteria": {
+    "output_format": "json",
+    "required_fields": [
+      "dependencies",
+      "business_rules",
+      "data_flow"
+    ]
+  },
+  "reference_solution": null
+}

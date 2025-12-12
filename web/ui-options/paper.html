@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Paper — LegacyCodeBench</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="header-inner">
+      <a href="swe-bench-style.html" class="logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+        LegacyCodeBench
+        <span class="version-badge">v2.0</span>
+      </a>
+      <nav>
+        <a href="swe-bench-style.html">Leaderboard</a>
+        <a href="tasks.html">Tasks</a>
+        <a href="datasets.html">Datasets</a>
+        <a href="submit.html">Submit</a>
+        <a href="paper.html" class="active">Paper</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- Page Header -->
+    <div class="page-header">
+      <h1 class="page-title">LegacyCodeBench: Scalable Evaluation for Legacy Code Documentation</h1>
+      <p class="page-description">
+        <em>"You cannot safely convert what you do not understand."</em>
+      </p>
+    </div>
+
+    <!-- Paper Info -->
+    <section>
+      <div class="paper-meta">
+        <div class="authors">
+          <strong>Authors:</strong> Kalmantic Applied AI Lab
+        </div>
+        <div class="paper-links" style="margin-top: 12px; display: flex; gap: 12px;">
+          <a href="#" class="download-btn">PDF</a>
+          <a href="#" class="download-btn" style="background: var(--bg-secondary); color: var(--text);">arXiv</a>
+          <a href="#" class="download-btn" style="background: var(--bg-secondary); color: var(--text);">GitHub</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Abstract -->
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">Abstract</h2>
+      </div>
+      <div class="callout">
+        <p>
+          LegacyCodeBench v2.0 introduces a scalable benchmark for evaluating AI systems on legacy COBOL code 
+          documentation. Unlike previous approaches requiring extensive expert involvement, v2.0 achieves 
+          <strong>97% automation</strong> through three innovations: (1) automated ground truth generation via 
+          static analysis, (2) execution-based validation using constrained code generators, and (3) calibrated 
+          LLM-as-judge for semantic quality assessment.
+        </p>
+        <p style="margin-top: 12px;">
+          The current release includes <strong>200 open-source COBOL programs</strong> across 4 difficulty tiers, 
+          with a roadmap to scale to 10,000+ tasks. We introduce behavioral fidelity as a primary metric, 
+          measuring whether code generated from AI documentation produces identical outputs to original programs. 
+          Evaluation of leading AI systems reveals significant challenges in T4 (Enterprise) tier tasks 
+          featuring GO TO spaghetti, dead code, and ambiguous naming conventions.
+        </p>
+      </div>
+    </section>
+
+    <!-- Key Contributions -->
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">Key Contributions</h2>
+      </div>
+      
+      <div class="methodology">
+        <div class="method-card">
+          <h4>1. Automated Ground Truth</h4>
+          <p>Four-stage static analysis pipeline (lexical, syntactic, semantic, pattern) extracts documentation elements with 95%+ confidence without expert involvement.</p>
+        </div>
+        <div class="method-card">
+          <h4>2. Constrained Code Generator</h4>
+          <p>Sycophancy-resistant code generator that ONLY uses documentation content, emitting MISSING/AMBIGUOUS markers for gaps rather than guessing.</p>
+        </div>
+        <div class="method-card">
+          <h4>3. Execution-Based Validation</h4>
+          <p>Behavioral fidelity metric: if documentation is accurate, generated code must produce identical outputs to original COBOL programs.</p>
+        </div>
+        <div class="method-card">
+          <h4>4. Anti-Pattern Injection</h4>
+          <p>Synthetic programs with realistic legacy characteristics (GO TO spaghetti, dead code, ambiguous names) stress-test AI capabilities.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- v1.0 vs v2.0 -->
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">v1.0 → v2.0 Improvements</h2>
+      </div>
+      
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th class="num">v1.0</th>
+              <th class="num">v2.0</th>
+              <th class="num">Improvement</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Task instances</td>
+              <td class="num">500</td>
+              <td class="num">10,000+</td>
+              <td class="num score-good">20×</td>
+            </tr>
+            <tr>
+              <td>Expert hours per 100 tasks</td>
+              <td class="num">40 hours</td>
+              <td class="num">2 hours</td>
+              <td class="num score-good">20× reduction</td>
+            </tr>
+            <tr>
+              <td>Ground truth generation</td>
+              <td class="num">Manual</td>
+              <td class="num">95% automated</td>
+              <td class="num score-good">—</td>
+            </tr>
+            <tr>
+              <td>Validation automation</td>
+              <td class="num">30%</td>
+              <td class="num">90%</td>
+              <td class="num score-good">3×</td>
+            </tr>
+            <tr>
+              <td>Time to evaluate new AI system</td>
+              <td class="num">2 weeks</td>
+              <td class="num">24 hours</td>
+              <td class="num score-good">14× faster</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Scoring Framework -->
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">Scoring Framework</h2>
+      </div>
+      
+      <div class="formula">LCB_Score = (0.30 × SC) + (0.35 × BF) + (0.25 × SQ) + (0.10 × TR) − Critical_Penalty
+
+Where:
+  SC = Structural Completeness = (Elements_Documented / Elements_Extracted) × 100
+  BF = Behavioral Fidelity = (Tests_Passed / Total_Tests) × 100
+  SQ = Semantic Quality = Average(LLM_Judge_Scores) normalized to 0-100
+  TR = Traceability = (Valid_References / Total_Claims) × 100
+  
+  Critical_Penalty = 100 if any CF-01 through CF-06, else 0</div>
+    </section>
+
+    <!-- Critical Failures -->
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">Critical Failures</h2>
+      </div>
+      
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Failure</th>
+              <th>Automated Detection</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>CF-01</code></td>
+              <td>Missing primary calculation</td>
+              <td>Core COMPUTE expressions not in documentation</td>
+            </tr>
+            <tr>
+              <td><code>CF-02</code></td>
+              <td>Hallucinated module</td>
+              <td>References program/paragraph not in parsed AST</td>
+            </tr>
+            <tr>
+              <td><code>CF-03</code></td>
+              <td>Wrong data transformation</td>
+              <td>≥10% of outputs differ in execution</td>
+            </tr>
+            <tr>
+              <td><code>CF-04</code></td>
+              <td>Missing error handler</td>
+              <td>FILE STATUS/ON SIZE ERROR in source but not documented</td>
+            </tr>
+            <tr>
+              <td><code>CF-05</code></td>
+              <td>Broken traceability</td>
+              <td>≥20% of claims lack valid source references</td>
+            </tr>
+            <tr>
+              <td><code>CF-06</code></td>
+              <td>False positive</td>
+              <td>Execution passes but MISSING/AMBIGUOUS markers present</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Citation -->
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">Citation</h2>
+      </div>
+      <div class="formula">@article{legacycodebench2025,
+  title={LegacyCodeBench: Scalable Benchmark for Legacy Code Documentation},
+  author={Kalmantic Applied AI Lab},
+  journal={arXiv preprint arXiv:2025.XXXXX},
+  year={2025}
+}</div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <span>© 2025 LegacyCodeBench v2.0 · Kalmantic Applied AI Lab</span>
+      <div class="footer-links">
+        <a href="#">GitHub</a>
+        <a href="paper.html">Paper</a>
+        <a href="#">API Docs</a>
+        <a href="#">Contact</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
+

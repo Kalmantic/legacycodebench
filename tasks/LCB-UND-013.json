@@ -1,0 +1,20 @@
+{
+  "task_id": "LCB-UND-013",
+  "category": "understanding",
+  "difficulty": "easy",
+  "language": "COBOL",
+  "domain": "enterprise",
+  "input_files": [
+    "samples\\cobsha3\\TEST-SESSION-ID.cob"
+  ],
+  "task_description": "Extract dependency graph, business rules, and data flow from TEST-SESSION-ID.cob.",
+  "evaluation_criteria": {
+    "output_format": "json",
+    "required_fields": [
+      "dependencies",
+      "business_rules",
+      "data_flow"
+    ]
+  },
+  "reference_solution": null
+}

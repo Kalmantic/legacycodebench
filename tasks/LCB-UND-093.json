@@ -1,0 +1,21 @@
+{
+  "task_id": "LCB-UND-093",
+  "category": "understanding",
+  "difficulty": "hard",
+  "language": "COBOL",
+  "domain": "enterprise",
+  "input_files": [
+    "tools\\GCSORT\\tests\\src\\gctestrun4.cbl",
+    "tools\\GCSORT\\tests\\src\\gctestgetop.cbl"
+  ],
+  "task_description": "Extract dependency graph, business rules, and data flow from gctestrun4.cbl. Analyze relationships across 2 files.",
+  "evaluation_criteria": {
+    "output_format": "json",
+    "required_fields": [
+      "dependencies",
+      "business_rules",
+      "data_flow"
+    ]
+  },
+  "reference_solution": null
+}

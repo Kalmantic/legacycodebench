@@ -1,0 +1,31 @@
+{
+  "task_id": "LCB-T2-046",
+  "category": "documentation",
+  "difficulty": "medium",
+  "language": "COBOL",
+  "domain": "enterprise",
+  "input_files": [
+    "tools\\TUI-TOOLS\\GC64CALCULATOR.COB"
+  ],
+  "task_description": "Generate comprehensive documentation for GC64CALCULATOR.COB including business purpose, data structures, control flow, file operations, and business rules.",
+  "evaluation_criteria": {
+    "version": "2.0",
+    "tier": "T2",
+    "required_sections": [
+      "business_purpose",
+      "business_rules",
+      "data_structures",
+      "control_flow",
+      "file_operations"
+    ],
+    "format": "markdown",
+    "evaluation_method": "ground_truth_based",
+    "scoring_weights": {
+      "structural_completeness": 0.3,
+      "behavioral_fidelity": 0.35,
+      "semantic_quality": 0.25,
+      "traceability": 0.1
+    }
+  },
+  "reference_solution": null
+}

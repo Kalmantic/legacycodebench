@@ -1,0 +1,22 @@
+{
+  "task_id": "LCB-DOC-077",
+  "category": "documentation",
+  "difficulty": "hard",
+  "language": "COBOL",
+  "domain": "enterprise",
+  "input_files": [
+    "tools\\htm2cob\\examples\\projects\\p001_wortfee\\htm2cob\\PGMOD3.cbl"
+  ],
+  "task_description": "Generate comprehensive documentation for PGMOD3.cbl explaining business purpose, business rules, edge cases, and data structures.",
+  "evaluation_criteria": {
+    "required_sections": [
+      "business_purpose",
+      "business_rules",
+      "edge_cases",
+      "data_structures"
+    ],
+    "min_length_pages": 5,
+    "format": "markdown"
+  },
+  "reference_solution": null
+}

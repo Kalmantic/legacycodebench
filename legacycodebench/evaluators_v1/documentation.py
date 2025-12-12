@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 import logging
 
 from legacycodebench.config import REQUIRED_DOC_SECTIONS, DOCUMENTATION_WEIGHTS, REFERENCES_DIR
-from legacycodebench.evaluators.nlp_metrics import NLPMetrics
+from legacycodebench.evaluators_v1.nlp_metrics import NLPMetrics
 
 try:
     from sklearn.feature_extraction.text import TfidfVectorizer

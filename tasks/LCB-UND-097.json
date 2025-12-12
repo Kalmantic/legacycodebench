@@ -1,0 +1,20 @@
+{
+  "task_id": "LCB-UND-097",
+  "category": "understanding",
+  "difficulty": "hard",
+  "language": "COBOL",
+  "domain": "enterprise",
+  "input_files": [
+    "tools\\JC-SQL-Precompiler\\presql2-230-free.cbl"
+  ],
+  "task_description": "Extract dependency graph, business rules, and data flow from presql2-230-free.cbl.",
+  "evaluation_criteria": {
+    "output_format": "json",
+    "required_fields": [
+      "dependencies",
+      "business_rules",
+      "data_flow"
+    ]
+  },
+  "reference_solution": null
+}

@@ -1,0 +1,34 @@
+{
+  "task_id": "LCB-T4-002",
+  "category": "documentation",
+  "difficulty": "expert",
+  "language": "COBOL",
+  "domain": "enterprise",
+  "input_files": [
+    "tools\\JC-SQL-Precompiler\\presql2-230.cbl"
+  ],
+  "task_description": "Generate thorough documentation for the complex program presql2-230.cbl explaining business purpose, complete data structures, control flow (including GO TO patterns), all external interfaces, business rules, error handling, and edge cases.",
+  "evaluation_criteria": {
+    "version": "2.0",
+    "tier": "T4",
+    "required_sections": [
+      "business_purpose",
+      "business_rules",
+      "data_structures",
+      "control_flow",
+      "file_operations",
+      "dependencies",
+      "error_handling",
+      "edge_cases"
+    ],
+    "format": "markdown",
+    "evaluation_method": "ground_truth_based",
+    "scoring_weights": {
+      "structural_completeness": 0.3,
+      "behavioral_fidelity": 0.35,
+      "semantic_quality": 0.25,
+      "traceability": 0.1
+    }
+  },
+  "reference_solution": null
+}

@@ -1,14 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>LegacyCodeBench | Documentation</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="stylesheet" href="assets/styles.css">
 </head>
+
 <body>
   <header>
-    <div class="container" style="display:flex;justify-content:space-between;align-items:center;padding:1.25rem 1.25rem 1rem;">
+    <div class="container"
+      style="display:flex;justify-content:space-between;align-items:center;padding:1.25rem 1.25rem 1rem;">
       <div class="logo">LegacyCodeBench</div>
       <nav aria-label="Primary">
         <a href="index.html">Overview</a>
@@ -23,25 +26,27 @@
   <main class="container">
     <section class="hero" aria-labelledby="docs-title">
       <h1 id="docs-title">Documentation</h1>
-      <p>This site is static. All execution happens via the CLI, similar to SWE-bench. Use the commands below to run LegacyCodeBench locally.</p>
+      <p>This site is static. All execution happens via the CLI, similar to SWE-bench. Use the commands below to run
+        LegacyCodeBench locally.</p>
     </section>
 
     <section aria-labelledby="quick-links">
       <h2 class="section-title" id="quick-links">Quick Links</h2>
       <div class="btn-group">
-        <a class="button primary" href="https://github.com/kalmantic/legacycodebench" target="_blank" rel="noreferrer">GitHub</a>
+        <a class="button primary" href="https://github.com/kalmantic/legacycodebench" target="_blank"
+          rel="noreferrer">GitHub</a>
         <a class="button" href="https://z.com/paper.pdf" target="_blank" rel="noreferrer">Paper PDF</a>
-        <a class="button" href="mailto:team@kalmantic.ai">Contact Maintainers</a>
+        <a class="button" href="mailto:nikita@kalmantic.com">Contact Maintainers</a>
       </div>
     </section>
 
     <section aria-labelledby="installation">
       <h2 class="section-title" id="installation">Installation</h2>
       <div class="code-block">
-git clone https://github.com/kalmantic/legacycodebench.git<br>
-cd legacycodebench<br>
-pip install -e .<br>
-legacycodebench --help
+        git clone https://github.com/kalmantic/legacycodebench.git<br>
+        cd legacycodebench<br>
+        pip install -e .<br>
+        legacycodebench --help
       </div>
       <p class="table-hint">Requires Python 3.10+, Git, and Docker (for verification).</p>
     </section>
@@ -49,24 +54,25 @@ legacycodebench --help
     <section aria-labelledby="cli-usage">
       <h2 class="section-title" id="cli-usage">Core CLI Commands</h2>
       <div class="card">
-        <h3>Load Datasets</h3>
-        <div class="code-block">legacycodebench load-datasets</div>
-      </div>
-      <div class="card">
-        <h3>Create Tasks</h3>
-        <div class="code-block">legacycodebench create-tasks</div>
-      </div>
-      <div class="card">
-        <h3>Run a Model</h3>
-        <div class="code-block">legacycodebench run-ai --model gpt-4o</div>
-      </div>
-      <div class="card">
-        <h3>Full Evaluation</h3>
-        <div class="code-block">legacycodebench evaluate</div>
+        <h3>Run Full Benchmark</h3>
+        <div class="code-block">python -m legacycodebench run-full-benchmark --models "gpt-4o,claude-sonnet-4"</div>
       </div>
       <div class="card">
         <h3>Interactive Mode</h3>
-        <div class="code-block">legacycodebench interactive</div>
+        <div class="code-block">python -m legacycodebench interactive</div>
+      </div>
+      <div class="card">
+        <h3>Evaluate Single Task</h3>
+        <div class="code-block">python -m legacycodebench evaluate --task-id LCB-DOC-001 --submission path/to/output.md
+        </div>
+      </div>
+      <div class="card">
+        <h3>Generate Leaderboard</h3>
+        <div class="code-block">python -m legacycodebench leaderboard --detailed</div>
+      </div>
+      <div class="card">
+        <h3>Load Datasets</h3>
+        <div class="code-block">python -m legacycodebench load-datasets</div>
       </div>
     </section>
 
@@ -74,26 +80,32 @@ legacycodebench --help
       <h2 class="section-title" id="reference-docs">Reference Documentation Workflow</h2>
       <p>Reference docs are created by COBOL experts using CLI templates:</p>
       <div class="code-block">
-python scripts/create_reference_template.py \<br>
-  --task-id LCB-DOC-001 \<br>
-  --expert-id expert1
+        python scripts/create_reference_template.py \<br>
+        --task-id LCB-DOC-001 \<br>
+        --expert-id expert1
       </div>
-      <p>Experts complete the template, inter-annotator agreement is measured, and merged references are stored under <code>references/</code>.</p>
+      <p>Experts complete the template, inter-annotator agreement is measured, and merged references are stored under
+        <code>references/</code>.
+      </p>
     </section>
 
     <section aria-labelledby="troubleshooting">
       <h2 class="section-title" id="troubleshooting">Troubleshooting</h2>
       <details class="faq">
         <summary>OpenAI quota or 5xx errors?</summary>
-        <p>Wait a few minutes or use <code>legacycodebench run-ai --model claude-sonnet-4</code>. The CLI falls back to mock responses when APIs are unavailable.</p>
+        <p>Wait a few minutes or switch models with
+          <code>python -m legacycodebench run-full-benchmark --models claude-sonnet-4</code>. The CLI uses placeholder
+          responses when APIs are unavailable.</p>
       </details>
       <details class="faq">
-        <summary>Leaderboard not printing?</summary>
-        <p>Run <code>legacycodebench leaderboard --print</code>. Ensure <code>results/leaderboard.json</code> exists (generated by <code>evaluate</code>).</p>
+        <summary>Leaderboard not showing data?</summary>
+        <p>Ensure <code>results/leaderboard.json</code> exists. Run <code>python -m legacycodebench leaderboard</code>
+          to regenerate it. For web viewing, start a local server: <code>python -m http.server 8080</code>.</p>
       </details>
       <details class="faq">
-        <summary>Need new tasks?</summary>
-        <p>Edit <code>legacycodebench/task_generator.py</code> and rerun <code>create-tasks</code>. Intelligent selection ensures PRD-aligned coverage.</p>
+        <summary>Behavioral Fidelity showing placeholder?</summary>
+        <p>BF testing requires Docker with GnuCOBOL. Run with <code>--enable-execution</code> to enable real execution
+          testing.</p>
       </details>
     </section>
   </main>
@@ -101,10 +113,11 @@ python scripts/create_reference_template.py \<br>
   <footer>
     <div class="container" style="display:flex;flex-wrap:wrap;gap:1rem;justify-content:space-between;">
       <span>© 2025 LegacyCodeBench · Kalmantic Applied AI Lab</span>
-      <span>GitHub · <a href="https://github.com/Kalmantic/legacycodebench" target="_blank" rel="noreferrer">Kalmantic/legacycodebench</a></span>
-      <span>Contact · <a href="mailto:team@kalmantic.ai">team@kalmantic.ai</a></span>
+      <span>GitHub · <a href="https://github.com/Kalmantic/legacycodebench" target="_blank"
+          rel="noreferrer">Kalmantic/legacycodebench</a></span>
+      <span>Contact · <a href="mailto:nikita@kalmantic.com">nikita@kalmantic.com</a></span>
     </div>
   </footer>
 </body>
-</html>
 
+</html>

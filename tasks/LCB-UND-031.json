@@ -1,0 +1,21 @@
+{
+  "task_id": "LCB-UND-031",
+  "category": "understanding",
+  "difficulty": "medium",
+  "language": "COBOL",
+  "domain": "enterprise",
+  "input_files": [
+    "tools\\htm2cob\\examples\\projects\\p001_wortfee\\htm2cob\\PGMOD4.cbl",
+    "tools\\htm2cob\\examples\\projects\\p001_wortfee\\htm2cob\\PGMOD4.cbl"
+  ],
+  "task_description": "Extract dependency graph, business rules, and data flow from PGMOD4.cbl. Analyze relationships across 2 files.",
+  "evaluation_criteria": {
+    "output_format": "json",
+    "required_fields": [
+      "dependencies",
+      "business_rules",
+      "data_flow"
+    ]
+  },
+  "reference_solution": null
+}

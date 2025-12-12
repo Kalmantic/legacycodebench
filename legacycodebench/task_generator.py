@@ -1,4 +1,11 @@
-"""Intelligent task candidate generation"""
+"""Intelligent task candidate generation - v2.0 aligned
+
+v2.0 Approach:
+- ALL tasks are DOCUMENTATION tasks (no separate "understanding" tasks)
+- Tasks are categorized by COMPLEXITY TIER (T1-T4), not task type
+- Understanding is validated through Behavioral Fidelity (execution-based)
+- 200 tasks total: T1(80) + T2(70) + T3(40) + T4(10)
+"""
 
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -7,41 +14,54 @@ import logging
 from legacycodebench.file_analyzer import COBOLFileAnalyzer
 from legacycodebench.difficulty_calibrator import DifficultyCalibrator
 from legacycodebench.domain_detector import DomainDetector
-from legacycodebench.config import DATASETS_DIR
+from legacycodebench.config import DATASETS_DIR, TASK_SELECTION_CONFIG
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 class TaskCandidate:
-    """Represents a potential benchmark task"""
+    """Represents a potential benchmark task (v2.0: documentation only)"""
     
-    def __init__(self, main_file: Path, category: str, dataset_name: str):
+    def __init__(self, main_file: Path, dataset_name: str, tier: str = "T1"):
         self.main_file = main_file
-        self.category = category
+        self.category = "documentation"  # v2.0: All tasks are documentation
         self.dataset_name = dataset_name
+        self.tier = tier  # v2.0: T1, T2, T3, T4
         self.related_files = []
         self.analysis = None
         self.difficulty_score = 0.0
-        self.difficulty_level = "medium"
+        self.difficulty_level = TASK_SELECTION_CONFIG["task_distribution"]["tier_to_difficulty"].get(tier, "medium")
         self.domain = "enterprise"
         self.interestingness_score = 0.0
     
     def __repr__(self):
-        return f"TaskCandidate({self.main_file.name}, {self.category}, {self.difficulty_level}, score={self.interestingness_score:.1f})"
+        return f"TaskCandidate({self.main_file.name}, {self.tier}, {self.difficulty_level}, score={self.interestingness_score:.1f})"
 
 
 class TaskCandidateGenerator:
-    """Generate intelligent task candidates from COBOL datasets"""
+    """Generate intelligent task candidates from COBOL datasets (v2.0 aligned)
+    
+    v2.0 Approach:
+    - ALL tasks are documentation tasks
+    - Tasks are categorized by complexity TIER (T1-T4)
+    - Selection based on LOC ranges per tier
+    - Understanding is validated through execution, not separate tasks
+    """
     
     def __init__(self, datasets_dir: Path = DATASETS_DIR):
         self.datasets_dir = datasets_dir
         self.analyzer_cache = {}  # Cache file analyses
         self.calibrator = DifficultyCalibrator()
         self.domain_detector = DomainDetector()
+        
+        # v2.0 tier configuration
+        self.tier_config = TASK_SELECTION_CONFIG["task_distribution"]
+        self.tier_targets = self.tier_config["tier_distribution"]
+        self.tier_loc_ranges = self.tier_config["tier_loc_ranges"]
     
-    def generate_all_candidates(self, min_loc: int = 300, max_loc: int = 3000) -> List[TaskCandidate]:
-        """Generate all possible task candidates from datasets"""
+    def generate_all_candidates(self, min_loc: int = 100, max_loc: int = 5000) -> List[TaskCandidate]:
+        """Generate all possible task candidates from datasets (v2.0: documentation only)"""
         all_candidates = []
         
         # Process each dataset
@@ -60,130 +80,96 @@ class TaskCandidateGenerator:
             for cobol_file in cobol_files:
                 analyzer = self._get_analyzer(cobol_file)
                 analysis = analyzer.analyze()
+                loc = analysis["loc"]
                 
-                # Filter by LOC
-                if not (min_loc <= analysis["loc"] <= max_loc):
+                # Filter by overall LOC range
+                if not (min_loc <= loc <= max_loc):
                     continue
                 
-                # Create documentation candidate
-                doc_candidate = self._create_documentation_candidate(
-                    cobol_file, analysis, dataset_name
-                )
-                if doc_candidate:
-                    all_candidates.append(doc_candidate)
+                # Determine tier based on LOC
+                tier = self._determine_tier(loc, analysis)
                 
-                # Create understanding candidate if it has dependencies
-                if analysis["dependencies"]["total"] > 0:
-                    und_candidate = self._create_understanding_candidate(
-                        cobol_file, analysis, dataset_name
-                    )
-                    if und_candidate:
-                        all_candidates.append(und_candidate)
+                # Create documentation candidate with tier
+                candidate = self._create_candidate(cobol_file, analysis, dataset_name, tier)
+                if candidate:
+                    all_candidates.append(candidate)
         
-        logger.info(f"Generated {len(all_candidates)} total candidates")
+        logger.info(f"Generated {len(all_candidates)} total candidates (documentation only)")
+        
+        # Log tier distribution
+        tier_counts = {"T1": 0, "T2": 0, "T3": 0, "T4": 0}
+        for c in all_candidates:
+            tier_counts[c.tier] += 1
+        logger.info(f"Tier distribution: {tier_counts}")
+        
         return all_candidates
     
+    def _determine_tier(self, loc: int, analysis: Dict) -> str:
+        """Determine complexity tier based on LOC and code analysis"""
+        # Primary: LOC-based tier assignment (per PRD Section 8)
+        if loc <= 500:
+            base_tier = "T1"
+        elif loc <= 1000:
+            base_tier = "T2"
+        elif loc <= 2000:
+            base_tier = "T3"
+        else:
+            base_tier = "T4"
+        
+        # Secondary: Complexity adjustments
+        # Upgrade tier if code has complex patterns
+        complexity_score = analysis.get("complexity_score", 0)
+        has_goto = analysis.get("goto_count", 0) > 5
+        has_external_calls = analysis.get("dependencies", {}).get("total", 0) > 3
+        
+        if base_tier == "T1" and (has_goto or has_external_calls):
+            return "T2"
+        elif base_tier == "T2" and has_goto and has_external_calls:
+            return "T3"
+        elif base_tier == "T3" and has_goto and complexity_score > 80:
+            return "T4"
+        
+        return base_tier
+    
     def select_best_tasks(self, candidates: List[TaskCandidate], 
-                         num_doc: int = 8, num_und: int = 7) -> Tuple[List[TaskCandidate], List[TaskCandidate]]:
-        """Select best tasks with balanced difficulty and diversity"""
+                         total_tasks: int = 200) -> List[TaskCandidate]:
+        """Select best tasks with balanced tier distribution (v2.0)
         
-        # Separate by category
-        doc_candidates = [c for c in candidates if c.category == "documentation"]
-        und_candidates = [c for c in candidates if c.category == "understanding"]
+        Args:
+            candidates: All candidate tasks
+            total_tasks: Total number of tasks to select (default: 200)
         
-        # Sort by interestingness score
-        doc_candidates.sort(key=lambda c: c.interestingness_score, reverse=True)
-        und_candidates.sort(key=lambda c: c.interestingness_score, reverse=True)
+        Returns:
+            List of selected TaskCandidate objects (documentation only)
+        """
+        # Calculate targets per tier based on distribution
+        tier_targets = {
+            "T1": int(total_tasks * 0.40),   # 40% basic
+            "T2": int(total_tasks * 0.35),   # 35% moderate
+            "T3": int(total_tasks * 0.20),   # 20% complex
+            "T4": int(total_tasks * 0.05),   # 5% enterprise
+        }
         
-        # Select with diversity
-        selected_doc = self._select_diverse_tasks(doc_candidates, num_doc)
-        selected_und = self._select_diverse_tasks(und_candidates, num_und)
+        # Group candidates by tier
+        by_tier = {"T1": [], "T2": [], "T3": [], "T4": []}
+        for candidate in candidates:
+            by_tier[candidate.tier].append(candidate)
         
-        logger.info(f"Selected {len(selected_doc)} documentation + {len(selected_und)} understanding tasks")
+        # Sort each tier by interestingness score
+        for tier in by_tier:
+            by_tier[tier].sort(key=lambda c: c.interestingness_score, reverse=True)
         
-        return selected_doc, selected_und
-    
-    def _create_documentation_candidate(self, main_file: Path, analysis: Dict, 
-                                       dataset_name: str) -> TaskCandidate:
-        """Create documentation task candidate"""
-        candidate = TaskCandidate(main_file, "documentation", dataset_name)
-        candidate.analysis = analysis
-        
-        # Find related copybooks
-        candidate.related_files = self._find_related_copybooks(main_file, analysis)
-        
-        # Calculate scores
-        analyzer = self._get_analyzer(main_file)
-        candidate.interestingness_score = analyzer.calculate_interestingness_score()
-        candidate.difficulty_score = self.calibrator.calculate_difficulty_score(
-            analysis, "documentation"
-        )
-        candidate.difficulty_level = self.calibrator.assign_difficulty_level(
-            candidate.difficulty_score
-        )
-        candidate.domain = self.domain_detector.detect_domain(analysis, dataset_name)
-        
-        # Must have some business logic for documentation
-        if analysis["business_rules"] < 2:
-            return None
-        
-        return candidate
-    
-    def _create_understanding_candidate(self, main_file: Path, analysis: Dict,
-                                       dataset_name: str) -> TaskCandidate:
-        """Create understanding task candidate"""
-        candidate = TaskCandidate(main_file, "understanding", dataset_name)
-        candidate.analysis = analysis
-        
-        # Find related files (called programs + copybooks)
-        candidate.related_files = self._find_related_files_for_understanding(
-            main_file, analysis
-        )
-        
-        # Calculate scores
-        analyzer = self._get_analyzer(main_file)
-        candidate.interestingness_score = analyzer.calculate_interestingness_score()
-        
-        # Boost score for understanding if many dependencies
-        dep_boost = min(analysis["dependencies"]["total"] / 5, 1.0) * 10
-        candidate.interestingness_score += dep_boost
-        
-        candidate.difficulty_score = self.calibrator.calculate_difficulty_score(
-            analysis, "understanding"
-        )
-        candidate.difficulty_level = self.calibrator.assign_difficulty_level(
-            candidate.difficulty_score
-        )
-        candidate.domain = self.domain_detector.detect_domain(analysis, dataset_name)
-        
-        return candidate
-    
-    def _select_diverse_tasks(self, candidates: List[TaskCandidate], num_tasks: int) -> List[TaskCandidate]:
-        """Select tasks with diverse difficulty levels and domains"""
-        if not candidates:
-            return []
-        
+        # Select from each tier
         selected = []
         used_files = set()
         
-        # Target distribution: 33% easy, 47% medium, 20% hard
-        target_easy = int(num_tasks * 0.33)
-        target_medium = int(num_tasks * 0.47)
-        target_hard = num_tasks - target_easy - target_medium
-        
-        counts = {"easy": 0, "medium": 0, "hard": 0}
-        
-        # Group by difficulty
-        by_difficulty = {"easy": [], "medium": [], "hard": []}
-        for candidate in candidates:
-            by_difficulty[candidate.difficulty_level].append(candidate)
-        
-        # Select from each difficulty tier
-        for difficulty, target in [("easy", target_easy), ("medium", target_medium), ("hard", target_hard)]:
-            available = by_difficulty[difficulty]
+        for tier in ["T1", "T2", "T3", "T4"]:
+            target = tier_targets[tier]
+            available = by_tier[tier]
+            count = 0
             
             for candidate in available:
-                if len(selected) >= num_tasks:
+                if count >= target:
                     break
                 
                 # Avoid duplicate files
@@ -197,29 +183,53 @@ class TaskCandidateGenerator:
                 selected.append(candidate)
                 used_files.add(str(candidate.main_file))
                 used_files.update(str(f) for f in candidate.related_files)
-                
-                counts[difficulty] += 1
-                
-                if counts[difficulty] >= target:
-                    break
+                count += 1
+            
+            logger.info(f"  {tier}: Selected {count}/{target} tasks (available: {len(available)})")
         
-        # Fill remaining slots with best available (if we didn't hit targets)
-        if len(selected) < num_tasks:
-            remaining = [c for c in candidates 
-                        if str(c.main_file) not in used_files]
+        # Fill remaining slots from any tier if we're short
+        total_selected = len(selected)
+        if total_selected < total_tasks:
+            remaining = [c for c in candidates if str(c.main_file) not in used_files]
+            remaining.sort(key=lambda c: c.interestingness_score, reverse=True)
             
             for candidate in remaining:
-                if len(selected) >= num_tasks:
+                if len(selected) >= total_tasks:
                     break
-                
-                if any(str(f) in used_files for f in candidate.related_files):
-                    continue
-                
                 selected.append(candidate)
                 used_files.add(str(candidate.main_file))
-                used_files.update(str(f) for f in candidate.related_files)
+        
+        logger.info(f"Selected {len(selected)} documentation tasks (target: {total_tasks})")
         
         return selected
+    
+    def _create_candidate(self, main_file: Path, analysis: Dict, 
+                         dataset_name: str, tier: str) -> TaskCandidate:
+        """Create documentation task candidate (v2.0: all tasks are documentation)"""
+        candidate = TaskCandidate(main_file, dataset_name, tier)
+        candidate.analysis = analysis
+        
+        # Find related copybooks
+        candidate.related_files = self._find_related_copybooks(main_file, analysis)
+        
+        # Calculate scores
+        analyzer = self._get_analyzer(main_file)
+        candidate.interestingness_score = analyzer.calculate_interestingness_score()
+        candidate.difficulty_score = self.calibrator.calculate_difficulty_score(
+            analysis, "documentation"
+        )
+        candidate.domain = self.domain_detector.detect_domain(analysis, dataset_name)
+        
+        # Must have some business logic for documentation
+        if analysis.get("business_rules", 0) < 1:
+            return None
+        
+        return candidate
+    
+    def _select_diverse_tasks(self, candidates: List[TaskCandidate], num_tasks: int) -> List[TaskCandidate]:
+        """Select tasks with diverse difficulty levels and domains (legacy compatibility)"""
+        # This method is kept for backward compatibility but delegates to select_best_tasks
+        return self.select_best_tasks(candidates, num_tasks)
     
     def _find_related_copybooks(self, main_file: Path, analysis: Dict) -> List[Path]:
         """Find copybook files referenced by main file"""

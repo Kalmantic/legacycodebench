@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>LegacyCodeBench</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="A scalable benchmark for evaluating AI systems on legacy COBOL code understanding and documentation.">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Page-specific: leaderboard table needs min-width */
+    table { min-width: 1000px; }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="header-inner">
+      <a href="#" class="logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+        LegacyCodeBench
+        <span class="version-badge">v2.0</span>
+      </a>
+      <nav>
+        <a href="swe-bench-style.html" class="active">Leaderboard</a>
+        <a href="tasks.html">Tasks</a>
+        <a href="datasets.html">Datasets</a>
+        <a href="submit.html">Submit</a>
+        <a href="paper.html">Paper</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- Page Header -->
+    <div class="page-header">
+      <h1 class="page-title">Leaderboard</h1>
+      <p class="page-description">
+        Benchmark for AI systems on legacy COBOL documentation. v2.0 features automation-first evaluation 
+        with execution-based validation. Currently evaluating on 200 open-source COBOL programs.
+      </p>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+      <div class="stat">
+        <span class="stat-value">200</span>
+        <span class="stat-label">Task Instances</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value">100%</span>
+        <span class="stat-label">Open-Source</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value">4</span>
+        <span class="stat-label">Difficulty Tiers</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value">97%</span>
+        <span class="stat-label">Automation</span>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active">All Results</button>
+      <button class="tab">Verified Only</button>
+      <button class="tab">By Tier</button>
+    </div>
+
+    <!-- Scoring Formula -->
+    <div class="callout">
+      <strong>LCB Score Formula:</strong> 
+      <code>LCB = 0.30×SC + 0.35×BF + 0.25×SQ + 0.10×TR − Critical_Penalty</code>
+      <br>SC = Structural Completeness, BF = Behavioral Fidelity, SQ = Semantic Quality, TR = Traceability
+    </div>
+
+    <!-- Verified Explanation -->
+    <div class="callout" style="background: #dafbe1; border-color: #1a7f37;">
+      <strong style="color: #1a7f37;">✓ Verified</strong> means results have passed additional validation: 
+      human spot-checks on 5% of escalations, LLM-judge confidence ≥70%, zero false positives (no MISSING/AMBIGUOUS markers with passing tests), 
+      and ground truth confidence ≥80%. <a href="submit.html">Learn more →</a>
+    </div>
+
+    <!-- Leaderboard Table -->
+    <section>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 50px;">Rank</th>
+              <th>System</th>
+              <th class="center">Status</th>
+              <th class="num">Pass<span class="th-sub">Rate</span></th>
+              <th class="num">LCB<span class="th-sub">Score</span></th>
+              <th class="num">BF<span class="th-sub">35%</span></th>
+              <th class="num">SC<span class="th-sub">30%</span></th>
+              <th class="num">SQ<span class="th-sub">25%</span></th>
+              <th class="num">TR<span class="th-sub">10%</span></th>
+              <th class="num">Gap-Free</th>
+              <th class="center">T1</th>
+              <th class="center">T2</th>
+              <th class="center">T3</th>
+              <th class="center">T4</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="rank rank-1">1</span></td>
+              <td>
+                <div class="model-name">Claude Sonnet 4</div>
+                <div class="model-org">Anthropic</div>
+              </td>
+              <td class="center"><span class="badge badge-verified">✓ Verified</span></td>
+              <td class="num score-primary">82%</td>
+              <td class="num score-primary">87</td>
+              <td class="num score-good">94%</td>
+              <td class="num score-good">91%</td>
+              <td class="num">85%</td>
+              <td class="num">88%</td>
+              <td class="num score-good">91%</td>
+              <td class="num score-good">96%</td>
+              <td class="num">88%</td>
+              <td class="num score-mid">71%</td>
+              <td class="num score-low">32%</td>
+            </tr>
+            <tr>
+              <td><span class="rank rank-2">2</span></td>
+              <td>
+                <div class="model-name">GPT-4o</div>
+                <div class="model-org">OpenAI</div>
+              </td>
+              <td class="center"><span class="badge badge-verified">✓ Verified</span></td>
+              <td class="num score-primary">78%</td>
+              <td class="num score-primary">84</td>
+              <td class="num score-good">92%</td>
+              <td class="num">88%</td>
+              <td class="num">82%</td>
+              <td class="num">85%</td>
+              <td class="num">87%</td>
+              <td class="num score-good">94%</td>
+              <td class="num">84%</td>
+              <td class="num score-mid">65%</td>
+              <td class="num score-low">28%</td>
+            </tr>
+            <tr>
+              <td><span class="rank rank-3">3</span></td>
+              <td>
+                <div class="model-name">Gemini 2.0 Flash</div>
+                <div class="model-org">Google</div>
+              </td>
+              <td class="center"><span class="badge badge-verified">✓ Verified</span></td>
+              <td class="num score-primary">71%</td>
+              <td class="num score-primary">80</td>
+              <td class="num">88%</td>
+              <td class="num">84%</td>
+              <td class="num">78%</td>
+              <td class="num">82%</td>
+              <td class="num">82%</td>
+              <td class="num score-good">91%</td>
+              <td class="num">78%</td>
+              <td class="num score-low">54%</td>
+              <td class="num score-low">18%</td>
+            </tr>
+            <tr>
+              <td><span class="rank">4</span></td>
+              <td>
+                <div class="model-name">DocMolt</div>
+                <div class="model-org">Hexaview</div>
+              </td>
+              <td class="center"><span class="badge">Pending</span></td>
+              <td class="num">65%</td>
+              <td class="num">74</td>
+              <td class="num">82%</td>
+              <td class="num">79%</td>
+              <td class="num">72%</td>
+              <td class="num">76%</td>
+              <td class="num">78%</td>
+              <td class="num">87%</td>
+              <td class="num score-mid">71%</td>
+              <td class="num score-low">48%</td>
+              <td class="num score-low">12%</td>
+            </tr>
+            <tr>
+              <td><span class="rank">5</span></td>
+              <td>
+                <div class="model-name">Llama 3.1 70B</div>
+                <div class="model-org">Meta</div>
+              </td>
+              <td class="center"><span class="badge badge-verified">✓ Verified</span></td>
+              <td class="num">58%</td>
+              <td class="num">68</td>
+              <td class="num">76%</td>
+              <td class="num">74%</td>
+              <td class="num">65%</td>
+              <td class="num">68%</td>
+              <td class="num score-mid">71%</td>
+              <td class="num">82%</td>
+              <td class="num score-mid">64%</td>
+              <td class="num score-low">38%</td>
+              <td class="num score-low">8%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- Tier Legend -->
+      <div class="tier-legend">
+        <div class="tier-item"><span class="tier-dot tier-t1"></span> T1: Basic (80 tasks)</div>
+        <div class="tier-item"><span class="tier-dot tier-t2"></span> T2: Moderate (70 tasks)</div>
+        <div class="tier-item"><span class="tier-dot tier-t3"></span> T3: Complex (40 tasks)</div>
+        <div class="tier-item"><span class="tier-dot tier-t4"></span> T4: Enterprise (10 tasks)</div>
+      </div>
+    </section>
+
+    <!-- Methodology -->
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">Scoring Components</h2>
+      </div>
+      
+      <div class="methodology">
+        <div class="method-card">
+          <h4>Behavioral Fidelity <span class="method-weight">35%</span></h4>
+          <p>Execution-based validation: code generated from documentation must produce identical outputs to original COBOL program.</p>
+        </div>
+        <div class="method-card">
+          <h4>Structural Completeness <span class="method-weight">30%</span></h4>
+          <p>Element coverage vs. static analysis ground truth. All data structures, control flow, and dependencies documented.</p>
+        </div>
+        <div class="method-card">
+          <h4>Semantic Quality <span class="method-weight">25%</span></h4>
+          <p>LLM-as-judge evaluation for clarity, accuracy, and appropriate abstraction. Calibrated against expert judgments.</p>
+        </div>
+        <div class="method-card">
+          <h4>Traceability <span class="method-weight">10%</span></h4>
+          <p>Valid references to source code: line numbers, paragraphs, variables. Fabricated references trigger penalties.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Critical Failures -->
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">Critical Failures (Automatic Disqualification)</h2>
+      </div>
+      <div class="callout">
+        <strong>CF-01:</strong> Missing primary calculation · 
+        <strong>CF-02:</strong> Hallucinated module · 
+        <strong>CF-03:</strong> Wrong data transformation (≥10% output mismatch) · 
+        <strong>CF-04:</strong> Missing error handler · 
+        <strong>CF-05:</strong> Broken traceability (≥20% invalid refs) · 
+        <strong>CF-06:</strong> False positive (execution passes with MISSING/AMBIGUOUS markers)
+      </div>
+    </section>
+
+    <!-- Submit -->
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">Submit Results</h2>
+      </div>
+      <div class="callout">
+        Run: <code>legacycodebench evaluate --model your-model</code> · 
+        Results evaluated within 24 hours · 
+        See <a href="submit.html">submission guidelines</a> for API integration
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <span>© 2025 LegacyCodeBench v2.0 · Kalmantic Applied AI Lab</span>
+      <div class="footer-links">
+        <a href="#">GitHub</a>
+        <a href="paper.html">Paper</a>
+        <a href="#">API Docs</a>
+        <a href="#">Contact</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

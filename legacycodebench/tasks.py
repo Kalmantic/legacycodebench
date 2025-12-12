@@ -84,11 +84,18 @@ class TaskManager:
             return self.create_tasks_simple(datasets_dir)
     
     def create_tasks_intelligent(self, datasets_dir: Path = DATASETS_DIR) -> List[Task]:
-        """Create tasks using intelligent PRD-aligned selection"""
+        """Create tasks using intelligent PRD v2.0 aligned selection
+        
+        v2.0 Approach:
+        - ALL tasks are documentation tasks
+        - Tasks are categorized by complexity TIER (T1-T4)
+        - No separate "understanding" tasks
+        - Understanding is validated through Behavioral Fidelity (execution)
+        """
         from legacycodebench.task_generator import TaskCandidateGenerator
         from legacycodebench.config import TASK_SELECTION_CONFIG
         
-        logger.info("Using intelligent task selection (PRD-aligned)")
+        logger.info("Using v2.0 intelligent task selection (documentation only, tier-based)")
         
         # Initialize generator
         generator = TaskCandidateGenerator(datasets_dir)
@@ -97,10 +104,9 @@ class TaskManager:
         config = TASK_SELECTION_CONFIG
         min_loc = config["loc_ranges"]["min"]
         max_loc = config["loc_ranges"]["max"]
-        num_doc = config["task_distribution"]["documentation_tasks"]
-        num_und = config["task_distribution"]["understanding_tasks"]
+        total_tasks = config["task_distribution"]["total_tasks"]
         
-        # Generate all candidates
+        # Generate all candidates (documentation only)
         logger.info(f"Analyzing COBOL files (LOC range: {min_loc}-{max_loc})...")
         all_candidates = generator.generate_all_candidates(min_loc, max_loc)
         
@@ -108,36 +114,34 @@ class TaskManager:
             logger.warning("No suitable candidates found, falling back to simple selection")
             return self.create_tasks_simple(datasets_dir)
         
-        # Select best tasks
-        logger.info(f"Selecting top {num_doc} documentation + {num_und} understanding tasks...")
-        doc_candidates, und_candidates = generator.select_best_tasks(
-            all_candidates, num_doc, num_und
-        )
+        # Select best tasks by tier distribution (v2.0)
+        logger.info(f"Selecting {total_tasks} documentation tasks by tier...")
+        selected_candidates = generator.select_best_tasks(all_candidates, total_tasks)
         
         # Convert candidates to tasks
         tasks = []
         
-        # Documentation tasks
-        for i, candidate in enumerate(doc_candidates, 1):
-            task = self._candidate_to_task(
-                candidate, f"LCB-DOC-{i:03d}", datasets_dir
-            )
-            tasks.append(task)
-            logger.info(f"  Created {task.task_id}: {task.difficulty} - {task.domain} - {candidate.analysis['loc']} LOC")
+        # Group by tier for sequential numbering
+        by_tier = {"T1": [], "T2": [], "T3": [], "T4": []}
+        for candidate in selected_candidates:
+            by_tier[candidate.tier].append(candidate)
         
-        # Understanding tasks
-        for i, candidate in enumerate(und_candidates, 1):
-            task = self._candidate_to_task(
-                candidate, f"LCB-UND-{i:03d}", datasets_dir
-            )
-            tasks.append(task)
-            logger.info(f"  Created {task.task_id}: {task.difficulty} - {task.domain} - {candidate.analysis['dependencies']['total']} dependencies")
+        # Create tasks with tier-based IDs: LCB-T1-001, LCB-T2-001, etc.
+        for tier in ["T1", "T2", "T3", "T4"]:
+            tier_candidates = by_tier[tier]
+            for i, candidate in enumerate(tier_candidates, 1):
+                task_id = f"LCB-{tier}-{i:03d}"
+                task = self._candidate_to_task(candidate, task_id, datasets_dir)
+                tasks.append(task)
+                logger.info(f"  Created {task.task_id}: {task.difficulty} - {task.domain} - {candidate.analysis['loc']} LOC")
         
-        logger.info(f"Created {len(tasks)} tasks using intelligent selection")
+        logger.info(f"Created {len(tasks)} documentation tasks using v2.0 selection")
+        logger.info(f"  Tier distribution: T1={len(by_tier['T1'])}, T2={len(by_tier['T2'])}, T3={len(by_tier['T3'])}, T4={len(by_tier['T4'])}")
+        
         return tasks
     
     def _candidate_to_task(self, candidate, task_id: str, datasets_dir: Path) -> Task:
-        """Convert TaskCandidate to Task"""
+        """Convert TaskCandidate to Task (v2.0: all tasks are documentation)"""
         # Get relative path from dataset root
         dataset_dir = datasets_dir / candidate.dataset_name
         rel_path = candidate.main_file.relative_to(dataset_dir)
@@ -152,35 +156,64 @@ class TaskManager:
                 # File not in same dataset, skip
                 pass
         
-        # Create task description
-        if candidate.category == "documentation":
+        # v2.0: All tasks are documentation tasks
+        # Tier determines complexity and evaluation rigor
+        tier = getattr(candidate, 'tier', 'T1')
+        loc = candidate.analysis.get('loc', 0) if candidate.analysis else 0
+        
+        # Create tier-appropriate task description
+        if tier == "T1":
+            task_description = (
+                f"Generate clear documentation for {candidate.main_file.name} "
+                f"explaining its business purpose, main data structures, and key business rules."
+            )
+        elif tier == "T2":
             task_description = (
                 f"Generate comprehensive documentation for {candidate.main_file.name} "
-                f"explaining business purpose, business rules, edge cases, and data structures."
+                f"including business purpose, data structures, control flow, file operations, and business rules."
             )
-            if len(input_files) > 1:
-                task_description += f" Analyze the main program and {len(input_files)-1} related copybook(s)."
-            
-            evaluation_criteria = {
-                "required_sections": ["business_purpose", "business_rules", "edge_cases", "data_structures"],
-                "min_length_pages": 3 if candidate.difficulty_level == "easy" else 5,
-                "format": "markdown",
-            }
-        else:  # understanding
+        elif tier == "T3":
             task_description = (
-                f"Extract dependency graph, business rules, and data flow from {candidate.main_file.name}."
+                f"Generate detailed technical documentation for {candidate.main_file.name} "
+                f"covering business purpose, all data structures, control flow, external dependencies, "
+                f"business rules, and error handling."
             )
-            if len(input_files) > 1:
-                task_description += f" Analyze relationships across {len(input_files)} files."
-            
-            evaluation_criteria = {
-                "output_format": "json",
-                "required_fields": ["dependencies", "business_rules", "data_flow"],
-            }
+        else:  # T4
+            task_description = (
+                f"Generate thorough documentation for the complex program {candidate.main_file.name} "
+                f"explaining business purpose, complete data structures, control flow (including GO TO patterns), "
+                f"all external interfaces, business rules, error handling, and edge cases."
+            )
+        
+        if len(input_files) > 1:
+            task_description += f" Include analysis of {len(input_files)-1} related copybook(s)."
+        
+        # v2.0 evaluation criteria (aligned with SC + BF + SQ + TR)
+        evaluation_criteria = {
+            "version": "2.0",
+            "tier": tier,
+            "required_sections": ["business_purpose", "business_rules", "data_structures"],
+            "format": "markdown",
+            "evaluation_method": "ground_truth_based",
+            "scoring_weights": {
+                "structural_completeness": 0.30,
+                "behavioral_fidelity": 0.35,
+                "semantic_quality": 0.25,
+                "traceability": 0.10,
+            },
+        }
+        
+        # Add tier-specific requirements
+        if tier in ["T2", "T3", "T4"]:
+            evaluation_criteria["required_sections"].extend(["control_flow", "file_operations"])
+        if tier in ["T3", "T4"]:
+            evaluation_criteria["required_sections"].extend(["dependencies", "error_handling"])
+        if tier == "T4":
+            evaluation_criteria["required_sections"].append("edge_cases")
         
         return Task(
             task_id=task_id,
-            category=candidate.category,
+            category="documentation",  # v2.0: All tasks are documentation
             difficulty=candidate.difficulty_level,
             language="COBOL",
             domain=candidate.domain,

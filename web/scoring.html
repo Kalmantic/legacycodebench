@@ -1,14 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>LegacyCodeBench | Scoring</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="stylesheet" href="assets/styles.css">
 </head>
+
 <body>
   <header>
-    <div class="container" style="display:flex;justify-content:space-between;align-items:center;padding:1.25rem 1.25rem 1rem;">
+    <div class="container"
+      style="display:flex;justify-content:space-between;align-items:center;padding:1.25rem 1.25rem 1rem;">
       <div class="logo">LegacyCodeBench</div>
       <nav aria-label="Primary">
         <a href="index.html">Overview</a>
@@ -22,216 +25,169 @@
 
   <main class="container">
     <section class="hero" aria-labelledby="scoring-title">
-      <h1 id="scoring-title">Scoring Methodology</h1>
-      <p>LegacyCodeBench uses a hybrid evaluation approach: reference-based comparison with semantic similarity and NLP metrics when expert documentation exists, falling back to heuristic and COBOL-extraction methods otherwise. All scores are deterministic and reproducible.</p>
-      <p class="table-hint">Evaluation includes ROUGE (recall), BLEU (precision), and TF-IDF semantic similarity for comprehensive assessment.</p>
+      <h1 id="scoring-title">Scoring Methodology v2.0</h1>
+      <p>LegacyCodeBench v2.0 uses a ground-truth based evaluation approach. AI-generated documentation is validated
+        against source code elements extracted via static analysis, not human-written references.</p>
+      <p class="table-hint">All scores are deterministic and reproducible. The primary metric is LCB Score, a weighted
+        composite of four components.</p>
     </section>
 
-    <section aria-labelledby="task-types">
-      <h2 class="section-title" id="task-types">Task Types</h2>
-      <div class="grid grid-3">
+    <section aria-labelledby="lcb-score">
+      <h2 class="section-title" id="lcb-score">LCB Score Formula</h2>
+      <div class="formula" style="font-size: 16px; padding: 24px;">
+        LCB Score = (0.35 × BF) + (0.30 × SC) + (0.25 × SQ) + (0.10 × TR)
+      </div>
+      <p class="table-hint">Scores range from 0-100. Higher is better.</p>
+    </section>
+
+    <section aria-labelledby="components">
+      <h2 class="section-title" id="components">Evaluation Components</h2>
+      <div class="grid grid-2">
         <div class="card">
-          <h3>Documentation</h3>
-          <p>Systems must generate Markdown documentation covering purpose, business rules, edge cases, and data structures.</p>
+          <h3>Behavioral Fidelity (BF) — 35%</h3>
+          <p>Execution-based testing. Can code be regenerated from docs and produce matching outputs?</p>
+          <ul class="list-muted">
+            <li>Generate test cases from ground truth</li>
+            <li>Execute original COBOL with test inputs</li>
+            <li>Generate COBOL from documentation</li>
+            <li>Compare outputs for behavioral match</li>
+          </ul>
+          <p class="table-hint">Requires Docker with GnuCOBOL for execution.</p>
         </div>
         <div class="card">
-          <h3>Understanding</h3>
-          <p>Systems must output JSON capturing dependencies, business rules, and data flow from COBOL programs.</p>
+          <h3>Structural Completeness (SC) — 30%</h3>
+          <p>Element coverage vs auto-extracted ground truth from source code.</p>
+          <ul class="list-muted">
+            <li>Data structures documented</li>
+            <li>Paragraphs/sections covered</li>
+            <li>Business rules captured</li>
+            <li>File dependencies mentioned</li>
+          </ul>
+          <p class="table-hint">Ground truth extracted via static analysis (95%+ automated).</p>
         </div>
         <div class="card">
-          <h3>Hybrid Evaluation</h3>
-          <p>50% documentation score + 50% understanding score → overall benchmark score.</p>
-        </div>
-      </div>
-    </section>
-
-    <section aria-labelledby="evaluation-modes">
-      <h2 class="section-title" id="evaluation-modes">Evaluation Modes</h2>
-      <p>LegacyCodeBench uses two evaluation approaches depending on availability of expert references:</p>
-      <div class="grid grid-3">
-        <div class="card">
-          <h3>Reference-Based</h3>
-          <p>When expert-validated reference documentation exists, submissions are compared using semantic similarity, ROUGE, and BLEU metrics.</p>
+          <h3>Semantic Quality (SQ) — 25%</h3>
+          <p>LLM-as-judge evaluation of documentation quality.</p>
+          <ul class="list-muted">
+            <li>Accuracy of explanations</li>
+            <li>Clarity and readability</li>
+            <li>Technical correctness</li>
+            <li>Completeness of coverage</li>
+          </ul>
+          <p class="table-hint">Judge model must be different from evaluated model.</p>
         </div>
         <div class="card">
-          <h3>Heuristic Fallback</h3>
-          <p>For documentation: keyword matching, pattern detection. For understanding: direct COBOL extraction via regex.</p>
+          <h3>Traceability (TR) — 10%</h3>
+          <p>Reference validation — are code references accurate?</p>
+          <ul class="list-muted">
+            <li>Variable names exist in source</li>
+            <li>Paragraph names are valid</li>
+            <li>Line numbers are accurate</li>
+            <li>No hallucinated references</li>
+          </ul>
+          <p class="table-hint">Catches hallucinations and fabricated references.</p>
         </div>
-        <div class="card">
-          <h3>Automatic Detection</h3>
-          <p>The evaluator checks for reference files and automatically selects the appropriate mode.</p>
-        </div>
       </div>
     </section>
 
-    <section aria-labelledby="documentation-scoring">
-      <h2 class="section-title" id="documentation-scoring">Documentation Scoring</h2>
-      <p>Each documentation submission is evaluated using weighted components:</p>
-      <ul class="list-muted">
-        <li><strong>Required sections present (40%)</strong> — Checks for: business purpose, business rules, edge cases, data structures, algorithm overview.</li>
-        <li><strong>Business rule coverage (30%)</strong> — Uses semantic similarity + NLP metrics when reference exists, or heuristics otherwise.</li>
-        <li><strong>Markdown format quality (20%)</strong> — Valid markdown, headers, code blocks, lists, paragraphs.</li>
-        <li><strong>Appropriate length (10%)</strong> — Compares word count to reference (if available) or minimum requirement.</li>
-      </ul>
-      <div class="code-block">
-doc_score = 0.40 × sections + 0.30 × rules + 0.20 × format + 0.10 × length
-      </div>
-      
-      <h3 style="margin-top:2rem;font-size:1.2rem;">Reference-Based Business Rule Scoring</h3>
-      <p>When expert reference documentation exists, business rule coverage is enhanced with NLP metrics:</p>
-      <div class="code-block">
-rule_coverage = 0.50 × semantic_similarity + 0.30 × ROUGE-L + 0.20 × BLEU
-      </div>
-      <ul class="list-muted">
-        <li><strong>Semantic Similarity</strong> — TF-IDF vectors + cosine similarity to capture meaning.</li>
-        <li><strong>ROUGE-L</strong> — Longest common subsequence, measures recall and structural similarity.</li>
-        <li><strong>BLEU</strong> — N-gram precision (1-4 grams), measures accuracy of generated text.</li>
-      </ul>
-      <p class="table-hint">Edge case coverage is also evaluated separately and weighted at 30% within the rule coverage component.</p>
-    </section>
-
-    <section aria-labelledby="understanding-scoring">
-      <h2 class="section-title" id="understanding-scoring">Understanding Scoring</h2>
-      <p>Understanding tasks are scored via F1 metrics across three components:</p>
-      <div class="code-block">
-precision = true_positives / predicted<br>
-recall = true_positives / actual<br>
-f1 = 2 × (precision × recall) / (precision + recall)
-      </div>
-      
-      <h3 style="margin-top:2rem;font-size:1.2rem;">Three Evaluation Components</h3>
-      <ul class="list-muted">
-        <li><strong>Dependencies (33%)</strong> — CALL and COPY relationships between programs.</li>
-        <li><strong>Business Rules (33%)</strong> — IF/WHEN conditions and logic extracted from code.</li>
-        <li><strong>Data Flow (33%)</strong> — File I/O operations (OPEN, READ, WRITE, CLOSE).</li>
-      </ul>
-      <p>Final understanding score = average of the three F1 scores.</p>
-      
-      <h3 style="margin-top:2rem;font-size:1.2rem;">Ground Truth Sources</h3>
-      <ul class="list-muted">
-        <li><strong>Reference-based</strong> — When <code>references/understanding/&lt;task&gt;/reference.json</code> exists, submissions are compared against expert-validated JSON.</li>
-        <li><strong>COBOL extraction</strong> — Otherwise, ground truth is extracted directly from COBOL source files using regex patterns.</li>
-      </ul>
-      <p class="table-hint">Reference-based evaluation includes semantic comparison for business rules, while COBOL extraction uses exact matching.</p>
-    </section>
-
-    <section aria-labelledby="overall-score">
-      <h2 class="section-title" id="overall-score">Overall Score</h2>
-      <div class="code-block">
-overall = 0.50 × documentation + 0.50 × understanding
-      </div>
-      <p>Scores are capped between 0 and 100. Performance tiers follow PRD definitions (>60% useful, 40–60% research baseline, etc.).</p>
-    </section>
-
-    <section aria-labelledby="nlp-metrics">
-      <h2 class="section-title" id="nlp-metrics">NLP Metrics</h2>
-      <p>When reference documentation exists, we use industry-standard NLP evaluation metrics:</p>
-      
-      <h3 style="margin-top:1.5rem;font-size:1.2rem;">ROUGE (Recall-Oriented Understudy for Gisting Evaluation)</h3>
-      <ul class="list-muted">
-        <li><strong>ROUGE-1</strong> — Unigram (word) overlap, ensures important words are captured.</li>
-        <li><strong>ROUGE-2</strong> — Bigram overlap, ensures phrases are captured.</li>
-        <li><strong>ROUGE-L</strong> — Longest common subsequence, measures structural similarity and fluency.</li>
-        <li><strong>ROUGE-Lsum</strong> — Sentence-level LCS, better for multi-paragraph documents.</li>
-      </ul>
-      <p class="table-hint">ROUGE is recall-oriented and commonly used for summarization evaluation.</p>
-      
-      <h3 style="margin-top:1.5rem;font-size:1.2rem;">BLEU (Bilingual Evaluation Understudy)</h3>
-      <ul class="list-muted">
-        <li><strong>BLEU-1 through BLEU-4</strong> — N-gram precision scores (1-gram to 4-gram).</li>
-        <li>Measures how many n-grams from the submission appear in the reference.</li>
-        <li>Emphasizes precision and phrase-level accuracy.</li>
-      </ul>
-      <p class="table-hint">BLEU complements ROUGE by measuring precision rather than recall.</p>
-      
-      <h3 style="margin-top:1.5rem;font-size:1.2rem;">Semantic Similarity</h3>
-      <p>TF-IDF vectorization + cosine similarity captures meaning even when different words are used. This handles paraphrasing and synonym usage that exact-match metrics miss.</p>
-    </section>
-
-    <section aria-labelledby="examples">
-      <h2 class="section-title" id="examples">Scoring Examples</h2>
-      
-      <div class="card">
-        <h3>Documentation Example (Reference-Based)</h3>
-        <p><strong>Submission has:</strong></p>
-        <ul class="list-muted" style="font-size:0.9rem;">
-          <li>5/5 required sections → 1.0 × 0.40 = 0.40</li>
-          <li>Semantic: 0.75, ROUGE-L: 0.65, BLEU: 0.55 → (0.75×0.5 + 0.65×0.3 + 0.55×0.2) = 0.68 × 0.30 = 0.204</li>
-          <li>Perfect markdown format → 1.0 × 0.20 = 0.20</li>
-          <li>1,800 words (reference: 1,500) → 1.0 × 0.10 = 0.10</li>
-        </ul>
-        <p><strong>Total Score: 0.904 (90.4%)</strong></p>
-      </div>
-      
-      <div class="card">
-        <h3>Understanding Example (Reference-Based)</h3>
-        <p><strong>Component F1 Scores:</strong></p>
-        <ul class="list-muted" style="font-size:0.9rem;">
-          <li>Dependencies: 5/6 predicted correct, 5/8 actual → P: 0.83, R: 0.63, F1: 0.71</li>
-          <li>Business Rules: Semantic comparison → F1: 0.68</li>
-          <li>Data Flow: 4/4 files correct → P: 1.0, R: 1.0, F1: 1.0</li>
-        </ul>
-        <p><strong>Average F1: (0.71 + 0.68 + 1.0) / 3 = 0.80 (80%)</strong></p>
-      </div>
-    </section>
-
-    <section aria-labelledby="performance-tiers">
-      <h2 class="section-title" id="performance-tiers">Performance Tiers</h2>
-      <p>Overall scores are interpreted using the following tiers:</p>
+    <section aria-labelledby="tiers">
+      <h2 class="section-title" id="tiers">Task Complexity Tiers</h2>
+      <p>Tasks are organized by COBOL program complexity:</p>
       <table>
         <thead>
           <tr>
-            <th>Score Range</th>
             <th>Tier</th>
-            <th>Interpretation</th>
+            <th>Name</th>
+            <th>LOC Range</th>
+            <th>Characteristics</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>&gt; 60%</td>
-            <td>Excellent</td>
-            <td>Practically useful with human oversight</td>
+            <td>T1</td>
+            <td>Basic</td>
+            <td>300-500</td>
+            <td>Simple, linear programs with minimal branching</td>
           </tr>
           <tr>
-            <td>40-60%</td>
-            <td>Good</td>
-            <td>Research baseline quality</td>
+            <td>T2</td>
+            <td>Moderate</td>
+            <td>500-1000</td>
+            <td>PERFORM loops, file I/O operations</td>
           </tr>
           <tr>
-            <td>20-40%</td>
-            <td>Fair</td>
-            <td>Expected AI performance</td>
+            <td>T3</td>
+            <td>Complex</td>
+            <td>1000-2000</td>
+            <td>External calls, complex business rules</td>
           </tr>
           <tr>
-            <td>&lt; 20%</td>
-            <td>Poor</td>
-            <td>Not functional for practical use</td>
+            <td>T4</td>
+            <td>Enterprise</td>
+            <td>2000+</td>
+            <td>GO TO spaghetti, CICS/DB2 integration</td>
           </tr>
         </tbody>
       </table>
     </section>
 
+    <section aria-labelledby="ground-truth">
+      <h2 class="section-title" id="ground-truth">Ground Truth Generation</h2>
+      <p>Ground truth is automatically extracted from COBOL source code using static analysis:</p>
+      <ul class="list-muted">
+        <li><strong>Data Structures</strong> — WORKING-STORAGE, FILE SECTION, LINKAGE SECTION parsing</li>
+        <li><strong>Control Flow</strong> — PERFORM, GO TO, paragraph/section analysis</li>
+        <li><strong>Business Rules</strong> — IF/EVALUATE conditions, calculations, validations</li>
+        <li><strong>Dependencies</strong> — CALL statements, COPY statements, file assignments</li>
+        <li><strong>Error Handlers</strong> — ON ERROR, AT END, INVALID KEY patterns</li>
+      </ul>
+      <div class="callout">
+        Ground truth is 95%+ automated. Only edge cases require human review.
+      </div>
+    </section>
+
+    <section aria-labelledby="examples">
+      <h2 class="section-title" id="examples">Scoring Example</h2>
+      <div class="card">
+        <h3>Sample Evaluation</h3>
+        <div class="code-block">
+          Component Scores:
+          Structural Completeness (SC): 75%
+          Behavioral Fidelity (BF): 80%
+          Semantic Quality (SQ): 70%
+          Traceability (TR): 60%
+
+          LCB Score = (0.35 × 80) + (0.30 × 75) + (0.25 × 70) + (0.10 × 60)
+          = 28 + 22.5 + 17.5 + 6
+          = 74
+        </div>
+        <p><strong>Result: LCB Score 74/100</strong></p>
+      </div>
+    </section>
+
     <section aria-labelledby="faq">
       <h2 class="section-title" id="faq">FAQ</h2>
       <details class="faq">
-        <summary>How does the evaluator choose between reference and heuristic modes?</summary>
-        <p>The evaluator automatically checks for reference files (<code>reference.md</code> or <code>reference.json</code>) in the appropriate directory. If found, it uses reference-based evaluation; otherwise, it falls back to heuristics or COBOL extraction.</p>
+        <summary>How is ground truth generated?</summary>
+        <p>Ground truth is extracted automatically from COBOL source code using static analysis. The benchmark parses
+          DATA DIVISION, PROCEDURE DIVISION, and analyzes control flow, business rules, and dependencies. This is 95%+
+          automated with high confidence scores.</p>
       </details>
       <details class="faq">
-        <summary>Are NLP metrics always calculated?</summary>
-        <p>ROUGE and BLEU scores are only calculated when reference documentation exists and the required libraries (<code>rouge-score</code>, <code>nltk</code>) are installed. If unavailable, the system gracefully falls back to simpler comparison methods.</p>
+        <summary>What if behavioral fidelity testing is unavailable?</summary>
+        <p>BF testing requires Docker with GnuCOBOL. If unavailable, a placeholder score is used. Run with
+          <code>--enable-execution</code> for full BF evaluation.</p>
+      </details>
+      <details class="faq">
+        <summary>How does LLM-as-judge work?</summary>
+        <p>A separate LLM (different from the model being evaluated) assesses documentation quality. This prevents
+          self-evaluation bias. The judge model can be configured with <code>--judge-model</code>.</p>
       </details>
       <details class="faq">
         <summary>Can I reproduce the scores?</summary>
-        <p>Yes. All evaluation scripts are open source. Run <code>legacycodebench evaluate</code> locally with the same task and submission to get identical scores. Results include the evaluation method used (<code>"reference"</code> or <code>"heuristic"</code>).</p>
-      </details>
-      <details class="faq">
-        <summary>How are reference documents created?</summary>
-        <p>2-3 COBOL experts independently document each task, then their outputs are merged to consensus with inter-annotator agreement &gt; 0.80. The consensus version becomes the reference used for evaluation.</p>
-      </details>
-      <details class="faq">
-        <summary>What if my submission doesn't match the reference wording exactly?</summary>
-        <p>That's fine. Semantic similarity (TF-IDF + cosine) captures meaning even with different wording. ROUGE and BLEU complement this by measuring structural and phrase-level similarity. The combined approach rewards both accuracy and completeness.</p>
+        <p>Yes. All evaluation is deterministic. Run
+          <code>python -m legacycodebench evaluate --task-id &lt;id&gt; --submission &lt;path&gt;</code> to get
+          identical scores.</p>
       </details>
     </section>
   </main>
@@ -239,10 +195,11 @@ overall = 0.50 × documentation + 0.50 × understanding
   <footer>
     <div class="container" style="display:flex;flex-wrap:wrap;gap:1rem;justify-content:space-between;">
       <span>© 2025 LegacyCodeBench · Kalmantic Applied AI Lab</span>
-      <span>GitHub · <a href="https://github.com/kalmantic/legacycodebench" target="_blank" rel="noreferrer">kalmantic/legacycodebench</a></span>
-      <span>Contact · <a href="mailto:team@kalmantic.ai">team@kalmantic.ai</a></span>
+      <span>GitHub · <a href="https://github.com/kalmantic/legacycodebench" target="_blank"
+          rel="noreferrer">kalmantic/legacycodebench</a></span>
+      <span>Contact · <a href="mailto:nikita@kalmantic.com">nikita@kalmantic.com</a></span>
     </div>
   </footer>
 </body>
-</html>
 
+</html>

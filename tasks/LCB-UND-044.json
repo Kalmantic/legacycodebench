@@ -1,0 +1,24 @@
+{
+  "task_id": "LCB-UND-044",
+  "category": "understanding",
+  "difficulty": "medium",
+  "language": "COBOL",
+  "domain": "enterprise",
+  "input_files": [
+    "sources\\cobol\\core\\SPSWD01P.cbl",
+    "sources\\cobol\\core\\SSECUREP.cbl",
+    "sources\\copybook\\CPSWDD01.cpy",
+    "sources\\copybook\\CABENDD.cpy",
+    "sources\\copybook\\CENTRY.cpy"
+  ],
+  "task_description": "Extract dependency graph, business rules, and data flow from SPSWD01P.cbl. Analyze relationships across 5 files.",
+  "evaluation_criteria": {
+    "output_format": "json",
+    "required_fields": [
+      "dependencies",
+      "business_rules",
+      "data_flow"
+    ]
+  },
+  "reference_solution": null
+}

@@ -1,0 +1,20 @@
+{
+  "task_id": "LCB-UND-077",
+  "category": "understanding",
+  "difficulty": "hard",
+  "language": "COBOL",
+  "domain": "enterprise",
+  "input_files": [
+    "tools\\VFILES-virtual-heap-routines\\VFILE004.CBL"
+  ],
+  "task_description": "Extract dependency graph, business rules, and data flow from VFILE004.CBL.",
+  "evaluation_criteria": {
+    "output_format": "json",
+    "required_fields": [
+      "dependencies",
+      "business_rules",
+      "data_flow"
+    ]
+  },
+  "reference_solution": null
+}

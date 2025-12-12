@@ -1,0 +1,20 @@
+{
+  "task_id": "LCB-UND-014",
+  "category": "understanding",
+  "difficulty": "easy",
+  "language": "COBOL",
+  "domain": "enterprise",
+  "input_files": [
+    "src\\main\\cobol\\FileCopy.cbl"
+  ],
+  "task_description": "Extract dependency graph, business rules, and data flow from FileCopy.cbl.",
+  "evaluation_criteria": {
+    "output_format": "json",
+    "required_fields": [
+      "dependencies",
+      "business_rules",
+      "data_flow"
+    ]
+  },
+  "reference_solution": null
+}

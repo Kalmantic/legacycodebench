@@ -1,0 +1,20 @@
+{
+  "task_id": "LCB-UND-054",
+  "category": "understanding",
+  "difficulty": "medium",
+  "language": "COBOL",
+  "domain": "enterprise",
+  "input_files": [
+    "ipc\\CBL_GC_SOCKET\\sample_multi\\MULTISRV.COB"
+  ],
+  "task_description": "Extract dependency graph, business rules, and data flow from MULTISRV.COB.",
+  "evaluation_criteria": {
+    "output_format": "json",
+    "required_fields": [
+      "dependencies",
+      "business_rules",
+      "data_flow"
+    ]
+  },
+  "reference_solution": null
+}

@@ -1,0 +1,27 @@
+{
+  "task_id": "LCB-DOC-001",
+  "version": "1.0",
+  "cobol_source_files": [],
+  "tests": [
+    {
+      "id": "LCB-DOC-001-T001",
+      "name": "Test Basic Functionality",
+      "description": "Verify basic program functionality",
+      "source_file": "tests/LCB-DOC-001-T001.cbl",
+      "expected_output": "PASS",
+      "expected_return_code": 0,
+      "timeout_seconds": 30,
+      "dependencies": []
+    },
+    {
+      "id": "LCB-DOC-001-T002",
+      "name": "Test Edge Case",
+      "description": "Verify edge case handling",
+      "source_file": "tests/LCB-DOC-001-T002.cbl",
+      "expected_output": "PASS",
+      "expected_return_code": 0,
+      "timeout_seconds": 30,
+      "dependencies": []
+    }
+  ]
+}

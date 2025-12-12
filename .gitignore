@@ -35,8 +35,14 @@ ENV/
 datasets/
 submissions/
 results/
-*.json
+
+# Block all markdown except README
 *.md
+!README.md
+
+# Block JSON in root but allow tasks
+/*.json
+!tasks/*.json
 
 # API keys
 .env
@@ -46,4 +52,9 @@ secrets.yaml
 # OS
 .DS_Store
 Thumbs.db
+
+# Cache
+cache/
+ground_truth_cache/
+.pytest_cache/
 

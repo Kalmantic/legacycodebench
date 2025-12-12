@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Submit — LegacyCodeBench</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="header-inner">
+      <a href="swe-bench-style.html" class="logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+        LegacyCodeBench
+        <span class="version-badge">v2.0</span>
+      </a>
+      <nav>
+        <a href="swe-bench-style.html">Leaderboard</a>
+        <a href="tasks.html">Tasks</a>
+        <a href="datasets.html">Datasets</a>
+        <a href="submit.html" class="active">Submit</a>
+        <a href="paper.html">Paper</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- Page Header -->
+    <div class="page-header">
+      <h1 class="page-title">Submit Results</h1>
+      <p class="page-description">
+        Submit your AI system for evaluation. Results are processed within 24 hours through our 
+        automated pipeline with 97% automation coverage.
+      </p>
+    </div>
+
+    <!-- Submission Methods -->
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">Submission Methods</h2>
+      </div>
+      
+      <div class="methodology">
+        <div class="method-card">
+          <h4>CLI Evaluation</h4>
+          <p>Run locally with our evaluation harness. Results uploaded automatically.</p>
+          <code style="display: block; margin-top: 8px; font-size: 11px;">legacycodebench evaluate --model your-model</code>
+        </div>
+        <div class="method-card">
+          <h4>API Integration</h4>
+          <p>Submit documentation outputs via REST API for server-side evaluation.</p>
+          <code style="display: block; margin-top: 8px; font-size: 11px;">POST /api/v2/submit</code>
+        </div>
+        <div class="method-card">
+          <h4>Batch Upload</h4>
+          <p>Upload pre-generated documentation files in JSON format.</p>
+          <code style="display: block; margin-top: 8px; font-size: 11px;">legacycodebench upload --results results.json</code>
+        </div>
+        <div class="method-card">
+          <h4>Docker Container</h4>
+          <p>Submit a containerized model for isolated evaluation.</p>
+          <code style="display: block; margin-top: 8px; font-size: 11px;">docker push lcb.io/your-model:latest</code>
+        </div>
+      </div>
+    </section>
+
+    <!-- Evaluation Pipeline -->
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">Evaluation Pipeline</h2>
+      </div>
+      
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Stage</th>
+              <th>Process</th>
+              <th>Automation</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>1. Structural Check</strong></td>
+              <td>Element coverage vs. static analysis ground truth (SC)</td>
+              <td class="num">100%</td>
+              <td>~2 min/task</td>
+            </tr>
+            <tr>
+              <td><strong>2. Code Generation</strong></td>
+              <td>Constrained generator produces code from documentation</td>
+              <td class="num">100%</td>
+              <td>~30 sec/task</td>
+            </tr>
+            <tr>
+              <td><strong>3. Execution Validation</strong></td>
+              <td>Run generated code against synthetic tests (BF)</td>
+              <td class="num">100%</td>
+              <td>~1 min/task</td>
+            </tr>
+            <tr>
+              <td><strong>4. Semantic Evaluation</strong></td>
+              <td>LLM-as-judge scores clarity, accuracy, abstraction (SQ)</td>
+              <td class="num">95%</td>
+              <td>~15 sec/task</td>
+            </tr>
+            <tr>
+              <td><strong>5. Traceability Check</strong></td>
+              <td>Reference validation against AST (TR)</td>
+              <td class="num">100%</td>
+              <td>~5 sec/task</td>
+            </tr>
+            <tr>
+              <td><strong>6. Critical Failure Scan</strong></td>
+              <td>Automated detection of CF-01 through CF-06</td>
+              <td class="num">100%</td>
+              <td>~10 sec/task</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Verification Levels -->
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">Verification Levels</h2>
+      </div>
+      
+      <div class="callout" style="background: #dafbe1; border-color: #1a7f37;">
+        <strong style="color: #1a7f37;">✓ Verified</strong> — Results that have passed additional validation:
+        <ul style="margin: 8px 0 0 20px; color: #1a7f37;">
+          <li>Human spot-check on 5% of escalated evaluations</li>
+          <li>LLM-judge confidence ≥ 70% on all semantic evaluations</li>
+          <li>No false positives (zero MISSING/AMBIGUOUS markers with passing tests)</li>
+          <li>Ground truth confidence ≥ 80% for all tasks</li>
+        </ul>
+      </div>
+      
+      <div class="callout">
+        <strong>Unverified</strong> — Results processed through automated pipeline only:
+        <ul style="margin: 8px 0 0 20px;">
+          <li>No human review performed</li>
+          <li>May include low-confidence LLM-judge scores</li>
+          <li>Suitable for development/iteration, not official ranking</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Escalation Triggers -->
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">Human Escalation Triggers</h2>
+      </div>
+      
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Trigger</th>
+              <th class="num">Frequency</th>
+              <th>Human Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Judge confidence &lt; 70%</td>
+              <td class="num">~5%</td>
+              <td>Review and override score</td>
+            </tr>
+            <tr>
+              <td>Execution mismatch + judge pass</td>
+              <td class="num">~2%</td>
+              <td>Diagnose discrepancy</td>
+            </tr>
+            <tr>
+              <td>Ground truth confidence &lt; 60%</td>
+              <td class="num">~3%</td>
+              <td>Validate extracted element</td>
+            </tr>
+            <tr>
+              <td>Novel pattern detected</td>
+              <td class="num">~1%</td>
+              <td>Add pattern to rule base</td>
+            </tr>
+            <tr>
+              <td>Inter-model disagreement</td>
+              <td class="num">~2%</td>
+              <td>Adjudicate conflicting assessments</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Submission Form -->
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">Request Evaluation</h2>
+      </div>
+      
+      <form class="submit-form">
+        <div class="form-group">
+          <label>System Name</label>
+          <input type="text" placeholder="e.g., MyModel-v2.1" required>
+        </div>
+        <div class="form-group">
+          <label>Organization</label>
+          <input type="text" placeholder="e.g., Acme Labs" required>
+        </div>
+        <div class="form-group">
+          <label>Contact Email</label>
+          <input type="email" placeholder="contact@example.com" required>
+        </div>
+        <div class="form-group">
+          <label>Submission Type</label>
+          <select>
+            <option>CLI Results Upload</option>
+            <option>API Integration</option>
+            <option>Docker Container</option>
+            <option>Batch JSON Upload</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>
+            <input type="checkbox" required>
+            Request verified evaluation (includes human spot-checks, ~48h additional processing)
+          </label>
+        </div>
+        <button type="submit" class="download-btn" style="margin-top: 8px;">Submit for Evaluation</button>
+      </form>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <span>© 2025 LegacyCodeBench v2.0 · Kalmantic Applied AI Lab</span>
+      <div class="footer-links">
+        <a href="#">GitHub</a>
+        <a href="paper.html">Paper</a>
+        <a href="#">API Docs</a>
+        <a href="#">Contact</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
+
+
+
+
+

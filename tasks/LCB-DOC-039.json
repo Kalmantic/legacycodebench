@@ -1,0 +1,23 @@
+{
+  "task_id": "LCB-DOC-039",
+  "category": "documentation",
+  "difficulty": "medium",
+  "language": "COBOL",
+  "domain": "banking",
+  "input_files": [
+    "app\\cbl\\CBCUS01C.cbl",
+    "app\\cpy\\CVCUS01Y.cpy"
+  ],
+  "task_description": "Generate comprehensive documentation for CBCUS01C.cbl explaining business purpose, business rules, edge cases, and data structures. Analyze the main program and 1 related copybook(s).",
+  "evaluation_criteria": {
+    "required_sections": [
+      "business_purpose",
+      "business_rules",
+      "edge_cases",
+      "data_structures"
+    ],
+    "min_length_pages": 5,
+    "format": "markdown"
+  },
+  "reference_solution": null
+}

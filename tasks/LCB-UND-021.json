@@ -1,0 +1,21 @@
+{
+  "task_id": "LCB-UND-021",
+  "category": "understanding",
+  "difficulty": "easy",
+  "language": "COBOL",
+  "domain": "enterprise",
+  "input_files": [
+    "samples\\cookie\\COOKIE-TEST.cob",
+    "samples\\cookie\\COOKIE.cob"
+  ],
+  "task_description": "Extract dependency graph, business rules, and data flow from COOKIE-TEST.cob. Analyze relationships across 2 files.",
+  "evaluation_criteria": {
+    "output_format": "json",
+    "required_fields": [
+      "dependencies",
+      "business_rules",
+      "data_flow"
+    ]
+  },
+  "reference_solution": null
+}

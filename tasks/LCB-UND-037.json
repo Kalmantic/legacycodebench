@@ -1,0 +1,20 @@
+{
+  "task_id": "LCB-UND-037",
+  "category": "understanding",
+  "difficulty": "medium",
+  "language": "COBOL",
+  "domain": "enterprise",
+  "input_files": [
+    "tools\\VFILES-virtual-heap-routines\\FSPLIT1.COB"
+  ],
+  "task_description": "Extract dependency graph, business rules, and data flow from FSPLIT1.COB.",
+  "evaluation_criteria": {
+    "output_format": "json",
+    "required_fields": [
+      "dependencies",
+      "business_rules",
+      "data_flow"
+    ]
+  },
+  "reference_solution": null
+}

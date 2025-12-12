@@ -1,0 +1,27 @@
+{
+  "task_id": "LCB-DOC-041",
+  "category": "documentation",
+  "difficulty": "medium",
+  "language": "COBOL",
+  "domain": "enterprise",
+  "input_files": [
+    "tools\\GCSORT\\tests\\src\\susesqf01b.cbl",
+    "tools\\GCSORT\\tests\\copy\\sinsqf01.cpy",
+    "tools\\GCSORT\\tests\\copy\\soutsqf01.cpy",
+    "tools\\GCSORT\\tests\\copy\\ssrtsqf01.cpy",
+    "tools\\GCSORT\\tests\\copy\\finsqf01.cpy",
+    "tools\\GCSORT\\tests\\copy\\foutsqf01.cpy"
+  ],
+  "task_description": "Generate comprehensive documentation for susesqf01b.cbl explaining business purpose, business rules, edge cases, and data structures. Analyze the main program and 5 related copybook(s).",
+  "evaluation_criteria": {
+    "required_sections": [
+      "business_purpose",
+      "business_rules",
+      "edge_cases",
+      "data_structures"
+    ],
+    "min_length_pages": 5,
+    "format": "markdown"
+  },
+  "reference_solution": null
+}

@@ -1,0 +1,20 @@
+{
+  "task_id": "LCB-UND-064",
+  "category": "understanding",
+  "difficulty": "medium",
+  "language": "COBOL",
+  "domain": "enterprise",
+  "input_files": [
+    "samples\\btc-rate\\parse-json.cob"
+  ],
+  "task_description": "Extract dependency graph, business rules, and data flow from parse-json.cob.",
+  "evaluation_criteria": {
+    "output_format": "json",
+    "required_fields": [
+      "dependencies",
+      "business_rules",
+      "data_flow"
+    ]
+  },
+  "reference_solution": null
+}

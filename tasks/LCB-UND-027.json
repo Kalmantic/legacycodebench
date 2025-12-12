@@ -1,0 +1,23 @@
+{
+  "task_id": "LCB-UND-027",
+  "category": "understanding",
+  "difficulty": "medium",
+  "language": "COBOL",
+  "domain": "banking",
+  "input_files": [
+    "sources\\cobol\\core\\ZBNKLOAD.cbl",
+    "sources\\copybook\\CBANKVAC.cpy",
+    "sources\\copybook\\CBANKVCS.cpy",
+    "sources\\copybook\\CBANKVAT.cpy"
+  ],
+  "task_description": "Extract dependency graph, business rules, and data flow from ZBNKLOAD.cbl. Analyze relationships across 4 files.",
+  "evaluation_criteria": {
+    "output_format": "json",
+    "required_fields": [
+      "dependencies",
+      "business_rules",
+      "data_flow"
+    ]
+  },
+  "reference_solution": null
+}

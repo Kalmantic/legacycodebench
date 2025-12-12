@@ -1,0 +1,35 @@
+{
+  "task_id": "LCB-T3-027",
+  "category": "documentation",
+  "difficulty": "hard",
+  "language": "COBOL",
+  "domain": "banking",
+  "input_files": [
+    "app\\cbl\\COCRDUPC.cbl",
+    "app\\cpy\\CVCRD01Y.cpy",
+    "app\\cpy\\COCOM01Y.cpy"
+  ],
+  "task_description": "Generate detailed technical documentation for COCRDUPC.cbl covering business purpose, all data structures, control flow, external dependencies, business rules, and error handling. Include analysis of 2 related copybook(s).",
+  "evaluation_criteria": {
+    "version": "2.0",
+    "tier": "T3",
+    "required_sections": [
+      "business_purpose",
+      "business_rules",
+      "data_structures",
+      "control_flow",
+      "file_operations",
+      "dependencies",
+      "error_handling"
+    ],
+    "format": "markdown",
+    "evaluation_method": "ground_truth_based",
+    "scoring_weights": {
+      "structural_completeness": 0.3,
+      "behavioral_fidelity": 0.35,
+      "semantic_quality": 0.25,
+      "traceability": 0.1
+    }
+  },
+  "reference_solution": null
+}

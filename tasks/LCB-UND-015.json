@@ -1,0 +1,22 @@
+{
+  "task_id": "LCB-UND-015",
+  "category": "understanding",
+  "difficulty": "easy",
+  "language": "COBOL",
+  "domain": "enterprise",
+  "input_files": [
+    "tools\\GCSORT\\tests\\src\\iosqbi01.cbl",
+    "tools\\GCSORT\\tests\\copy\\wkenvfield.cpy",
+    "tools\\GCSORT\\tests\\copy\\prenvfield2.cpy"
+  ],
+  "task_description": "Extract dependency graph, business rules, and data flow from iosqbi01.cbl. Analyze relationships across 3 files.",
+  "evaluation_criteria": {
+    "output_format": "json",
+    "required_fields": [
+      "dependencies",
+      "business_rules",
+      "data_flow"
+    ]
+  },
+  "reference_solution": null
+}

@@ -1,0 +1,20 @@
+{
+  "task_id": "LCB-UND-049",
+  "category": "understanding",
+  "difficulty": "medium",
+  "language": "COBOL",
+  "domain": "enterprise",
+  "input_files": [
+    "tools\\cobweb\\cobweb-gtk\\cobweb-periodic.cob"
+  ],
+  "task_description": "Extract dependency graph, business rules, and data flow from cobweb-periodic.cob.",
+  "evaluation_criteria": {
+    "output_format": "json",
+    "required_fields": [
+      "dependencies",
+      "business_rules",
+      "data_flow"
+    ]
+  },
+  "reference_solution": null
+}
