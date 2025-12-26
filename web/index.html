@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>LegacyCodeBench — Benchmark for AI Code Understanding</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Evaluating how well AI systems understand and document legacy COBOL code.">
+  <meta name="description" content="A benchmark for evaluating how well AI systems understand and document legacy COBOL code. 200 tasks, execution-based testing, ground-truth scoring.">
 
   <link rel="stylesheet" href="assets/styles.css">
   <script src="assets/leaderboard.js" defer></script>
@@ -29,11 +29,10 @@
   <main>
     <!-- Page Header -->
     <div class="page-header">
-      <h1 class="page-title">Can AI actually understand legacy code?</h1>
+      <h1 class="page-title">Can AI understand legacy code?</h1>
       <p class="page-description">
-        LegacyCodeBench evaluates how well AI systems can understand and document decades-old legacy software,
-        especially COBOL. Modernization fails not because conversion is hard, but because the business rules,
-        the intent, the quiet rules are buried inside the legacy code. You can't modernize what you don't understand.
+        LegacyCodeBench evaluates how well AI systems understand and document legacy COBOL.
+        We test whether documentation is accurate enough to regenerate working code—not just whether it looks plausible.
       </p>
     </div>
 
@@ -41,11 +40,11 @@
     <div class="stats-bar">
       <div class="stat">
         <div class="stat-value" id="total-models">-</div>
-        <div class="stat-label">Models Evaluated</div>
+        <div class="stat-label">Models Tested</div>
       </div>
       <div class="stat">
         <div class="stat-value">200</div>
-        <div class="stat-label">Total Tasks</div>
+        <div class="stat-label">Tasks</div>
       </div>
       <div class="stat">
         <div class="stat-value">4</div>
@@ -86,44 +85,48 @@
       </div>
 
       <div class="callout">
-        <strong>Scoring:</strong> LCB Score is weighted: 35% Behavioral Fidelity + 30% Structural Completeness + 25% Semantic Quality + 10% Traceability.
-        Tier scores show average LCB score for tasks at that difficulty level.
+        <strong>Scoring:</strong> LCB Score = 35% Behavioral Fidelity + 30% Structural Completeness + 25% Semantic Quality + 10% Traceability.
+        High BF means code generated from the AI's documentation produces correct outputs.
       </div>
     </section>
 
     <!-- Methodology -->
     <section id="methodology">
       <div class="section-header">
-        <h2 class="section-title">Scoring Methodology</h2>
+        <h2 class="section-title">What We Measure</h2>
       </div>
 
       <p class="page-description" style="margin-bottom: 24px;">
-        Four criteria, weighted by importance. Total LCB score ranges from 0–100.
+        If AI truly understands code, you should be able to recreate it from the documentation. That's what we test.
       </p>
 
       <div class="methodology">
         <div class="method-card">
           <h4>Behavioral Fidelity <span class="method-weight">35%</span></h4>
-          <p>Code generated from the documentation must produce identical outputs to the original COBOL program. This verifies the AI actually understood the logic, not just the syntax.</p>
+          <p>Code generated from the AI's documentation is compiled and executed. Outputs must match the original COBOL program exactly.</p>
         </div>
 
         <div class="method-card">
           <h4>Structural Completeness <span class="method-weight">30%</span></h4>
-          <p>All variables, control flow paths, and dependencies must be documented. We automatically extract these from the source and check coverage.</p>
+          <p>Static analysis extracts all variables, control flow paths, and dependencies. We check if the AI documented each one.</p>
         </div>
 
         <div class="method-card">
           <h4>Semantic Quality <span class="method-weight">25%</span></h4>
-          <p>A calibrated language model evaluates clarity, accuracy, and whether a developer could understand the code without reading the original.</p>
+          <p>A calibrated LLM evaluates whether a developer could understand the code without reading the original.</p>
         </div>
 
         <div class="method-card">
           <h4>Traceability <span class="method-weight">10%</span></h4>
-          <p>References to specific lines, variables, or sections must point to real code elements. Fabricated references are penalized.</p>
+          <p>Line references and code citations must point to real code elements. Fabricated references are penalized.</p>
         </div>
       </div>
 
       <div class="formula">LCB Score = (0.35 × BF) + (0.30 × SC) + (0.25 × SQ) + (0.10 × TR)</div>
+
+      <div class="callout" style="margin-top: 24px;">
+        Critical failures (hallucinated functions, incorrect business rules) result in a score of 0 for that task.
+      </div>
     </section>
 
     <!-- Get Started -->
@@ -132,27 +135,29 @@
         <h2 class="section-title">Run the Benchmark</h2>
       </div>
 
-      <p class="page-description" style="margin-bottom: 24px;">
-        Evaluate your model locally with a single command.
-      </p>
-
       <div class="formula" style="font-size: 13px; line-height: 1.8;">
 # Install
 pip install -e .
 
-# Run full benchmark (loads data, evaluates models, generates leaderboard)
-python -m legacycodebench run-full-benchmark --models "gpt-4o,claude-sonnet-4"
+# Set API keys
+export OPENAI_API_KEY="sk-..."
+export ANTHROPIC_API_KEY="sk-ant-..."
 
-# Or run interactively with guided prompts
-python -m legacycodebench interactive
-
-# Generate leaderboard from existing results
-python -m legacycodebench leaderboard --detailed</div>
+# Run
+legacycodebench interactive</div>
 
       <div class="callout" style="margin-top: 24px;">
-        To submit results to the leaderboard, open a pull request on
+        For Behavioral Fidelity testing, build the Docker image:
+        <br><br>
+        <code style="font-size: 12px;">cd docker/cobol-sandbox && docker build -t legacycodebench-cobol:latest .</code>
+        <br><br>
+        Without Docker, BF scores will be 0.
+      </div>
+
+      <div class="callout" style="margin-top: 16px;">
+        Submit results: Run the benchmark and open a PR on
         <a href="https://github.com/Kalmantic/legacycodebench" target="_blank" rel="noopener">GitHub</a>
-        with your evaluation output.
+        with your <code>results/</code> directory.
       </div>
     </section>
 
@@ -160,7 +165,7 @@ python -m legacycodebench leaderboard --detailed</div>
 
   <footer>
     <div class="footer-inner">
-      <span>© 2025 LegacyCodeBench · Kalmantic Applied AI Lab</span>
+      <span>LegacyCodeBench · Kalmantic AI Labs + Hexaview Tech</span>
       <div class="footer-links">
         <a href="https://github.com/Kalmantic/legacycodebench" target="_blank" rel="noopener">GitHub</a>
         <a href="#">Paper</a>
