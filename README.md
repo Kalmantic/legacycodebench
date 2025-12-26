@@ -147,4 +147,4 @@ Apache 2.0 (code) · CC-BY 4.0 (data)
 
 ---
 
-Built by [Kalmantic AI Labs](https://kalmantic.com) in partnership with [Hexaview Tech](https://hexaview.com)
+Built by [Kalmantic AI Labs](https://kalmantic.com) in partnership with [Hexaview Tech](https://hexaviewtech.com)
