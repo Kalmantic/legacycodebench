@@ -3,7 +3,7 @@
 Implements Section 5.5 of spec: Traceability Validation Automation
 Measures: Does documentation cite specific source code locations? Are citations valid?
 
-Formula: TR = (Claims_With_Valid_References / Total_Claims) × 100
+Formula: TR = (Claims_With_Valid_References / Total_Claims) x 100
 """
 
 import re
@@ -26,13 +26,26 @@ class TraceabilityEvaluator:
 
     def __init__(self):
         # Reference patterns per Section 5.5.1
+        # FIXED: More precise patterns to avoid matching natural language
         self.reference_patterns = {
             "line_number": r'lines?\s*(\d+)',
             "line_range": r'lines?\s*(\d+)\s*[-–to]+\s*(\d+)',
             "paragraph": r'paragraph\s+([A-Z0-9-]+)',
             "section": r'section\s+([A-Z0-9-]+)',
-            "variable": r'(?:field|variable|data)\s+([A-Z][A-Z0-9-]*)',
+            # FIXED: Variable pattern now requires:
+            # 1. Backtick-quoted names OR
+            # 2. COBOL-style names (uppercase with hyphens, min 3 chars)
+            # This avoids matching natural language like "data from", "data structures"
+            "variable": r'(?:field|variable|data\s+item|record)\s+`([A-Z][A-Z0-9-]+)`|(?:field|variable)\s+([A-Z][A-Z0-9-]{2,})',
             "code_excerpt": r'```(?:cobol)?\n(.*?)\n```'
+        }
+        
+        # Common English words to exclude from variable detection
+        self.excluded_words = {
+            'from', 'about', 'to', 'for', 'with', 'the', 'and', 'or', 
+            'is', 'are', 'was', 'were', 'be', 'been', 'being',
+            'structures', 'structure', 'integrity', 'processing',
+            'validation', 'handling', 'format', 'section', 'type'
         }
 
     def evaluate(self, submission_content: str, ground_truth: Dict,
@@ -98,6 +111,7 @@ class TraceabilityEvaluator:
         Extract all source code references from documentation.
 
         Per Section 5.5.1: Reference Extraction Methods
+        FIXED: More precise extraction to avoid false positives from natural language
         """
         references = []
 
@@ -105,6 +119,10 @@ class TraceabilityEvaluator:
             if ref_type == "code_excerpt":
                 # Handle code blocks specially
                 matches = re.finditer(pattern, content, re.DOTALL | re.MULTILINE)
+            elif ref_type == "variable":
+                # Variable pattern should NOT use IGNORECASE to avoid matching
+                # natural language like "data from", "data structures"
+                matches = re.finditer(pattern, content)
             else:
                 matches = re.finditer(pattern, content, re.IGNORECASE)
 
@@ -124,12 +142,28 @@ class TraceabilityEvaluator:
                         "original_text": match.group(0)
                     })
 
-                elif ref_type in ["paragraph", "section", "variable"]:
-                    references.append({
-                        "type": ref_type,
-                        "name": match.group(1),
-                        "original_text": match.group(0)
-                    })
+                elif ref_type in ["paragraph", "section"]:
+                    name = match.group(1)
+                    # Filter out common English words
+                    if name.lower() not in self.excluded_words:
+                        references.append({
+                            "type": ref_type,
+                            "name": name,
+                            "original_text": match.group(0)
+                        })
+
+                elif ref_type == "variable":
+                    # Variable pattern has two alternative groups
+                    name = match.group(1) or match.group(2)
+                    if name and name.lower() not in self.excluded_words:
+                        # Additional validation: COBOL variables typically have hyphens
+                        # or are at least 3 chars and uppercase
+                        if len(name) >= 3:
+                            references.append({
+                                "type": ref_type,
+                                "name": name,
+                                "original_text": match.group(0)
+                            })
 
                 elif ref_type == "code_excerpt":
                     references.append({

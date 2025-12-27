@@ -80,7 +80,7 @@ class ScoringSystem:
         """
         Calculate LCB v2.0 score per PRD Section 7.
 
-        Formula: LCB_Score = (0.30 × SC) + (0.35 × BF) + (0.25 × SQ) + (0.10 × TR)
+        Formula: LCB_Score = (0.30 x SC) + (0.35 x BF) + (0.25 x SQ) + (0.10 x TR)
 
         Critical failures result in automatic score of 0.
 
@@ -165,6 +165,19 @@ class ScoringSystem:
             failures.append("CF-06")
             logger.warning(f"CF-06: False positive (execution passes but {gap_markers} gap markers present)")
 
+        # FIXED (Issue 6.3): Added CF-07 and CF-08 detection
+        # CF-07: Unspecified file extension (references file without proper SELECT/ASSIGN)
+        if self._unspecified_file_extension(evaluation_result):
+            failures.append("CF-07")
+            logger.warning("CF-07: Unspecified file extension (file referenced without SELECT/ASSIGN)")
+
+        # CF-08: Wrong specification (documented behavior contradicts actual code)
+        sq_result = evaluation_result.get('semantic_quality', {})
+        semantic_accuracy = sq_result.get('semantic_accuracy', 100)
+        if semantic_accuracy < 50:  # Less than 50% accuracy = major contradiction
+            failures.append("CF-08")
+            logger.warning(f"CF-08: Wrong specification (semantic accuracy {semantic_accuracy}% < 50%)")
+
         if failures:
             logger.error(f"Total critical failures: {len(failures)}")
 
@@ -218,6 +231,27 @@ class ScoringSystem:
         if total_handlers > 0 and len(missing_handlers) / total_handlers > 0.5:
             return True
 
+        return False
+
+    def _unspecified_file_extension(self, result: Dict) -> bool:
+        """
+        Check if files are referenced without proper SELECT/ASSIGN (CF-07).
+        
+        ADDED (Issue 6.3): Detects when documentation references files
+        that aren't properly declared in the FILE CONTROL section.
+        """
+        sc = result.get('structural_completeness', {})
+        missing_elements = sc.get('missing_elements', {})
+        
+        # Check if file operations are missing file declarations
+        missing_files = missing_elements.get('file_operations', [])
+        ground_truth = result.get('ground_truth', {})
+        file_declarations = ground_truth.get('dependencies', {}).get('files', {}).get('files', [])
+        
+        # If there are missing file operations and no declarations, it's CF-07
+        if len(missing_files) > 0 and len(file_declarations) == 0:
+            return True
+        
         return False
 
     def aggregate_v2_results(self, results: List[Dict]) -> Dict:

@@ -28,10 +28,28 @@ except ImportError:
     ClientError = Exception  # Fallback for type hints
     NoCredentialsError = Exception
 
+try:
+    # Suppress deprecation warning for google.generativeai
+    # TODO: Migrate to google-genai package when stable
+    import warnings
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=FutureWarning)
+        import google.generativeai as genai
+    GOOGLE_AVAILABLE = True
+except ImportError:
+    GOOGLE_AVAILABLE = False
+
 from legacycodebench.config import AI_MODELS, DOCMOLT_CONFIG
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+# Custom Exceptions (Issue 4.3)
+class CredentialsError(Exception):
+    """Raised when API credentials are missing or invalid"""
+    pass
+
 
 # Token limits for different models (input context windows)
 MODEL_CONTEXT_LIMITS = {
@@ -42,6 +60,10 @@ MODEL_CONTEXT_LIMITS = {
     "transform": 8000,  # Deprecated, kept for backward compatibility
 }
 
+# FIXED (Issue 4.4): Normalize context to smallest for fair comparison
+# All models will use the same effective context to ensure fair evaluation
+NORMALIZED_CONTEXT_LIMIT = 8000  # 8k tokens - smallest common denominator
+
 # Approximate chars per token (conservative estimate for COBOL)
 CHARS_PER_TOKEN = 3.5
 
@@ -51,21 +73,35 @@ MAX_INPUT_RATIO = 0.6  # Use 60% of context for input, leave 40% for output
 
 class AIModelInterface:
     """Interface for AI models"""
-    
-    def __init__(self, model_id: str):
+
+    def __init__(self, model_id: str, mock_mode: bool = False):
         if model_id not in AI_MODELS:
             raise ValueError(f"Unknown model: {model_id}")
-        
+
         self.model_id = model_id
         self.config = AI_MODELS[model_id]
         self.provider = self.config["provider"]
-        
-        # Calculate max input chars based on model context window
+        self.mock_mode = mock_mode  # ADDED (Issue 4.3): Explicit mock mode flag
+
+        if mock_mode:
+            logger.warning(f"[MOCK MODE] ENABLED for {model_id} - Using fake responses for testing")
+
+        # ADDED (Issue 4.2): Enforce temperature = 0 for deterministic outputs
+        temperature = self.config.get("temperature", 0)
+        if temperature != 0:
+            logger.error(f"[CRITICAL] Model {model_id} has temperature={temperature}. "
+                        f"LegacyCodeBench requires temperature=0 for deterministic, reproducible results.")
+            raise ValueError(f"Invalid temperature {temperature} for {model_id}. Must be 0 for benchmark reproducibility.")
+
+        # FIXED (Issue 4.4): Calculate max input chars using NORMALIZED context
+        # This ensures fair comparison across models with different context windows
         model_name = self.config["model"]
-        context_limit = MODEL_CONTEXT_LIMITS.get(model_name, 8000)
-        max_input_tokens = int(context_limit * MAX_INPUT_RATIO)
+        model_context_limit = MODEL_CONTEXT_LIMITS.get(model_name, 8000)
+        # Use smaller of model limit or normalized limit for fairness
+        effective_context = min(model_context_limit, NORMALIZED_CONTEXT_LIMIT)
+        max_input_tokens = int(effective_context * MAX_INPUT_RATIO)
         self.max_input_chars = int(max_input_tokens * CHARS_PER_TOKEN)
-        logger.info(f"Model {model_id}: context={context_limit}, max_input_chars={self.max_input_chars}")
+        logger.info(f"Model {model_id}: raw_context={model_context_limit}, normalized={effective_context}, max_input_chars={self.max_input_chars}")
     
     def generate_documentation(self, task, input_files: List[Path]) -> str:
         """Generate documentation for a task"""
@@ -80,11 +116,19 @@ class AIModelInterface:
             return self._call_openai_with_continuation(prompt, is_documentation=True)
         elif self.provider == "anthropic" and ANTHROPIC_AVAILABLE and os.getenv("ANTHROPIC_API_KEY"):
             return self._call_anthropic_with_continuation(prompt, is_documentation=True)
+        elif self.provider == "google" and GOOGLE_AVAILABLE and os.getenv("GOOGLE_API_KEY"):
+            return self._call_google_gemini(prompt)
         elif self.provider == "aws":
             return self._call_aws_transform(prompt)
         else:
-            # Fallback: return mock response
-            return self._generate_mock_documentation(task)
+            # FIXED (Issue 4.3): Check mock mode before failing
+            if self.mock_mode:
+                logger.info(f"Mock mode: returning fake {self.provider} documentation")
+                return self._generate_mock_documentation(task)
+            raise CredentialsError(
+                f"No valid API credentials found for provider '{self.provider}'. "
+                f"Please set the appropriate API key environment variable or use --mock flag for testing."
+            )
     
     def generate_understanding(self, task, input_files: List[Path]) -> str:
         """Generate understanding output (JSON) for a task"""
@@ -102,12 +146,21 @@ class AIModelInterface:
         elif self.provider == "anthropic" and ANTHROPIC_AVAILABLE and os.getenv("ANTHROPIC_API_KEY"):
             response = self._call_anthropic_with_continuation(prompt, is_documentation=False)
             return self._extract_json(response)
+        elif self.provider == "google" and GOOGLE_AVAILABLE and os.getenv("GOOGLE_API_KEY"):
+            response = self._call_google_gemini(prompt)
+            return self._extract_json(response)
         elif self.provider == "aws":
             response = self._call_aws_transform(prompt)
             return self._extract_json(response)
         else:
-            # Fallback: return mock response
-            return self._generate_mock_understanding(task, input_files)
+            # FIXED (Issue 4.3): Check mock mode before failing
+            if self.mock_mode:
+                logger.info(f"Mock mode: returning fake {self.provider} understanding")
+                return self._generate_mock_understanding(task, input_files)
+            raise CredentialsError(
+                f"No valid API credentials found for provider '{self.provider}'. "
+                f"Please set the appropriate API key environment variable or use --mock flag for testing."
+            )
     
     def _read_input_files(self, input_files: List[Path]) -> str:
         """Read input files with size limit based on model context"""
@@ -160,7 +213,7 @@ Requirements:
 Output Format:
 - Use Markdown format with clear headers (##)
 - Include code snippets where helpful
-- Minimum 5 pages of detailed documentation
+- Minimum 2500 words (~10000 characters) of detailed documentation  # FIXED (Issue 4.1): Replaced vague "5 pages"
 - Be specific - cite actual variable names and conditions from the code
 
 IMPORTANT: Generate the COMPLETE documentation. Do not stop early or summarize. Include every business rule you find in the code.
@@ -213,8 +266,14 @@ Generate the JSON output now:"""
         """Call OpenAI API (single request)"""
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            logger.warning("OPENAI_API_KEY not set, using mock response")
-            return self._generate_mock_response()
+            # FIXED (Issue 4.3): Check mock mode before failing
+            if self.mock_mode:
+                logger.info("Mock mode: returning fake OpenAI response")
+                return self._generate_mock_response()
+            raise CredentialsError(
+                "OPENAI_API_KEY not set. Set the environment variable, use --mock flag for testing, or use a different model. "
+                "Example: export OPENAI_API_KEY=sk-..."
+            )
         
         try:
             client = openai.OpenAI(api_key=api_key)
@@ -233,8 +292,14 @@ Generate the JSON output now:"""
         """Call OpenAI API with automatic continuation for long outputs"""
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            logger.warning("OPENAI_API_KEY not set, using mock response")
-            return self._generate_mock_response()
+            # FIXED (Issue 4.3): Check mock mode before failing
+            if self.mock_mode:
+                logger.info("Mock mode: returning fake OpenAI response")
+                return self._generate_mock_response()
+            raise CredentialsError(
+                "OPENAI_API_KEY not set. Set the environment variable, use --mock flag for testing, or use a different model. "
+                "Example: export OPENAI_API_KEY=sk-..."
+            )
         
         try:
             client = openai.OpenAI(api_key=api_key)
@@ -284,8 +349,14 @@ Generate the JSON output now:"""
         """Call Anthropic API (single request)"""
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
-            logger.warning("ANTHROPIC_API_KEY not set, using mock response")
-            return self._generate_mock_response()
+            # FIXED (Issue 4.3): Check mock mode before failing
+            if self.mock_mode:
+                logger.info("Mock mode: returning fake Anthropic response")
+                return self._generate_mock_response()
+            raise CredentialsError(
+                "ANTHROPIC_API_KEY not set. Set the environment variable, use --mock flag for testing, or use a different model. "
+                "Example: export ANTHROPIC_API_KEY=sk-ant-..."
+            )
         
         try:
             client = anthropic.Anthropic(api_key=api_key)
@@ -304,8 +375,14 @@ Generate the JSON output now:"""
         """Call Anthropic API with automatic continuation for long outputs"""
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
-            logger.warning("ANTHROPIC_API_KEY not set, using mock response")
-            return self._generate_mock_response()
+            # FIXED (Issue 4.3): Check mock mode before failing
+            if self.mock_mode:
+                logger.info("Mock mode: returning fake Anthropic response")
+                return self._generate_mock_response()
+            raise CredentialsError(
+                "ANTHROPIC_API_KEY not set. Set the environment variable, use --mock flag for testing, or use a different model. "
+                "Example: export ANTHROPIC_API_KEY=sk-ant-..."
+            )
         
         try:
             client = anthropic.Anthropic(api_key=api_key)
@@ -351,11 +428,59 @@ Generate the JSON output now:"""
             logger.error(f"Anthropic API error: {e}, using mock response")
             return self._generate_mock_response()
     
+    def _call_google_gemini(self, prompt: str) -> str:
+        """Call Google Gemini API"""
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            # Check mock mode before failing
+            if self.mock_mode:
+                logger.info("Mock mode: returning fake Google Gemini response")
+                return self._generate_mock_response()
+            raise CredentialsError(
+                "GOOGLE_API_KEY not set. Set the environment variable, use --mock flag for testing, or use a different model. "
+                "Example: export GOOGLE_API_KEY=AIza..."
+            )
+        
+        try:
+            # Configure Gemini
+            genai.configure(api_key=api_key)
+            
+            # Create model with generation config
+            generation_config = {
+                "temperature": self.config["temperature"],
+                "max_output_tokens": self.config["max_tokens"],
+            }
+            
+            model = genai.GenerativeModel(
+                model_name=self.config["model"],
+                generation_config=generation_config
+            )
+            
+            logger.info(f"Calling Google Gemini: model={self.config['model']}")
+            
+            # Generate content
+            response = model.generate_content(prompt)
+            
+            # Extract text from response
+            result_text = response.text
+            logger.info(f"Gemini response: {len(result_text)} chars")
+            
+            return result_text
+            
+        except Exception as e:
+            logger.error(f"Google Gemini API error: {e}, using mock response")
+            return self._generate_mock_response()
+    
     def _call_aws_transform(self, prompt: str) -> str:
         """Call AWS Bedrock Converse API for code analysis"""
         if not AWS_AVAILABLE:
-            logger.warning("boto3 not available, using mock response")
-            return self._generate_mock_response()
+            # FIXED (Issue 4.3): Check mock mode before failing
+            if self.mock_mode:
+                logger.info("Mock mode: returning fake AWS response")
+                return self._generate_mock_response()
+            raise CredentialsError(
+                "boto3 not available. Install AWS SDK: pip install boto3 botocore"
+            )
 
         # Check for AWS credentials
         region = os.getenv("AWS_REGION", self.config.get("region", "us-east-1"))
@@ -399,19 +524,24 @@ Generate the JSON output now:"""
             return output_text
 
         except NoCredentialsError:
-            logger.error("AWS credentials not found. Please configure AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY")
-            logger.info("Using mock response as fallback")
-            return self._generate_mock_response()
+            # FIXED (Issue 4.3): Check mock mode before failing
+            if self.mock_mode:
+                logger.info("Mock mode: returning fake AWS response (no credentials)")
+                return self._generate_mock_response()
+            raise CredentialsError(
+                "AWS credentials not found. Please configure AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY. "
+                "Example: export AWS_ACCESS_KEY_ID=AKIA... or use --mock flag for testing"
+            )
         except ClientError as e:
             error_code = e.response.get('Error', {}).get('Code', 'Unknown')
             error_msg = e.response.get('Error', {}).get('Message', str(e))
             logger.error(f"AWS Bedrock API error [{error_code}]: {error_msg}")
-            logger.info("Using mock response as fallback")
-            return self._generate_mock_response()
+            # Re-raise API errors (not credentials issue)
+            raise
         except Exception as e:
             logger.error(f"Unexpected error calling AWS Bedrock: {e}")
-            logger.info("Using mock response as fallback")
-            return self._generate_mock_response()
+            # Re-raise unexpected errors
+            raise
     
     def _extract_json(self, text: str) -> str:
         """Extract JSON from text response"""
@@ -419,10 +549,39 @@ Generate the JSON output now:"""
         import re
         json_match = re.search(r'\{.*\}', text, re.DOTALL)
         if json_match:
-            return json_match.group(0)
+            json_str = json_match.group(0)
+            # FIXED (Issue 4.5): Validate JSON schema
+            if self._validate_understanding_schema(json_str):
+                return json_str
+            else:
+                logger.warning("[OUTPUT VALIDATION] JSON structure incomplete, returning as-is")
         
         # If no JSON found, return as-is (evaluator will handle)
         return text
+
+    def _validate_understanding_schema(self, json_str: str) -> bool:
+        """
+        Validate understanding output schema (Issue 4.5).
+        
+        Returns True if JSON has required structure.
+        """
+        try:
+            import json
+            data = json.loads(json_str)
+            
+            # Required top-level fields for understanding output
+            required_fields = ["dependencies", "business_rules", "data_flow"]
+            has_required = all(field in data for field in required_fields)
+            
+            if not has_required:
+                missing = [f for f in required_fields if f not in data]
+                logger.warning(f"[SCHEMA] Understanding output missing fields: {missing}")
+                return False
+            
+            return True
+        except json.JSONDecodeError:
+            logger.warning("[SCHEMA] Failed to parse JSON from AI output")
+            return False
     
     def _generate_mock_documentation(self, task) -> str:
         """Generate mock documentation"""
@@ -539,8 +698,8 @@ class DocMoltInterface(AIModelInterface):
     (DocumentationEvaluatorV2) as other models.
     """
 
-    def __init__(self, model_id: str):
-        super().__init__(model_id)
+    def __init__(self, model_id: str, mock_mode: bool = False):
+        super().__init__(model_id, mock_mode)
         self.api_endpoint = self.config["api_endpoint"]
         self.docmolt_model = self.config["model"]
         self.artefact = self.config.get("artefact", DOCMOLT_CONFIG["default_artefact"])
@@ -680,7 +839,7 @@ class DocMoltInterface(AIModelInterface):
         return json.dumps(result, indent=2)
 
 
-def get_ai_model(model_id: str) -> AIModelInterface:
+def get_ai_model(model_id: str, mock_mode: bool = False) -> AIModelInterface:
     """
     Get AI model interface - supports OpenAI, Anthropic, DocMolt, AWS
 
@@ -689,6 +848,10 @@ def get_ai_model(model_id: str) -> AIModelInterface:
     - anthropic → AIModelInterface (Anthropic Claude models)
     - docmolt → DocMoltInterface (DocMolt documentation service)
     - aws → AIModelInterface (AWS Transform)
+
+    Args:
+        model_id: Model identifier from AI_MODELS config
+        mock_mode: If True, uses mock responses instead of API calls (Issue 4.3)
     """
     if model_id not in AI_MODELS:
         raise ValueError(f"Unknown model: {model_id}")
@@ -698,7 +861,7 @@ def get_ai_model(model_id: str) -> AIModelInterface:
 
     # Route to appropriate interface
     if provider == "docmolt":
-        return DocMoltInterface(model_id)
+        return DocMoltInterface(model_id, mock_mode=mock_mode)
     else:
-        return AIModelInterface(model_id)
+        return AIModelInterface(model_id, mock_mode=mock_mode)
 

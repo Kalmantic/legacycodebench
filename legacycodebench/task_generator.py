@@ -34,9 +34,13 @@ class TaskCandidate:
         self.difficulty_level = TASK_SELECTION_CONFIG["task_distribution"]["tier_to_difficulty"].get(tier, "medium")
         self.domain = "enterprise"
         self.interestingness_score = 0.0
+        # FIXED (Issue 2.4): Added richer task metadata
+        self.expected_challenges = []  # List of expected challenges for this task
+        self.baseline_score = None  # Expected baseline score (for validation)
     
     def __repr__(self):
         return f"TaskCandidate({self.main_file.name}, {self.tier}, {self.difficulty_level}, score={self.interestingness_score:.1f})"
+
 
 
 class TaskCandidateGenerator:
@@ -105,31 +109,52 @@ class TaskCandidateGenerator:
         return all_candidates
     
     def _determine_tier(self, loc: int, analysis: Dict) -> str:
-        """Determine complexity tier based on LOC and code analysis"""
-        # Primary: LOC-based tier assignment (per PRD Section 8)
-        if loc <= 500:
-            base_tier = "T1"
-        elif loc <= 1000:
-            base_tier = "T2"
-        elif loc <= 2000:
-            base_tier = "T3"
+        """
+        Determine complexity tier using multi-factor scoring (FIXED Issue 1.3/2.1).
+        
+        Uses composite score instead of LOC-only assignment.
+        A 200-line CICS program is now correctly classified as higher tier.
+        
+        Scoring factors:
+        - EXEC CICS statements: +15 each
+        - EXEC SQL statements: +12 each  
+        - GO TO statements: +3 each (max 30)
+        - External CALL statements: +5 each
+        - LOC baseline: +5/10/20 based on size
+        """
+        score = 0
+        
+        # CICS/DB2 indicators (most important for complexity)
+        exec_cics = analysis.get("exec_cics_count", 0)
+        exec_sql = analysis.get("exec_sql_count", 0)
+        score += exec_cics * 15
+        score += exec_sql * 12
+        
+        # GO TO density (indicates spaghetti code)
+        goto_count = analysis.get("goto_count", 0)
+        score += min(goto_count * 3, 30)  # Cap at 30 points
+        
+        # External calls (indicates integration complexity)
+        calls = analysis.get("dependencies", {}).get("total", 0)
+        score += calls * 5
+        
+        # LOC-based baseline (secondary factor)
+        if loc > 2000:
+            score += 20
+        elif loc > 1000:
+            score += 10
+        elif loc > 500:
+            score += 5
+        
+        # Tier assignment based on composite score
+        if score >= 50:
+            return "T4"  # Enterprise: CICS/DB2, heavy GO TO, or very large
+        elif score >= 30:
+            return "T3"  # Complex: Multiple calls, moderate GO TO
+        elif score >= 15:
+            return "T2"  # Moderate: Some complexity indicators
         else:
-            base_tier = "T4"
-        
-        # Secondary: Complexity adjustments
-        # Upgrade tier if code has complex patterns
-        complexity_score = analysis.get("complexity_score", 0)
-        has_goto = analysis.get("goto_count", 0) > 5
-        has_external_calls = analysis.get("dependencies", {}).get("total", 0) > 3
-        
-        if base_tier == "T1" and (has_goto or has_external_calls):
-            return "T2"
-        elif base_tier == "T2" and has_goto and has_external_calls:
-            return "T3"
-        elif base_tier == "T3" and has_goto and complexity_score > 80:
-            return "T4"
-        
-        return base_tier
+            return "T1"  # Basic: Simple linear flow
     
     def select_best_tasks(self, candidates: List[TaskCandidate], 
                          total_tasks: int = 200) -> List[TaskCandidate]:
@@ -272,19 +297,20 @@ class TaskCandidateGenerator:
         
         return related[:5]  # Max 5 related files total
     
-    def _find_file_in_dataset(self, dataset_dir: Path, filename: str, 
+    def _find_file_in_dataset(self, dataset_dir: Path, filename: str,
                              extensions: List[str]) -> Path:
         """Find a file by name (without extension) in dataset"""
+        # FIXED (Issue 2.2): Sort for deterministic file discovery
         for ext in extensions:
             # Try exact match
-            for file_path in dataset_dir.rglob(f"{filename}{ext}"):
+            for file_path in sorted(dataset_dir.rglob(f"{filename}{ext}"), key=str):
                 return file_path
-            
+
             # Try case-insensitive match
-            for file_path in dataset_dir.rglob(f"*{ext}"):
+            for file_path in sorted(dataset_dir.rglob(f"*{ext}"), key=str):
                 if file_path.stem.upper() == filename.upper():
                     return file_path
-        
+
         return None
     
     def _get_dataset_dir(self, file_path: Path) -> Path:
@@ -296,10 +322,11 @@ class TaskCandidateGenerator:
     
     def _find_cobol_files(self, dataset_dir: Path) -> List[Path]:
         """Find all COBOL files in dataset"""
+        # FIXED (Issue 2.2): Sort for deterministic task selection
         cobol_files = []
         for ext in ["*.cbl", "*.cob", "*.COB", "*.CBL"]:
             cobol_files.extend(dataset_dir.rglob(ext))
-        return cobol_files
+        return sorted(cobol_files, key=str)
     
     def _get_analyzer(self, file_path: Path) -> COBOLFileAnalyzer:
         """Get cached analyzer or create new one"""

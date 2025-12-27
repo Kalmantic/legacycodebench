@@ -66,22 +66,21 @@ function renderRank(rank) {
 function renderRow(entry, rank) {
   const lcbScore = formatScore(entry.avg_lcb_score);
   const sc = formatScore(entry.avg_sc);
+  const dq = formatScore(entry.avg_sq || entry.avg_dq || 0); // DQ (was SQ)
   const bf = formatScore(entry.avg_bf);
-  const sq = formatScore(entry.avg_sq);
-  const tr = formatScore(entry.avg_tr);
 
   // Get tier scores
-  const t1Score = entry.by_tier.T1.avg_score > 0
+  const t1Score = entry.by_tier && entry.by_tier.T1 && entry.by_tier.T1.avg_score > 0
     ? formatScore(entry.by_tier.T1.avg_score)
     : '-';
-  const t4Score = entry.by_tier.T4.avg_score > 0
+  const t4Score = entry.by_tier && entry.by_tier.T4 && entry.by_tier.T4.avg_score > 0
     ? formatScore(entry.by_tier.T4.avg_score)
     : '-';
 
   // Determine color classes
   const lcbClass = getScoreClass(entry.avg_lcb_score);
-  const t1Class = entry.by_tier.T1.avg_score > 0 ? getScoreClass(entry.by_tier.T1.avg_score) : '';
-  const t4Class = entry.by_tier.T4.avg_score > 0 ? getScoreClass(entry.by_tier.T4.avg_score) : '';
+  const t1Class = entry.by_tier && entry.by_tier.T1 && entry.by_tier.T1.avg_score > 0 ? getScoreClass(entry.by_tier.T1.avg_score) : '';
+  const t4Class = entry.by_tier && entry.by_tier.T4 && entry.by_tier.T4.avg_score > 0 ? getScoreClass(entry.by_tier.T4.avg_score) : '';
 
   return `
     <tr>
@@ -90,13 +89,12 @@ function renderRow(entry, rank) {
         <div class="model-name">${formatModelName(entry.model)}</div>
         <div class="model-org">${getOrg(entry.model)}</div>
       </td>
-      <td class="center"><span class="score-primary ${lcbClass}">${lcbScore}</span></td>
+      <td class="center"><span class="score-primary ${lcbClass}">${lcbScore}%</span></td>
       <td class="num">${sc}%</td>
+      <td class="num">${dq}%</td>
       <td class="num">${bf}%</td>
-      <td class="num">${sq}%</td>
-      <td class="num">${tr}%</td>
-      <td class="num"><span class="${t1Class}">${t1Score}${t1Score !== '-' ? '' : ''}</span></td>
-      <td class="num"><span class="${t4Class}">${t4Score}${t4Score !== '-' ? '' : ''}</span></td>
+      <td class="num"><span class="${t1Class}">${t1Score}${t1Score !== '-' ? '%' : ''}</span></td>
+      <td class="num"><span class="${t4Class}">${t4Score}${t4Score !== '-' ? '%' : ''}</span></td>
     </tr>
   `;
 }
@@ -136,7 +134,7 @@ function showError(message) {
   if (tbody) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="9" style="text-align: center; padding: 2rem; color: var(--text-light);">
+        <td colspan="8" style="text-align: center; padding: 2rem; color: var(--text-light);">
           ${message}
         </td>
       </tr>
@@ -150,7 +148,7 @@ function showLoading() {
   if (tbody) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="9" style="text-align: center; padding: 2rem; color: var(--text-light);">
+        <td colspan="8" style="text-align: center; padding: 2rem; color: var(--text-light);">
           Loading results...
         </td>
       </tr>

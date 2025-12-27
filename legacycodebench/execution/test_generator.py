@@ -329,41 +329,81 @@ class TestGenerator:
         """
         # Remove PIC/PICTURE prefix if present
         picture = re.sub(r'^PIC(?:TURE)?\s+', '', picture, flags=re.IGNORECASE).strip()
+        
+        # Remove trailing period (common in COBOL)
+        picture = picture.rstrip('.')
 
-        # Numeric: 9, S9, V, etc.
-        numeric_pattern = r'^(S)?9+(\((\d+)\))?(?:V9+(\((\d+)\))?)?$'
-        match = re.match(numeric_pattern, picture)
-
+        # Numeric patterns: 9, S9, V, Z (edited numeric), etc.
+        # Pattern: [S]9[(n)] or [S]9...9 with optional V and decimal places
+        # Also handles Z (zero-suppressed), + (sign), - (sign), . (decimal)
+        
+        # First try standard numeric: S9(5)V99 or S999V99
+        numeric_pattern = r'^(S)?(?:9+|\d*9\(\d+\))(?:V(?:9+|\d*9\(\d+\)))?$'
+        # Clean picture for analysis (remove display chars like Z, +, -, .)
+        clean_pic = re.sub(r'[Z\+\-\.\$\,]', '9', picture.upper())
+        
+        match = re.match(numeric_pattern, clean_pic)
         if match:
-            signed = match.group(1) is not None
-            integer_digits = int(match.group(3)) if match.group(3) else 1
-            decimal_digits = int(match.group(5)) if match.group(5) else 0
+            signed = match.group(1) is not None or '+' in picture or '-' in picture
+            
+            # Count integer and decimal digits
+            if 'V' in clean_pic.upper():
+                parts = clean_pic.upper().split('V')
+                integer_part = parts[0].replace('S', '')
+                decimal_part = parts[1] if len(parts) > 1 else ''
+            else:
+                integer_part = clean_pic.replace('S', '')
+                decimal_part = ''
+            
+            # Parse 9(n) or count 9s
+            int_match = re.search(r'9\((\d+)\)', integer_part)
+            if int_match:
+                integer_digits = int(int_match.group(1))
+            else:
+                integer_digits = integer_part.count('9')
+            
+            dec_match = re.search(r'9\((\d+)\)', decimal_part)
+            if dec_match:
+                decimal_digits = int(dec_match.group(1))
+            else:
+                decimal_digits = decimal_part.count('9')
 
             # Calculate range
-            max_val = (10 ** integer_digits) - 1
-            min_val = -(10 ** integer_digits) + 1 if signed else 0
+            if integer_digits > 0:
+                max_val = (10 ** integer_digits) - 1
+                min_val = -(10 ** integer_digits) + 1 if signed else 0
+                return ("numeric", min_val, max_val)
 
-            # For now, ignore decimals (treat as integers)
-            return ("numeric", min_val, max_val)
-
-        # Alphanumeric: X
-        alpha_pattern = r'^X+(\((\d+)\))?$'
-        match = re.match(alpha_pattern, picture)
-
+        # Alphanumeric: X or X(n)
+        alpha_pattern = r'^X+(?:\((\d+)\))?$'
+        match = re.match(alpha_pattern, picture.upper())
         if match:
-            length = int(match.group(2)) if match.group(2) else 1
+            if match.group(1):
+                length = int(match.group(1))
+            else:
+                length = picture.upper().count('X')
             return ("alphanumeric", 0, length)  # min=0, max=length
 
-        # Alphabetic: A
-        alpha_pattern = r'^A+(\((\d+)\))?$'
-        match = re.match(alpha_pattern, picture)
-
+        # Alphabetic: A or A(n)
+        alpha_pattern = r'^A+(?:\((\d+)\))?$'
+        match = re.match(alpha_pattern, picture.upper())
         if match:
-            length = int(match.group(2)) if match.group(2) else 1
-            return ("alphanumeric", 0, length)
+            if match.group(1):
+                length = int(match.group(1))
+            else:
+                length = picture.upper().count('A')
+            return ("alphabetic", 0, length)
 
-        # Unable to parse
-        logger.warning(f"Unable to parse PICTURE clause: {picture}")
+        # Edited numeric patterns (Z, $, etc.) - treat as numeric display
+        if re.match(r'^[Z9\$\+\-\.\,\(\)]+$', picture.upper()):
+            # Count significant digits
+            digit_count = sum(1 for c in picture.upper() if c in 'Z9')
+            if digit_count > 0:
+                max_val = (10 ** digit_count) - 1
+                return ("numeric", 0, max_val)
+
+        # Unable to parse - downgrade to debug level to reduce noise
+        logger.debug(f"Unable to parse PICTURE clause: {picture}")
         return (None, None, None)
 
     def _generate_inputs_for_condition(self, condition: str, should_be_true: bool) -> Dict[str, Any]:
