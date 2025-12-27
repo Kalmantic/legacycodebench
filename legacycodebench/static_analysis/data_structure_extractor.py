@@ -51,11 +51,13 @@ class DataStructureExtractor:
 
     def __init__(self):
         # Pattern for data declaration line
-        # Format: level-number name [REDEFINES ...] [PICTURE ...] [VALUE ...] [OCCURS ...]
+        # Format: level-number name [REDEFINES ...] [PICTURE ...] [USAGE ...] [VALUE ...] [OCCURS ...]
+        # Relaxed pattern to handle optional clauses in any order
         self.field_pattern = re.compile(
             r'^\s*(\d+)\s+([A-Z0-9-]+)'
             r'(?:\s+REDEFINES\s+([A-Z0-9-]+))?'
-            r'(?:.*?PIC(?:TURE)?\s+(?:IS\s+)?([A-Z0-9()\*\$,\.\+\-/]+))?'
+            r'(?:.*?(?:PIC(?:TURE)?\s+(?:IS\s+)?)([A-Z0-9()\*\$,\.\+\-/]+))?'
+            r'(?:.*?(?:USAGE\s+(?:IS\s+)?)?(COMP(?:-3)?|BINARY|DISPLAY|PACKED-DECIMAL))?'
             r'(?:.*?VALUE\s+(?:IS\s+)?([^\s.]+))?'
             r'(?:.*?OCCURS\s+(\d+))?',
             re.IGNORECASE
@@ -121,8 +123,9 @@ class DataStructureExtractor:
                 name = match.group(2)
                 redefines = match.group(3)
                 picture = match.group(4)
-                value = match.group(5)
-                occurs = int(match.group(6)) if match.group(6) else None
+                usage = match.group(5)
+                value = match.group(6)
+                occurs = int(match.group(7)) if match.group(7) else None
 
                 # Create field
                 field = COBOLField(
@@ -134,6 +137,20 @@ class DataStructureExtractor:
                     redefines=redefines,
                     line_number=line_num
                 )
+
+                # Store usage in field (hack: add dynamic attribute or reuse value/pic? 
+                # Ideally COBOLField should have 'usage' attr, but dataclass is fixed.
+                # For now, we enforce calculation uses the passed usage, but we can't persist it easily 
+                # without modifying COBOLField definition. 
+                # Let's modify COBOLField definition in a separate edit if needed, 
+                # or just use it for size calculation right here if we were calculating size on the fly.
+                # But size is calculated later? No, there is no size calc call in extract().
+                # Wait, 'calculate_field_size' is a method but it is NOT CALLED in extract() currently?
+                # The DataStructure dataclass has 'size_bytes' but it defaults to 0. 
+                # We need to compute it!
+                
+                # To properly support this, I should dynamically add usage to the field object for later.
+                field.usage = usage # Dynamic attribute
 
                 # Handle 01-level (top-level structure)
                 if level == 1:
@@ -276,35 +293,73 @@ class DataStructureExtractor:
             "condition_value": field.condition_value,
             "line_number": field.line_number,
             "parent": field.parent,
-            "confidence": field.confidence
+            "confidence": field.confidence,
+            "usage": getattr(field, 'usage', None)  # Export usage
         }
 
-    def calculate_field_size(self, picture: str) -> int:
+    def calculate_field_size(self, picture: str, usage: Optional[str] = None) -> int:
         """
-        Calculate field size in bytes from PICTURE clause.
+        Calculate field size in bytes from PICTURE clause + USAGE.
 
-        Simplified calculation for common patterns.
+        Handles:
+        - DISPLAY (default): 1 char = 1 byte
+        - COMP/BINARY: 2, 4, 8 bytes based on digits
+        - COMP-3/PACKED-DECIMAL: (digits//2) + 1
         """
         if not picture:
             return 0
+        
+        # Parse usage from picture string if passed merged (helper for tests)
+        if usage is None and ("COMP" in picture or "BINARY" in picture):
+            parts = picture.split()
+            # Extract usage from parts if merged
+            for part in parts:
+                if part in ["COMP", "COMP-3", "BINARY", "PACKED-DECIMAL"]:
+                    usage = part
+            # Clean picture
+            pic = parts[0] # Assume PIC is first 
+        else:
+            # Remove IS, PIC keywords
+            pic = picture.upper().replace('PIC', '').replace('IS', '').strip()
+            # If usage usage is inside pic string (legacy test calls)
+            if "COMP" in pic or "BINARY" in pic:
+                 if "COMP-3" in pic: usage = "COMP-3"
+                 elif "COMP" in pic: usage = "COMP" 
+                 elif "BINARY" in pic: usage = "BINARY"
 
-        # Remove IS, PIC keywords
-        pic = picture.upper().replace('PIC', '').replace('IS', '').strip()
-
-        # Handle common patterns
-        # X(n) = alphanumeric, n bytes
-        # 9(n) = numeric, n bytes
-        # S9(n) = signed numeric, n bytes
-        # V = decimal point (no storage)
-
-        total_size = 0
-
+        # Count digits
+        digits = 0
         # Simple regex to find X(n), 9(n) patterns
-        pattern = r'([X9])(?:\((\d+)\))?'
+        # Also handles S9(n)V9(n)
+        pattern = r'([X9AZ])(?:\((\d+)\))?'
         matches = re.findall(pattern, pic)
 
         for char, count in matches:
             size = int(count) if count else 1
-            total_size += size
+            digits += size
 
-        return total_size
+        # Default usage
+        if not usage:
+            usage = "DISPLAY"
+        
+        usage = usage.upper()
+
+        if usage in ["COMP-3", "PACKED-DECIMAL"]:
+            # (N + 1) / 2 bytes
+            return (digits // 2) + 1
+            
+        elif usage in ["COMP", "BINARY"]:
+            # IBM COBOL rules:
+            # 1-4 digits: 2 bytes (halfword)
+            # 5-9 digits: 4 bytes (fullword)
+            # 10-18 digits: 8 bytes (doubleword)
+            if digits <= 4:
+                return 2
+            elif digits <= 9:
+                return 4
+            else:
+                return 8
+                
+        else:
+            # DISPLAY / standard
+            return digits

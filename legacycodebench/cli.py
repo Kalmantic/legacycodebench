@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 from legacycodebench.config import (
     TASKS_DIR, DATASETS_DIR, SUBMISSIONS_DIR, RESULTS_DIR,
+    GROUND_TRUTH_CACHE_DIR,  # Unified cache location
     get_config
 )
 from legacycodebench.tasks import Task, TaskManager
@@ -35,10 +36,11 @@ from legacycodebench.ai_integration import get_ai_model
 
 
 @click.group()
-@click.version_option(version="2.0.0")
+@click.version_option(version="2.3.1")
 def main():
     """LegacyCodeBench - Benchmark for AI systems on legacy code understanding
 
+    v2.3.1: Deterministic evaluation with structural, documentation, and behavioral fidelity
     v2.0: Ground truth-based evaluation with behavioral fidelity testing
     """
     pass
@@ -51,7 +53,7 @@ def load_datasets():
     loader = DatasetLoader()
     loaded = loader.load_all_datasets()
     
-    click.echo(f"\n✓ Loaded {len(loaded)} datasets:")
+    click.echo(f"\n[OK] Loaded {len(loaded)} datasets:")
     for source_id, path in loaded.items():
         stats = loader.get_dataset_stats(path)
         click.echo(f"  {source_id}: {stats['total_files']} files, {stats['total_lines']} lines")
@@ -65,7 +67,7 @@ def create_tasks():
     tasks = manager.create_tasks_from_datasets()
     manager.save_all(tasks)
     
-    click.echo(f"\n✓ Created {len(tasks)} tasks:")
+    click.echo(f"\n[OK] Created {len(tasks)} tasks:")
     for task in tasks:
         click.echo(f"  {task.task_id}: {task.category} - {task.difficulty}")
 
@@ -77,9 +79,9 @@ def create_tasks():
 @click.option("--submitter-name", default="Unknown", help="Submitter name")
 @click.option("--submitter-model", default="unknown", help="Model name")
 @click.option("--submitter-category", default="verified", help="Category (bash, verified, full, human+ai)")
-@click.option("--evaluator", default="v2", type=click.Choice(["v1", "v2"]),
-              help="Evaluator version (default: v2 - recommended)")
-@click.option("--enable-execution", is_flag=True, default=True,
+@click.option("--evaluator", default="v2.3.1", type=click.Choice(["v1", "v2", "v2.3.1"]),
+              help="Evaluator version (default: v2.3.1 - deterministic)")
+@click.option("--enable-execution", is_flag=True, default=False,
               help="Enable behavioral fidelity testing (v2 only, requires Docker)")
 @click.option("--judge-model", default="gpt-4o", help="LLM judge model for semantic quality (v2 only)")
 def evaluate(task_id: str, submission: Path, output: Optional[Path],
@@ -87,7 +89,8 @@ def evaluate(task_id: str, submission: Path, output: Optional[Path],
              evaluator: str, enable_execution: bool, judge_model: str):
     """Evaluate a submission for a task
 
-    v2.0 (default): Ground truth-based evaluation with behavioral fidelity testing
+    v2.3.1 (default): Deterministic evaluation with SC/DQ/BF (no LLM-as-judge)
+    v2.0: Ground truth-based evaluation with LLM-as-judge
     v1.0 (legacy): Reference-based ROUGE/BLEU evaluation
     """
     click.echo(f"Evaluating {task_id} with {evaluator.upper()} evaluator...")
@@ -96,14 +99,68 @@ def evaluate(task_id: str, submission: Path, output: Optional[Path],
     try:
         task = Task.load(task_id, TASKS_DIR)
     except FileNotFoundError:
-        click.echo(f"✗ Task {task_id} not found. Run 'legacycodebench create-tasks' first.")
+        click.echo(f"[ERROR] Task {task_id} not found. Run 'legacycodebench create-tasks' first.")
         return
 
     # Load submission
     submission_path = Path(submission)
 
     # Select evaluator based on version and category
-    if evaluator == "v2":
+    if evaluator == "v2.3.1":
+        # v2.3.1 evaluator (deterministic, no LLM-as-judge)
+        click.echo(f"  Using V2.3.1 Evaluator (Deterministic)")
+        
+        try:
+            from legacycodebench.evaluators_v213 import EvaluatorV213
+            from legacycodebench.static_analysis.ground_truth_generator import GroundTruthGenerator
+            
+            # Load ground truth
+            gt_gen = GroundTruthGenerator()
+            input_files = task.get_input_files_absolute()
+            gt = gt_gen.generate(input_files, cache_dir=GROUND_TRUTH_CACHE_DIR)
+            
+            # Read documentation
+            with open(submission_path, 'r', encoding='utf-8') as f:
+                documentation = f.read()
+            
+            # Read source code
+            source_code = ""
+            for f in input_files:
+                with open(f, 'r', encoding='utf-8', errors='ignore') as fp:
+                    source_code += fp.read() + "\n"
+            
+            # Create executor if execution mode enabled
+            executor = None
+            if enable_execution:
+                try:
+                    from legacycodebench.execution.cobol_executor import COBOLExecutor
+                    executor = COBOLExecutor()
+                    click.echo(f"  Execution Mode: ENABLED (Docker-based)")
+                except ImportError:
+                    click.echo(f"  [WARNING] COBOLExecutor not available, using heuristic BF")
+                except Exception as e:
+                    click.echo(f"  [WARNING] Executor init failed: {e}, using heuristic BF")
+            else:
+                click.echo(f"  Execution Mode: DISABLED (heuristic BF)")
+            
+            # Evaluate
+            evaluator_instance = EvaluatorV213(executor=executor)
+            eval_result = evaluator_instance.evaluate(
+                task_id=task_id,
+                model=submitter_model,
+                documentation=documentation,
+                source_code=source_code,
+                ground_truth=gt
+            )
+            
+            result = eval_result.to_dict()
+            overall_score = eval_result.lcb_score / 100  # Convert to 0-1
+            
+        except ImportError as e:
+            click.echo(f"[ERROR] V2.3.1 evaluators not available: {e}")
+            return
+            
+    elif evaluator == "v2":
         # v2.0 evaluator (recommended)
         if task.category == "documentation":
             click.echo(f"  Using v2.0 Documentation Evaluator")
@@ -119,22 +176,22 @@ def evaluate(task_id: str, submission: Path, output: Optional[Path],
 
             result = eval_instance.evaluate(submission_path, task)
 
-            # v2.0 uses different score format
-            overall_score = result.get("lcb_score", 0) / 100.0  # Convert to 0-1 scale
+            # v2.0 uses "score" key (already in 0-1 scale)
+            overall_score = result.get("score", 0)
 
         elif task.category == "understanding":
-            click.echo(f"✗ v2.0 evaluator for understanding tasks not yet implemented")
+            click.echo(f"[ERROR] v2.0 evaluator for understanding tasks not yet implemented")
             click.echo(f"  v2.0 focuses on documentation tasks only")
             click.echo(f"  Use --evaluator v1 for understanding tasks")
             return
         else:
-            click.echo(f"✗ Unknown task category: {task.category}")
+            click.echo(f"[ERROR] Unknown task category: {task.category}")
             return
 
     elif evaluator == "v1":
         # v1.0 evaluator (legacy)
         if not V1_AVAILABLE:
-            click.echo(f"✗ v1.0 evaluators not available (archived)")
+            click.echo(f"[ERROR] v1.0 evaluators not available (archived)")
             click.echo(f"  Use --evaluator v2 instead")
             return
 
@@ -148,13 +205,13 @@ def evaluate(task_id: str, submission: Path, output: Optional[Path],
             eval_instance = UnderstandingEvaluator()
             result = eval_instance.evaluate(submission_path, task)
         else:
-            click.echo(f"✗ Unknown task category: {task.category}")
+            click.echo(f"[ERROR] Unknown task category: {task.category}")
             return
 
         overall_score = result["score"]
 
     else:
-        click.echo(f"✗ Unknown evaluator version: {evaluator}")
+        click.echo(f"[ERROR] Unknown evaluator version: {evaluator}")
         return
 
     # Create result entry
@@ -192,21 +249,31 @@ def evaluate(task_id: str, submission: Path, output: Optional[Path],
         pass_status = result.get('pass_status', {})
         
         if passed:
-            click.echo(f"  STATUS: ✅ PASSED")
+            click.echo(f"  STATUS: [PASSED]")
         else:
-            click.echo(f"  STATUS: ❌ FAILED")
+            click.echo(f"  STATUS: [FAILED]")
             click.echo(f"  REASON: {pass_status.get('reason', 'Unknown')}")
-        
+
         click.echo(f"")
         click.echo(f"  LCB Score: {result.get('score', 0)*100:.1f}/100")
-        click.echo(f"  ├── Structural Completeness (30%): {result.get('structural_completeness', 0)*100:.1f}%")
-        click.echo(f"  ├── Behavioral Fidelity (35%):     {result.get('behavioral_fidelity', 0)*100:.1f}%")
-        click.echo(f"  ├── Semantic Quality (25%):        {result.get('semantic_quality', 0)*100:.1f}%")
-        click.echo(f"  └── Traceability (10%):            {result.get('traceability', 0)*100:.1f}%")
+        click.echo(f"    - Structural Completeness (30%): {result.get('structural_completeness', 0)*100:.1f}%")
+
+        # ADDED (Issue 7.3): Warn if BF is placeholder
+        bf_details = result.get('details', {}).get('behavioral_fidelity', {})
+        is_placeholder = bf_details.get('placeholder', False)
+        bf_score = result.get('behavioral_fidelity', 0)
+
+        if is_placeholder:
+            click.echo(f"    - Behavioral Fidelity (35%):     {bf_score*100:.1f}% [PLACEHOLDER - No execution]")
+        else:
+            click.echo(f"    - Behavioral Fidelity (35%):     {bf_score*100:.1f}%")
+
+        click.echo(f"    - Semantic Quality (25%):        {result.get('semantic_quality', 0)*100:.1f}%")
+        click.echo(f"    - Traceability (10%):            {result.get('traceability', 0)*100:.1f}%")
 
         if result.get('critical_failures'):
             click.echo(f"")
-            click.echo(f"  ⚠ CRITICAL FAILURES:")
+            click.echo(f"  [WARNING] CRITICAL FAILURES:")
             for cf in result['critical_failures']:
                 click.echo(f"    - {cf}")
     else:
@@ -221,16 +288,20 @@ def evaluate(task_id: str, submission: Path, output: Optional[Path],
 @click.option("--model", required=True, help="AI model ID (e.g., claude-sonnet-4, gpt-4o)")
 @click.option("--task-id", help="Specific task ID (optional, runs all if not specified)")
 @click.option("--submitter-name", help="Submitter name (defaults to model name)")
-def run_ai(model: str, task_id: Optional[str], submitter_name: Optional[str]):
+@click.option("--mock", is_flag=True, default=False, help="Use mock responses for testing (no API keys required)")
+def run_ai(model: str, task_id: Optional[str], submitter_name: Optional[str], mock: bool):
     """Run AI model on task(s) and evaluate"""
     if submitter_name is None:
         submitter_name = model
-    
+
+    if mock:
+        click.echo("[MOCK MODE] Using fake API responses for testing")
+
     # Get AI model
     try:
-        ai_model = get_ai_model(model)
+        ai_model = get_ai_model(model, mock_mode=mock)
     except ValueError as e:
-        click.echo(f"✗ {e}")
+        click.echo(f"[ERROR] {e}")
         return
     
     # Get tasks
@@ -250,7 +321,7 @@ def run_ai(model: str, task_id: Optional[str], submitter_name: Optional[str]):
         # Get input files
         input_files = task.get_input_files_absolute()
         if not input_files:
-            click.echo(f"  ✗ No input files found for {task.task_id}")
+            click.echo(f"  [ERROR] No input files found for {task.task_id}")
             continue
         
         # Generate output
@@ -261,7 +332,7 @@ def run_ai(model: str, task_id: Optional[str], submitter_name: Optional[str]):
             output = ai_model.generate_understanding(task, input_files)
             output_file = SUBMISSIONS_DIR / f"{task.task_id}_{model}.json"
         else:
-            click.echo(f"  ✗ Unknown category: {task.category}")
+            click.echo(f"  [ERROR] Unknown category: {task.category}")
             continue
         
         # Save submission
@@ -269,7 +340,7 @@ def run_ai(model: str, task_id: Optional[str], submitter_name: Optional[str]):
         with open(output_file, 'w', encoding='utf-8') as f:
             f.write(output)
         
-        click.echo(f"  ✓ Generated submission: {output_file}")
+        click.echo(f"  [OK] Generated submission: {output_file}")
         
         # Evaluate
         if task.category == "documentation":
@@ -295,8 +366,23 @@ def run_ai(model: str, task_id: Optional[str], submitter_name: Optional[str]):
         
         with open(result_file, 'w') as f:
             json.dump(result_entry, f, indent=2)
-        
-        click.echo(f"  ✓ Score: {result['score']*100:.2f}%")
+
+        # ADDED (Issue 6.2): Show score breakdown
+        click.echo(f"  [OK] Score: {result['score']*100:.2f}%")
+
+        # Show breakdown if v2.0 result
+        if result.get('version') == '2.0':
+            # ADDED (Issue 7.3): Warn if BF is placeholder
+            bf_details = result.get('details', {}).get('behavioral_fidelity', {})
+            is_placeholder = bf_details.get('placeholder', False)
+            bf_str = f"{result.get('behavioral_fidelity', 0)*100:.1f}%"
+            if is_placeholder:
+                bf_str += " (placeholder)"
+
+            click.echo(f"       SC: {result.get('structural_completeness', 0)*100:.1f}% | "
+                      f"BF: {bf_str} | "
+                      f"SQ: {result.get('semantic_quality', 0)*100:.1f}% | "
+                      f"TR: {result.get('traceability', 0)*100:.1f}%")
 
 
 @main.command()
@@ -307,8 +393,8 @@ def run_ai(model: str, task_id: Optional[str], submitter_name: Optional[str]):
 @click.option("--export-csv", type=click.Path(), help="Export as CSV file")
 def leaderboard(output: Optional[Path], print_flag: bool, detailed: bool, 
                 export_md: Optional[Path], export_csv: Optional[Path]):
-    """Generate leaderboard from all results (SWE-bench aligned % Passed format)"""
-    click.echo("Generating leaderboard (SWE-bench aligned format)...")
+    """Generate leaderboard from all results"""
+    click.echo("Generating leaderboard...")
     
     lb = Leaderboard()
     leaderboard_data = lb.generate(output)
@@ -321,24 +407,25 @@ def leaderboard(output: Optional[Path], print_flag: bool, detailed: bool,
     
     if export_md:
         lb.export_markdown(Path(export_md), leaderboard_data)
-        click.echo(f"✓ Exported Markdown to: {export_md}")
+        click.echo(f"[OK] Exported Markdown to: {export_md}")
     
     if export_csv:
         # CSV is auto-generated, just copy if different path
         import shutil
         shutil.copy(RESULTS_DIR / "summary.csv", export_csv)
-        click.echo(f"✓ Exported CSV to: {export_csv}")
+        click.echo(f"[OK] Exported CSV to: {export_csv}")
     
     if output:
-        click.echo(f"\n✓ Leaderboard saved to: {output}")
+        click.echo(f"\n[OK] Leaderboard saved to: {output}")
 
 
 def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBench Evaluation",
                    evaluator_version: str = "v2", enable_execution: bool = False,
                    judge_model: str = "gpt-4o", task_limit: int = 3,
-                   skip_datasets: bool = False, skip_task_creation: bool = False):
+                   skip_datasets: bool = False, skip_task_creation: bool = False,
+                   mock_mode: bool = False, clean_results: bool = False):
     """Shared routine that runs the full benchmark pipeline
-    
+
     Args:
         models_to_test: List of AI model IDs to evaluate
         header_label: Header for console output
@@ -348,10 +435,26 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
         task_limit: Maximum number of tasks to run (for quick testing)
         skip_datasets: Skip dataset loading step (use existing datasets)
         skip_task_creation: Skip task creation step (use existing tasks)
+        mock_mode: Use mock responses for testing (no API keys required)
+        clean_results: Clear old results before running (prevents stale data)
     """
     if not models_to_test:
-        click.echo("✗ No models selected. Aborting.")
+        click.echo("[ERROR] No models selected. Aborting.")
         return
+    
+    # FIXED: Clean old results if requested (prevents stale data in leaderboard)
+    if clean_results:
+        import shutil
+        results_path = RESULTS_DIR
+        if results_path.exists():
+            old_files = list(results_path.glob("*.json")) + list(results_path.glob("*.csv"))
+            # Don't delete leaderboard.json and summary.csv yet - they'll be regenerated
+            for f in old_files:
+                try:
+                    f.unlink()
+                except Exception as e:
+                    logger.warning(f"Could not delete {f}: {e}")
+            click.echo(f"[CLEAN] Removed {len(old_files)} old result files")
     
     click.echo("=" * 80)
     click.echo(header_label)
@@ -364,12 +467,12 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
         click.echo("\n[1/7] Loading datasets from GitHub repositories...")
         loader = DatasetLoader()
         loaded = loader.load_all_datasets()
-        click.echo(f"✓ Loaded {len(loaded)} datasets")
+        click.echo(f"[OK] Loaded {len(loaded)} datasets")
     else:
         click.echo("\n[1/7] Skipping dataset loading (using existing datasets)...")
         loader = DatasetLoader()
         loaded = loader.load_all_datasets()  # Still need to get loaded dict
-        click.echo(f"✓ Using {len(loaded)} existing datasets")
+        click.echo(f"[OK] Using {len(loaded)} existing datasets")
     
     # Step 2: Create tasks (uses v2.0 intelligent selection - documentation only, tier-based)
     if not skip_task_creation:
@@ -377,20 +480,20 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
         manager = TaskManager()
         tasks = manager.create_tasks_from_datasets(use_intelligent_selection=True)
         manager.save_all(tasks)
-        click.echo(f"✓ Created {len(tasks)} documentation tasks")
+        click.echo(f"[OK] Created {len(tasks)} documentation tasks")
     else:
         click.echo("\n[2/7] Skipping task creation (using existing tasks)...")
         manager = TaskManager()
         task_ids = manager.list_tasks()
         tasks = [manager.get_task(tid) for tid in task_ids]
-        click.echo(f"✓ Using {len(tasks)} existing tasks")
+        click.echo(f"[OK] Using {len(tasks)} existing tasks")
     
     # Step 3: Generate ground truth (pre-generate for all tasks to show progress)
     click.echo("\n[3/7] Generating ground truth (automated static analysis)...")
     from legacycodebench.static_analysis.ground_truth_generator import GroundTruthGenerator
     gt_generator = GroundTruthGenerator()
-    gt_cache_dir = Path("cache/ground_truth")
-    gt_cache_dir.mkdir(parents=True, exist_ok=True)
+    # Use centralized cache directory from config
+    GROUND_TRUTH_CACHE_DIR.mkdir(parents=True, exist_ok=True)
     
     gt_generated = 0
     gt_cached = 0
@@ -399,15 +502,15 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
         if source_files:
             main_file = source_files[0]
             # Check if cached
-            cached = gt_generator.load_cached_ground_truth(main_file, gt_cache_dir)
+            cached = gt_generator.load_cached_ground_truth(main_file, GROUND_TRUTH_CACHE_DIR)
             if cached:
                 gt_cached += 1
             else:
                 # Generate (will be cached)
-                gt_generator.generate(source_files, cache_dir=gt_cache_dir)
+                gt_generator.generate(source_files, cache_dir=GROUND_TRUTH_CACHE_DIR)
                 gt_generated += 1
     
-    click.echo(f"✓ Ground truth: {gt_generated} generated, {gt_cached} cached (95%+ automation)")
+    click.echo(f"[OK] Ground truth: {gt_generated} generated, {gt_cached} cached (95%+ automation)")
     
     # v2.0: Select representative tasks by TIER (not by doc/understanding split)
     def _select_representative_tasks(all_tasks: List[Task], limit: int = 3) -> List[Task]:
@@ -491,9 +594,11 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
     
     for model_id in models_to_test:
         click.echo(f"\n  Running {model_id}...")
-        click.echo(f"    Judge for SQ evaluation: {judge_model} (different from {model_id})")
+        # Only show judge info for V2.1.3 which uses LLM-as-judge
+        if evaluator_version != "v2.3.1":
+            click.echo(f"    Judge for SQ evaluation: {judge_model} (different from {model_id})")
         try:
-            ai_model = get_ai_model(model_id)
+            ai_model = get_ai_model(model_id, mock_mode=mock_mode)
             
             for task in balanced_tasks:
                 click.echo(f"    Task: {task.task_id} ({task.category})")
@@ -510,11 +615,103 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
                 output_file.parent.mkdir(parents=True, exist_ok=True)
                 with open(output_file, 'w', encoding='utf-8') as f:
                     f.write(output)
-                click.echo(f"    ✓ Generated submission")
+                click.echo(f"    [OK] Generated submission")
                 
                 # Evaluate using selected evaluator version
+                if evaluator_version == "v2.3.1":
+                    # V2.3.1 evaluator (deterministic, 4 patches)
+                    try:
+                        from legacycodebench.evaluators_v213 import EvaluatorV213
+
+                        # Load ground truth
+                        source_files = task.get_input_files_absolute()
+                        gt = gt_generator.generate(source_files, cache_dir=GROUND_TRUTH_CACHE_DIR) if source_files else {}
+
+                        # Read documentation and source
+                        doc_content = output_file.read_text(encoding='utf-8')
+                        source_content = source_files[0].read_text(encoding='utf-8') if source_files else ""
+
+                        # Create executor if execution enabled
+                        executor = None
+                        if enable_execution:
+                            try:
+                                from legacycodebench.execution.cobol_executor import COBOLExecutor
+                                executor = COBOLExecutor()
+                            except Exception as e:
+                                logger.warning(f"Executor init failed: {e}, using heuristic BF")
+
+                        # Run V2.3.1 evaluation
+                        evaluator_instance = EvaluatorV213(executor=executor)
+                        eval_result = evaluator_instance.evaluate(
+                            task_id=task.task_id,
+                            model=model_id,
+                            documentation=doc_content,
+                            source_code=source_content,
+                            ground_truth=gt
+                        )
+                        
+                        result = eval_result.to_dict()
+                        overall_score = eval_result.lcb_score / 100  # Convert to 0-1
+                        
+                        # Display V2.3.1 format
+                        status = "[PASSED]" if eval_result.passed else "[FAILED]"
+                        click.echo(f"    [OK] V2.3.1 Score: {eval_result.lcb_score:.1f}% {status}")
+                        click.echo(f"         (SC:{eval_result.sc_score*100:.0f}% "
+                                  f"DQ:{eval_result.dq_score*100:.0f}% "
+                                  f"BF:{eval_result.bf_score*100:.0f}%)")
+                        
+                        if eval_result.critical_failures:
+                            cf_ids = [cf.cf_id for cf in eval_result.critical_failures]
+                            click.echo(f"    [WARNING] Critical failures: {', '.join(cf_ids)}")
+                    
+                    except ImportError as e:
+                        click.echo(f"    [ERROR] V2.3.1 evaluators not available: {e}")
+                        click.echo(f"    Falling back to V2.3...")
+                        evaluator_version = "v2.3"  # Fallback
+                
+                elif evaluator_version == "v2.3":
+                    # V2.3 evaluator (hybrid Template + BSM)
+                    try:
+                        from legacycodebench.evaluators_v23 import EvaluatorV23
+                        
+                        # Load ground truth
+                        source_files = task.get_input_files_absolute()
+                        gt = gt_generator.generate(source_files, cache_dir=GROUND_TRUTH_CACHE_DIR) if source_files else {}
+                        
+                        # Read documentation and source
+                        doc_content = output_file.read_text(encoding='utf-8')
+                        source_content = source_files[0].read_text(encoding='utf-8') if source_files else ""
+                        
+                        # Run V2.3 evaluation
+                        evaluator = EvaluatorV23()
+                        eval_result = evaluator.evaluate(
+                            task_id=task.task_id,
+                            model=model_id,
+                            documentation=doc_content,
+                            source_code=source_content,
+                            ground_truth=gt
+                        )
+                        
+                        result = eval_result.to_dict()
+                        overall_score = eval_result.score.overall / 100  # Convert to 0-1
+                        
+                        # Display V2.3 format
+                        status = "[PASSED]" if eval_result.score.passed else "[FAILED]"
+                        click.echo(f"    [OK] V2.3 Score: {eval_result.score.overall:.1f}% {status}")
+                        click.echo(f"         (C:{eval_result.score.comprehension*100:.0f}% "
+                                  f"D:{eval_result.score.documentation*100:.0f}% "
+                                  f"B:{eval_result.score.behavioral*100:.0f}%)")
+                        
+                        if eval_result.score.critical_failures:
+                            click.echo(f"    [WARNING] Critical failures: {', '.join(eval_result.score.critical_failures)}")
+                    
+                    except ImportError as e:
+                        click.echo(f"    [ERROR] V2.3 evaluators not available: {e}")
+                        click.echo(f"    Falling back to V2.1.3...")
+                        evaluator_version = "v2"  # Fallback
+                
                 if evaluator_version == "v2":
-                    # v2.0 evaluator (ground-truth based)
+                    # v2.1.3 evaluator (IUE + BSM - legacy)
                     eval_instance = DocumentationEvaluatorV2(
                         enable_execution=enable_execution,
                         results_dir=RESULTS_DIR / "escalations"
@@ -522,25 +719,32 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
                     eval_instance.sq_evaluator.judge_model_name = judge_model
                     result = eval_instance.evaluate(output_file, task)
                     overall_score = result.get("score", 0)
-                    
-                    click.echo(f"    ✓ v2.0 Score: {result.get('score', 0)*100:.1f}% "
+
+                    # ADDED (Issue 7.3): Warn if BF is placeholder
+                    bf_details = result.get('details', {}).get('behavioral_fidelity', {})
+                    is_placeholder = bf_details.get('placeholder', False)
+                    bf_str = f"{result.get('behavioral_fidelity', 0)*100:.0f}%"
+                    if is_placeholder:
+                        bf_str += "*"  # Asterisk to indicate placeholder
+
+                    click.echo(f"    [OK] v2.1.3 Score: {result.get('score', 0)*100:.1f}% "
                               f"(SC:{result.get('structural_completeness', 0)*100:.0f}% "
-                              f"BF:{result.get('behavioral_fidelity', 0)*100:.0f}% "
+                              f"BF:{bf_str} "
                               f"SQ:{result.get('semantic_quality', 0)*100:.0f}% "
                               f"TR:{result.get('traceability', 0)*100:.0f}%)")
                     
                     if result.get('critical_failures'):
-                        click.echo(f"    ⚠ Critical failures: {', '.join(result['critical_failures'])}")
-                else:
+                        click.echo(f"    [WARNING] Critical failures: {', '.join(result['critical_failures'])}")
+                elif evaluator_version == "v1":
                     # v1.0 evaluator (legacy ROUGE/BLEU)
                     if not V1_AVAILABLE:
-                        click.echo(f"    ✗ v1.0 evaluator not available")
+                        click.echo(f"    [ERROR] v1.0 evaluator not available")
                         continue
                     
                     eval_instance = DocumentationEvaluator()
                     result = eval_instance.evaluate(output_file, task)
                     overall_score = result.get("score", 0)
-                    click.echo(f"    ✓ v1.0 Score: {overall_score*100:.1f}%")
+                    click.echo(f"    [OK] v1.0 Score: {overall_score*100:.1f}%")
                 
                 # Save result
                 result_file = RESULTS_DIR / f"{task.task_id}_{model_id}_{evaluator_version}.json"
@@ -565,19 +769,27 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
                     json.dump(result_entry, f, indent=2)
         
         except Exception as e:
-            click.echo(f"  ✗ Error with {model_id}: {e}")
+            click.echo(f"  [ERROR] Error with {model_id}: {e}")
             logger.exception(f"Error running {model_id}")
     
-    click.echo("\n✓ Completed AI model runs")
+    click.echo("\n[OK] Completed AI model runs")
     
     # Step 5: Evaluation (already done during AI run, but summarize here)
-    click.echo("\n[5/7] Evaluation complete (SC, BF, SQ, TR calculated)")
+    if evaluator_version == "v2.3.1":
+        click.echo("\n[5/7] Evaluation complete (SC/DQ/BF calculated - V2.3.1)")
+    elif evaluator_version == "v2.3":
+        click.echo("\n[5/7] Evaluation complete (C/D/B calculated - V2.3)")
+    else:
+        click.echo("\n[5/7] Evaluation complete (SC, BF, SQ, TR calculated)")
     
     # Step 6: Scoring (already done, but summarize)
-    click.echo("\n[6/7] Scoring complete (LCB Score calculated with pass/fail status)")
+    if evaluator_version == "v2.3.1":
+        click.echo("\n[6/7] Scoring complete (LCB = 0.30xSC + 0.20xDQ + 0.50xBF)")
+    else:
+        click.echo("\n[6/7] Scoring complete (LCB Score calculated with pass/fail status)")
     
     # Step 7: Generate leaderboard
-    click.echo("\n[7/7] Generating leaderboard (SWE-bench aligned: % Passed)...")
+    click.echo("\n[7/7] Generating leaderboard...")
     lb = Leaderboard()
     leaderboard_data = lb.generate()
     lb.print_leaderboard(leaderboard_data)
@@ -586,77 +798,101 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
     click.echo("\n" + "=" * 80)
     click.echo("BENCHMARK COMPLETE")
     click.echo("=" * 80)
-    click.echo(f"  ✓ Datasets loaded: {len(loaded)}")
-    click.echo(f"  ✓ Tasks selected: {len(balanced_tasks)} (from {len(tasks)} total)")
-    click.echo(f"  ✓ Ground truth: {gt_generated + gt_cached} tasks")
-    click.echo(f"  ✓ Models evaluated: {', '.join(models_to_test)}")
-    click.echo(f"  ✓ Results saved: {len(list(RESULTS_DIR.glob('*.json')))} files")
-    click.echo(f"  ✓ Leaderboard: {RESULTS_DIR / 'leaderboard.json'}")
+    click.echo(f"  [OK] Datasets loaded: {len(loaded)}")
+    click.echo(f"  [OK] Tasks selected: {len(balanced_tasks)} (from {len(tasks)} total)")
+    click.echo(f"  [OK] Ground truth: {gt_generated + gt_cached} tasks")
+    click.echo(f"  [OK] Models evaluated: {', '.join(models_to_test)}")
+    click.echo(f"  [OK] Results saved: {len(list(RESULTS_DIR.glob('*.json')))} files")
+    click.echo(f"  [OK] Leaderboard: {RESULTS_DIR / 'leaderboard.json'}")
     click.echo("\n" + "=" * 80)
 
 
 @main.command(name="run-full-benchmark")
-@click.option("--evaluator", default="v2", type=click.Choice(["v1", "v2"]),
-              help="Evaluator version: v2 (default, ground-truth) or v1 (legacy ROUGE/BLEU)")
+@click.option("--evaluation-version", default="v2.3.1", type=click.Choice(["v2.3.1", "v2.3", "v2.1.3"]),
+              help="Evaluation version: v2.3.1 (default, deterministic), v2.3 (hybrid template+BSM), v2.1.3 (legacy IUE+BSM)")
 @click.option("--enable-execution", is_flag=True, default=False,
               help="Enable behavioral fidelity testing (requires Docker with GnuCOBOL)")
 @click.option("--judge-model", default="gpt-4o",
-              help="LLM model for semantic quality evaluation (v2 only)")
+              help="LLM model for semantic quality evaluation")
 @click.option("--task-limit", default=3, type=int,
               help="Number of tasks to run (default: 3 for quick testing, use 200 for full benchmark)")
-@click.option("--models", default="claude-sonnet-4,gpt-4o,aws-transform",
-              help="Comma-separated list of models to test (e.g., claude-sonnet-4,gpt-4o,aws-transform,docmolt-gpt4o)")
+@click.option("--models", default="claude-sonnet-4,gpt-4o,gemini-2.0-flash",
+              help="Comma-separated list of models to test")
 @click.option("--skip-datasets", is_flag=True, default=False,
               help="Skip dataset loading (use existing datasets)")
 @click.option("--skip-task-creation", is_flag=True, default=False,
               help="Skip task creation (use existing tasks)")
-def run_full_benchmark(evaluator: str, enable_execution: bool, judge_model: str,
-                       task_limit: int, models: str, skip_datasets: bool, 
-                       skip_task_creation: bool):
+@click.option("--mock", is_flag=True, default=False,
+              help="Use mock responses for testing (no API keys required)")
+@click.option("--clean", is_flag=True, default=False,
+              help="Clear old results before running (prevents stale data in leaderboard)")
+def run_full_benchmark(evaluation_version: str, enable_execution: bool, judge_model: str,
+                       task_limit: int, models: str, skip_datasets: bool,
+                       skip_task_creation: bool, mock: bool, clean: bool):
     """Run complete benchmark pipeline (SWE-bench aligned)
     
     Single command that orchestrates the full pipeline:
     
-    [1] LOAD DATASETS ──→ [2] SELECT TASKS ──→ [3] GROUND TRUTH GENERATION
-         │                     │                        │
-         ▼                     ▼                        ▼
+    [1] LOAD DATASETS -> [2] SELECT TASKS -> [3] GROUND TRUTH GENERATION
+          |                    |                       |
+          V                    V                       V
     GitHub Repos        Intelligent             Static Analysis
     (COBOL Files)        Selection               (Automated 95%)
     
-    [4] AI GENERATES DOC ──→ [5] EVALUATION ──→ [6] SCORING ──→ [7] LEADERBOARD
+    [4] AI GENERATES DOC -> [5] EVALUATION -> [6] SCORING -> [7] LEADERBOARD
     
-    Uses v2.0 ground-truth based evaluation with:
-    - Structural Completeness (30%): Element coverage vs auto-extracted ground truth
-    - Behavioral Fidelity (35%): Execution-based testing (if --enable-execution)
-    - Semantic Quality (25%): LLM-as-judge evaluation
+    V2.3 (default) - Hybrid Template + BSM evaluation:
+    - Comprehension (40%): Business rules, data flow, abstraction
+    - Documentation (25%): Structure, semantic quality, traceability
+    - Behavioral (35%): Template-based (PURE) + BSM (MIXED paragraphs)
+    - Anti-Gaming: Keyword stuffing, parroting, abstraction scoring
+    - 6 Critical Failures: CF-01 through CF-06
+    
+    V2.1.3 (legacy) - IUE + BSM evaluation:
+    - Structural Completeness (30%): Element coverage
+    - Behavioral Fidelity (35%): IUE + BSM
+    - Semantic Quality (25%): LLM-as-judge
     - Traceability (10%): Reference validation
     
-    Primary metric: % Passed (SWE-bench aligned, like "% Resolved")
+    V2.3.1 (default): LCB = 0.30xSC + 0.20xDQ + 0.50xBF (deterministic, no LLM-as-judge)
     
     Examples:
-        # Quick test (3 tasks, 3 models including AWS Transform)
-        legacycodebench run-full-benchmark
+        # Quick test (1 task, V2.3.1 default)
+        legacycodebench run-full-benchmark --task-limit 1
 
-        # Full benchmark (200 tasks)
+        # Full benchmark with V2.3.1
         legacycodebench run-full-benchmark --task-limit 200 --enable-execution
 
-        # Test specific models
-        legacycodebench run-full-benchmark --models "gpt-4o,aws-transform"
+        # Use legacy V2.1.3 evaluation
+        legacycodebench run-full-benchmark --evaluation-version v2.1.3
 
-        # Skip dataset loading if already done
-        legacycodebench run-full-benchmark --skip-datasets --skip-task-creation
+        # Test specific models
+        legacycodebench run-full-benchmark --models "gpt-4o,claude-sonnet-via-bedrock"
     """
     model_list = [m.strip() for m in models.split(",") if m.strip()]
     
+    # Map evaluation version to internal evaluator
+    if evaluation_version == "v2.3.1":
+        evaluator = "v2.3.1"
+        header_label = f"LegacyCodeBench V2.3.1 Evaluation (Deterministic, 4 Patches)"
+    elif evaluation_version == "v2.3":
+        evaluator = "v2.3"
+        header_label = f"LegacyCodeBench V2.3 Evaluation (Hybrid Template+BSM)"
+    else:
+        evaluator = "v2"
+        header_label = f"LegacyCodeBench V2.1.3 Evaluation (IUE+BSM)"
+    
     _run_benchmark(
         models_to_test=model_list,
-        header_label=f"LegacyCodeBench v2.0 Evaluation ({evaluator.upper()})",
+        header_label=header_label,
         evaluator_version=evaluator,
         enable_execution=enable_execution,
         judge_model=judge_model,
         task_limit=task_limit,
         skip_datasets=skip_datasets,
-        skip_task_creation=skip_task_creation
+        skip_task_creation=skip_task_creation,
+        mock_mode=mock,
+        clean_results=clean
     )
 
 
@@ -677,7 +913,7 @@ def interactive():
     ).strip()
     if openai_key:
         os.environ["OPENAI_API_KEY"] = openai_key
-        click.echo("  ✓ OpenAI API key set for this session")
+        click.echo("  [OK] OpenAI API key set for this session")
 
     anthropic_key = click.prompt(
         "Enter Anthropic API key (press Enter to skip)",
@@ -687,7 +923,7 @@ def interactive():
     ).strip()
     if anthropic_key:
         os.environ["ANTHROPIC_API_KEY"] = anthropic_key
-        click.echo("  ✓ Anthropic API key set for this session")
+        click.echo("  [OK] Anthropic API key set for this session")
 
     # Add DocMolt API key prompt
     docmolt_key = click.prompt(
@@ -698,7 +934,7 @@ def interactive():
     ).strip()
     if docmolt_key:
         os.environ["DOCMOLT_API_KEY"] = docmolt_key
-        click.echo("  ✓ DocMolt API key set for this session")
+        click.echo("  [OK] DocMolt API key set for this session")
 
     # Add AWS credentials prompt
     aws_access_key = click.prompt(
@@ -720,7 +956,7 @@ def interactive():
             default="us-east-1",
         ).strip()
         os.environ["AWS_REGION"] = aws_region
-        click.echo("  ✓ AWS credentials set for this session")
+        click.echo("  [OK] AWS credentials set for this session")
 
     available_models: List[str] = []
     if os.getenv("OPENAI_API_KEY"):
@@ -730,7 +966,7 @@ def interactive():
     if os.getenv("DOCMOLT_API_KEY"):
         available_models.extend(["docmolt-gpt4o", "docmolt-gpt4o-mini", "docmolt-claude"])
     if os.getenv("AWS_ACCESS_KEY_ID") and os.getenv("AWS_SECRET_ACCESS_KEY"):
-        available_models.append("aws-transform")
+        available_models.append("claude-sonnet-via-bedrock")
 
     # Deduplicate while preserving order
     seen = []
@@ -741,7 +977,7 @@ def interactive():
             seen.append(model)
 
     if not models_unique:
-        click.echo("\n✗ No API keys detected. Please provide an API key to continue.")
+        click.echo("\n[ERROR] No API keys detected. Please provide an API key to continue.")
         click.echo("  - Set OPENAI_API_KEY for GPT models (also used for LLM-as-judge)")
         click.echo("  - Set ANTHROPIC_API_KEY for Claude models")
         click.echo("  - Set DOCMOLT_API_KEY for DocMolt models")
@@ -785,6 +1021,285 @@ def interactive():
         judge_model=judge,
         task_limit=task_count
     )
+
+
+@main.command(name="validate-setup")
+def validate_setup():
+    """Verify all dependencies and configurations are correct"""
+    click.echo("=" * 80)
+    click.echo("LegacyCodeBench Setup Validation")
+    click.echo("=" * 80)
+
+    all_ok = True
+
+    # Check 1: Python version
+    import sys
+    py_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    click.echo(f"\n[1/6] Python version: {py_version}")
+    if sys.version_info.major >= 3 and sys.version_info.minor >= 8:
+        click.echo("  [OK] Python 3.8+ detected")
+    else:
+        click.echo("  [ERROR] Python 3.8+ required")
+        all_ok = False
+
+    # Check 2: Required directories
+    click.echo("\n[2/6] Directory structure:")
+    dirs_to_check = [TASKS_DIR, DATASETS_DIR, SUBMISSIONS_DIR, RESULTS_DIR, GROUND_TRUTH_CACHE_DIR]
+    for d in dirs_to_check:
+        if d.exists():
+            click.echo(f"  [OK] {d.name}/")
+        else:
+            click.echo(f"  [WARN] {d.name}/ not found (will be created on first use)")
+
+    # Check 3: Docker (for execution mode)
+    click.echo("\n[3/6] Docker (required for --enable-execution):")
+    try:
+        import subprocess
+        result = subprocess.run(["docker", "--version"], capture_output=True, text=True, timeout=5)
+        if result.returncode == 0:
+            version = result.stdout.strip()
+            click.echo(f"  [OK] {version}")
+
+            # Check for GnuCOBOL image
+            result = subprocess.run(["docker", "images", "legacycodebench/gnucobol"],
+                                  capture_output=True, text=True, timeout=5)
+            if "legacycodebench/gnucobol" in result.stdout:
+                click.echo("  [OK] GnuCOBOL Docker image found")
+            else:
+                click.echo("  [WARN] GnuCOBOL Docker image not found (execution mode unavailable)")
+        else:
+            click.echo("  [WARN] Docker not found (execution mode unavailable)")
+    except Exception as e:
+        click.echo(f"  [WARN] Docker check failed: {e}")
+
+    # Check 4: API keys
+    click.echo("\n[4/6] API keys:")
+    api_keys = {
+        "OPENAI_API_KEY": "OpenAI (for gpt-4o, gpt-4, etc.)",
+        "ANTHROPIC_API_KEY": "Anthropic (for claude models)",
+        "GOOGLE_API_KEY": "Google (for gemini models)"
+    }
+    found_keys = 0
+    for key, desc in api_keys.items():
+        if os.getenv(key):
+            click.echo(f"  [OK] {desc}")
+            found_keys += 1
+        else:
+            click.echo(f"  [WARN] {key} not set - {desc} unavailable")
+
+    if found_keys == 0:
+        click.echo("  [ERROR] No API keys found. Set at least one to run evaluations.")
+        all_ok = False
+
+    # Check 5: Ground truth cache
+    click.echo("\n[5/6] Ground truth cache:")
+    if GROUND_TRUTH_CACHE_DIR.exists():
+        gt_files = list(GROUND_TRUTH_CACHE_DIR.glob("*.json"))
+        click.echo(f"  [OK] {len(gt_files)} cached ground truth files")
+    else:
+        click.echo("  [INFO] No cache yet (will be created on first run)")
+
+    # Check 6: Evaluators
+    click.echo("\n[6/6] Evaluators:")
+    try:
+        from legacycodebench.evaluators_v213 import EvaluatorV213
+        click.echo("  [OK] V2.3.1 evaluators available")
+    except ImportError as e:
+        click.echo(f"  [ERROR] V2.3.1 evaluators not available: {e}")
+        all_ok = False
+
+    # Summary
+    click.echo("\n" + "=" * 80)
+    if all_ok:
+        click.echo("[OK] Setup validation PASSED - ready to run benchmarks")
+    else:
+        click.echo("[ERROR] Setup validation FAILED - fix errors above")
+    click.echo("=" * 80)
+
+
+@main.command(name="verify-reproducibility")
+@click.option("--model", required=True, help="Model to test (e.g., gpt-4o)")
+@click.option("--task-id", default="LCB-T1-003", help="Task ID to test")
+@click.option("--runs", default=3, type=int, help="Number of runs (default: 3)")
+def verify_reproducibility(model: str, task_id: str, runs: int):
+    """Verify that evaluations are 100% reproducible
+
+    Runs the same task N times and verifies scores are identical.
+    This validates the deterministic nature of v2.3.1 evaluation.
+    """
+    click.echo("=" * 80)
+    click.echo(f"LegacyCodeBench Reproducibility Test")
+    click.echo("=" * 80)
+    click.echo(f"Model: {model}")
+    click.echo(f"Task: {task_id}")
+    click.echo(f"Runs: {runs}")
+    click.echo("=" * 80)
+
+    # Load task
+    try:
+        task = Task.load(task_id, TASKS_DIR)
+    except FileNotFoundError:
+        click.echo(f"[ERROR] Task {task_id} not found")
+        return
+
+    # Generate documentation once
+    click.echo("\n[1/3] Generating documentation...")
+    try:
+        ai_model = get_ai_model(model)
+        input_files = task.get_input_files_absolute()
+        documentation = ai_model.generate_documentation(task, input_files)
+        click.echo(f"  [OK] Documentation generated ({len(documentation)} chars)")
+    except Exception as e:
+        click.echo(f"  [ERROR] Failed to generate documentation: {e}")
+        return
+
+    # Load ground truth
+    click.echo("\n[2/3] Loading ground truth...")
+    try:
+        from legacycodebench.static_analysis.ground_truth_generator import GroundTruthGenerator
+        gt_gen = GroundTruthGenerator()
+        gt = gt_gen.generate(input_files, cache_dir=GROUND_TRUTH_CACHE_DIR)
+        source_code = input_files[0].read_text(encoding='utf-8') if input_files else ""
+        click.echo(f"  [OK] Ground truth loaded")
+    except Exception as e:
+        click.echo(f"  [ERROR] Failed to load ground truth: {e}")
+        return
+
+    # Run evaluation N times
+    click.echo(f"\n[3/3] Running evaluation {runs} times...")
+    from legacycodebench.evaluators_v213 import EvaluatorV213
+
+    results = []
+    for i in range(runs):
+        evaluator = EvaluatorV213()
+        eval_result = evaluator.evaluate(
+            task_id=task_id,
+            model=model,
+            documentation=documentation,
+            source_code=source_code,
+            ground_truth=gt
+        )
+        results.append({
+            "run": i + 1,
+            "lcb_score": eval_result.lcb_score,
+            "sc_score": eval_result.sc_score,
+            "dq_score": eval_result.dq_score,
+            "bf_score": eval_result.bf_score,
+            "passed": eval_result.passed,
+        })
+        click.echo(f"  Run {i+1}: LCB={eval_result.lcb_score:.1f}% "
+                  f"(SC={eval_result.sc_score*100:.0f}% "
+                  f"DQ={eval_result.dq_score*100:.0f}% "
+                  f"BF={eval_result.bf_score*100:.0f}%)")
+
+    # Check reproducibility
+    click.echo("\n" + "=" * 80)
+    first = results[0]
+    all_identical = all(
+        r["lcb_score"] == first["lcb_score"] and
+        r["sc_score"] == first["sc_score"] and
+        r["dq_score"] == first["dq_score"] and
+        r["bf_score"] == first["bf_score"] and
+        r["passed"] == first["passed"]
+        for r in results
+    )
+
+    if all_identical:
+        click.echo("[OK] REPRODUCIBILITY VERIFIED - All runs produced identical scores")
+        click.echo("     This confirms v2.3.1 deterministic evaluation is working correctly.")
+    else:
+        click.echo("[ERROR] REPRODUCIBILITY FAILED - Scores differ across runs")
+        click.echo("        This indicates non-deterministic behavior (bug in evaluator)")
+    click.echo("=" * 80)
+
+
+@main.command(name="compare")
+@click.argument("models", nargs=2)
+@click.option("--output", type=click.Path(), help="Save comparison to file")
+def compare(models, output):
+    """Compare results between two models
+
+    Examples:
+        legacycodebench compare gpt-4o claude-sonnet-4
+        legacycodebench compare gpt-4o claude-sonnet-4 --output comparison.json
+    """
+    model1, model2 = models
+
+    click.echo("=" * 80)
+    click.echo(f"LegacyCodeBench Model Comparison")
+    click.echo("=" * 80)
+    click.echo(f"Model 1: {model1}")
+    click.echo(f"Model 2: {model2}")
+    click.echo("=" * 80)
+
+    # Load leaderboard data
+    lb = Leaderboard()
+    leaderboard_data = lb.generate()
+
+    # Find models in leaderboard
+    model1_data = next((m for m in leaderboard_data["models"] if m["model"] == model1), None)
+    model2_data = next((m for m in leaderboard_data["models"] if m["model"] == model2), None)
+
+    if not model1_data:
+        click.echo(f"\n[ERROR] {model1} not found in results. Run evaluation first.")
+        return
+    if not model2_data:
+        click.echo(f"\n[ERROR] {model2} not found in results. Run evaluation first.")
+        return
+
+    # Compare scores
+    click.echo("\n--- Overall Scores ---")
+    click.echo(f"{model1:30s}: {model1_data['lcb_score']*100:6.1f}%")
+    click.echo(f"{model2:30s}: {model2_data['lcb_score']*100:6.1f}%")
+    diff = (model1_data['lcb_score'] - model2_data['lcb_score']) * 100
+    click.echo(f"{'Difference':30s}: {diff:+6.1f}%")
+
+    # Compare track breakdown
+    click.echo("\n--- Track Breakdown ---")
+    tracks = [
+        ("Structural Completeness", "sc_score"),
+        ("Documentation Quality", "dq_score"),
+        ("Behavioral Fidelity", "bf_score"),
+    ]
+
+    for track_name, track_key in tracks:
+        score1 = model1_data.get(track_key, 0) * 100
+        score2 = model2_data.get(track_key, 0) * 100
+        diff = score1 - score2
+        click.echo(f"{track_name:30s}: {score1:6.1f}% vs {score2:6.1f}% ({diff:+6.1f}%)")
+
+    # Compare pass rates
+    click.echo("\n--- Pass/Fail Status ---")
+    pass1 = model1_data.get("pass_count", 0)
+    total1 = model1_data.get("total_tasks", 0)
+    pass2 = model2_data.get("pass_count", 0)
+    total2 = model2_data.get("total_tasks", 0)
+
+    rate1 = (pass1 / total1 * 100) if total1 > 0 else 0
+    rate2 = (pass2 / total2 * 100) if total2 > 0 else 0
+
+    click.echo(f"{model1:30s}: {pass1}/{total1} ({rate1:.1f}%)")
+    click.echo(f"{model2:30s}: {pass2}/{total2} ({rate2:.1f}%)")
+
+    # Save comparison if requested
+    if output:
+        comparison = {
+            "model1": model1,
+            "model2": model2,
+            "model1_data": model1_data,
+            "model2_data": model2_data,
+            "differences": {
+                "lcb_score": diff,
+                "sc_score": (model1_data.get("sc_score", 0) - model2_data.get("sc_score", 0)) * 100,
+                "dq_score": (model1_data.get("dq_score", 0) - model2_data.get("dq_score", 0)) * 100,
+                "bf_score": (model1_data.get("bf_score", 0) - model2_data.get("bf_score", 0)) * 100,
+            }
+        }
+        with open(output, 'w') as f:
+            json.dump(comparison, f, indent=2)
+        click.echo(f"\n[OK] Comparison saved to: {output}")
+
+    click.echo("\n" + "=" * 80)
 
 
 if __name__ == "__main__":

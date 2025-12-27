@@ -87,6 +87,35 @@ class COBOLExecutor:
         # Check if image exists
         self._check_docker_image_available()
 
+    def can_execute(self, cobol_source: str) -> tuple:
+        """
+        Check if COBOL program can be executed with GnuCOBOL.
+        
+        Pre-filter to detect programs that require special preprocessors
+        or environments not available in GnuCOBOL (e.g., CICS, missing copybooks).
+        
+        This allows the evaluator to fall back to BSM-only scoring instead
+        of treating compilation failures as failed tests.
+        
+        Args:
+            cobol_source: COBOL source code
+            
+        Returns:
+            (can_execute: bool, reason: str)
+                - can_execute: True if program can be compiled/executed
+                - reason: Empty string if can execute, otherwise explanation
+        """
+        # Check for CICS
+        if self._is_cics_program(cobol_source):
+            return (False, "CICS programs require IBM CICS preprocessor (not available in GnuCOBOL)")
+        
+        # Could add additional checks here:
+        # - Missing copybooks detection
+        # - SQL preprocessor requirements
+        # - Other middleware dependencies
+        
+        return (True, "")
+
     def execute(self, cobol_source: str,
                test_inputs: Dict[str, Any],
                input_files: Optional[Dict[str, str]] = None,
@@ -188,6 +217,22 @@ class COBOLExecutor:
             (success: bool, output: str)
         """
         try:
+            # Read source to check for CICS/format
+            with open(source_file, 'r', encoding='utf-8', errors='ignore') as f:
+                source_content = f.read()
+            
+            # Check for CICS - cannot compile with GnuCOBOL
+            if self._is_cics_program(source_content):
+                logger.warning(f"CICS program detected - cannot compile with GnuCOBOL")
+                return (False, "CICS programs require IBM CICS preprocessor (not available in GnuCOBOL)")
+            
+            # Detect source format and build compiler flags
+            compile_flags = ["-x"]  # Executable
+            
+            if self._is_free_format(source_content):
+                compile_flags.append("-free")
+                logger.info("Detected free format, adding -free flag")
+            
             # Docker command to compile COBOL
             # cobc -x program.cbl -o program
             docker_cmd = [
@@ -197,24 +242,27 @@ class COBOLExecutor:
                 "--memory", self.memory_limit,
                 "--network", "none",  # No network access
                 self.docker_image,
-                "cobc", "-x", source_file.name, "-o", program_name
-            ]
+                "cobc"
+            ] + compile_flags + [source_file.name, "-o", program_name]
 
             logger.info(f"Compiling COBOL: {' '.join(docker_cmd)}")
 
             result = subprocess.run(
                 docker_cmd,
                 capture_output=True,
-                text=True,
                 timeout=self.timeout_seconds
             )
+            
+            # Decode output manually to avoid Windows threading encoding issues
+            stdout = result.stdout.decode('utf-8', errors='ignore') if result.stdout else ''
+            stderr = result.stderr.decode('utf-8', errors='ignore') if result.stderr else ''
 
             if result.returncode == 0:
                 logger.info("COBOL compilation successful")
-                return (True, result.stdout)
+                return (True, stdout)
             else:
-                logger.warning(f"COBOL compilation failed: {result.stderr}")
-                return (False, result.stderr)
+                logger.warning(f"COBOL compilation failed: {stderr}")
+                return (False, stderr)
 
         except subprocess.TimeoutExpired:
             logger.error("COBOL compilation timed out")
@@ -255,19 +303,25 @@ class COBOLExecutor:
                     stdin_data = f.read()
 
             logger.info(f"Executing COBOL: {program_name}")
+            
+            # Encode input to bytes if present
+            stdin_bytes = stdin_data.encode('utf-8') if stdin_data else None
 
             result = subprocess.run(
                 docker_cmd,
-                input=stdin_data,
+                input=stdin_bytes,
                 capture_output=True,
-                text=True,
                 timeout=self.timeout_seconds
             )
+            
+            # Decode output manually to avoid Windows threading encoding issues
+            stdout = result.stdout.decode('utf-8', errors='ignore') if result.stdout else ''
+            stderr = result.stderr.decode('utf-8', errors='ignore') if result.stderr else ''
 
             return ExecutionResult(
                 success=(result.returncode == 0),
-                stdout=result.stdout,
-                stderr=result.stderr,
+                stdout=stdout,
+                stderr=stderr,
                 exit_code=result.returncode,
                 file_outputs={},
                 execution_time_ms=0,  # Will be set by caller
@@ -377,6 +431,72 @@ class COBOLExecutor:
         else:
             logger.warning("Could not extract PROGRAM-ID, using default name")
             return "PROGRAM"
+
+    def _is_cics_program(self, source_content: str) -> bool:
+        """
+        Detect if COBOL source is a CICS program.
+        
+        CICS programs use EXEC CICS commands which require IBM's 
+        CICS preprocessor and cannot be compiled with GnuCOBOL.
+        
+        Args:
+            source_content: COBOL source code
+            
+        Returns:
+            True if CICS program, False otherwise
+        """
+        import re
+        
+        # CICS indicators
+        cics_patterns = [
+            r'EXEC\s+CICS',           # EXEC CICS commands
+            r'EIBCALEN',               # CICS system variable
+            r'DFHCOMMAREA',            # CICS communication area
+            r'DFHRESP',                # CICS response codes
+            r'COPY\s+DFHAID',          # CICS copybook
+            r'COPY\s+DFHBMSCA',        # CICS BMS copybook
+        ]
+        
+        for pattern in cics_patterns:
+            if re.search(pattern, source_content, re.IGNORECASE):
+                return True
+        
+        return False
+
+    def _is_free_format(self, source_content: str) -> bool:
+        """
+        Detect if COBOL source is in free format.
+        
+        Free format COBOL:
+        - Has >>SOURCE FORMAT FREE directive
+        - Or has code starting before column 7
+        
+        Args:
+            source_content: COBOL source code
+            
+        Returns:
+            True if free format, False if fixed format
+        """
+        lines = source_content.split('\n')
+        
+        # Check first 20 lines for format directive
+        for line in lines[:20]:
+            line_upper = line.upper().strip()
+            if '>>SOURCE FORMAT' in line_upper and 'FREE' in line_upper:
+                return True
+            if '$SET SOURCEFORMAT' in line_upper and 'FREE' in line_upper:
+                return True
+        
+        # Heuristic: if COBOL keywords appear before column 7, likely free format
+        for line in lines[:50]:
+            stripped = line.strip().upper()
+            if stripped.startswith(('IDENTIFICATION', 'ID ', 'PROGRAM-ID', 'DATA ', 'PROCEDURE')):
+                # Check if it's at column 7-8 (fixed) or earlier (free)
+                leading_spaces = len(line) - len(line.lstrip())
+                if leading_spaces < 6:
+                    return True
+        
+        return False
 
     def _find_docker_executable(self) -> str:
         """Find docker executable on system"""

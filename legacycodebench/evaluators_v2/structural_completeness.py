@@ -3,7 +3,7 @@
 Implements Section 5.1 of spec: Structural Completeness (SC)
 Measures: Did the AI document all elements that exist in the code?
 
-Formula: SC = (Elements_Documented / Elements_Extracted) × 100
+Formula: SC = (Elements_Documented / Elements_Extracted) x 100
 """
 
 import re
@@ -32,6 +32,19 @@ class StructuralCompletenessEvaluator:
             "error_handlers": 0.07,
         }
 
+    def _normalize_markdown(self, content: str) -> str:
+        """
+        Strip markdown formatting for regex matching (Issue 5.4).
+        
+        Removes bold (**), italic (*), and code (`) formatting that could
+        prevent element names from matching (e.g., **CALC-INTEREST** vs CALC-INTEREST).
+        """
+        # Remove bold, italic, and code formatting
+        content = re.sub(r'\*\*|__', '', content)  # Bold
+        content = re.sub(r'\*|_', '', content)      # Italic
+        content = re.sub(r'`', '', content)         # Code
+        return content
+
     def evaluate(self, submission_content: str, ground_truth: Dict) -> Dict:
         """
         Evaluate structural completeness.
@@ -48,8 +61,9 @@ class StructuralCompletenessEvaluator:
         """
         logger.info("Evaluating structural completeness")
 
-        # Normalize submission content for matching
-        content_upper = submission_content.upper()
+        # FIXED (Issue 5.4): Normalize markdown before matching
+        normalized_content = self._normalize_markdown(submission_content)
+        content_upper = normalized_content.upper()
 
         results = {}
         missing_elements = {}
@@ -333,15 +347,30 @@ class StructuralCompletenessEvaluator:
     def _error_handler_mentioned(self, handler_type: str, content: str) -> bool:
         """Check if error handler type is mentioned"""
         # Map technical names to common documentation terms
+        # PRODUCTION GRADE v2.1.3: Added general error handling terms
         handler_keywords = {
-            "size_error": ["SIZE ERROR", "OVERFLOW", "ARITHMETIC ERROR"],
-            "invalid_key": ["INVALID KEY", "RECORD NOT FOUND", "KEY ERROR"],
-            "end_of_file": ["END OF FILE", "EOF", "AT END"],
-            "not_at_end": ["NOT AT END", "RECORD FOUND"],
-            "file_status_check": ["FILE STATUS", "FILE ERROR", "I/O ERROR"],
-            "status_check": ["STATUS", "RETURN CODE", "ERROR CODE"]
+            "size_error": ["SIZE ERROR", "OVERFLOW", "ARITHMETIC ERROR", "NUMERIC OVERFLOW"],
+            "invalid_key": ["INVALID KEY", "RECORD NOT FOUND", "KEY ERROR", "INVALID RECORD", "INVALID DATA"],
+            "end_of_file": ["END OF FILE", "EOF", "AT END", "END-OF-FILE"],
+            "not_at_end": ["NOT AT END", "RECORD FOUND", "MORE RECORDS"],
+            "file_status_check": ["FILE STATUS", "FILE ERROR", "I/O ERROR", "IO ERROR"],
+            "status_check": ["STATUS", "RETURN CODE", "ERROR CODE", "ERROR HANDLING", "ERROR CONDITION"]
         }
+        
+        # Also check for general error handling documentation
+        general_error_terms = [
+            "ERROR HANDLING", "ERROR HANDLER", "EXCEPTION", "ERROR CONDITION",
+            "HANDLES ERROR", "HANDLE ERROR", "CATCHING ERROR", "TRAP ERROR",
+            "ERROR RECOVERY", "ERROR PROCESSING", "INVALID", "VALIDATION ERROR",
+            "DISPLAYS WARNING", "WARNING MESSAGE", "ERROR MESSAGE"
+        ]
 
         keywords = handler_keywords.get(handler_type, [handler_type.upper()])
-
-        return any(kw in content for kw in keywords)
+        
+        # Check specific keywords first
+        if any(kw in content for kw in keywords):
+            return True
+        
+        # Fallback: check if any general error handling is documented
+        # This handles cases where documentation uses natural language
+        return any(term in content for term in general_error_terms)

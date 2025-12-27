@@ -94,6 +94,17 @@ class DatasetLoader:
                 logger.info(f"Dataset {source_id} already exists ({len(cobol_files)} files), skipping")
                 return actual_path
         
+        # FIXED: Clean up corrupted/partial downloads before retrying
+        if target_dir.exists():
+            # Check if directory exists but has no COBOL files (corrupted/partial download)
+            cobol_files = list(target_dir.rglob("*.cbl")) + list(target_dir.rglob("*.cob"))
+            if not cobol_files:
+                logger.info(f"Removing incomplete dataset {source_id} and retrying...")
+                try:
+                    shutil.rmtree(target_dir)
+                except Exception as e:
+                    logger.warning(f"Could not remove {target_dir}: {e}")
+        
         # Try cloning with git
         try:
             logger.info(f"Cloning {repo_url}...")

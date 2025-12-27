@@ -88,11 +88,11 @@ class SemanticQualityEvaluator:
             - confidence: Judge's confidence in evaluation
             - escalated: Whether escalated for human review
         """
-        # Validate judge is different from evaluated model (if provided)
+        # FIXED (Issue 5.5): Block same-model judging with error
         if evaluated_model and evaluated_model == self.judge_model_name:
-            logger.warning(
-                f"⚠️  Judge model '{self.judge_model_name}' is same as evaluated model '{evaluated_model}'. "
-                f"This may cause self-evaluation bias. Consider using a different judge model."
+            raise ValueError(
+                f"Judge model '{self.judge_model_name}' cannot be same as evaluated model '{evaluated_model}'. "
+                f"Self-evaluation bias is not allowed. Use a different judge model."
             )
         
         logger.info(f"Evaluating semantic quality using LLM-as-judge ({self.judge_model_name})")
@@ -229,13 +229,53 @@ Respond with JSON only:"""
         """
         Call LLM-as-judge model.
 
-        Uses OpenAI or Anthropic API for evaluation.
+        Uses OpenAI, Anthropic, or Google Gemini API for evaluation.
         Temperature=0 for deterministic evaluation.
         """
         import os
 
-        # Try OpenAI first
-        if os.getenv("OPENAI_API_KEY"):
+        # Determine which provider to use based on judge model name
+        is_gemini = "gemini" in self.judge_model_name.lower()
+        is_claude = "claude" in self.judge_model_name.lower()
+        
+        # Try Google Gemini if judge model is gemini
+        if is_gemini and os.getenv("GOOGLE_API_KEY"):
+            try:
+                import warnings
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", category=FutureWarning)
+                    import google.generativeai as genai
+                
+                genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+                
+                logger.info(f"Calling Google {self.judge_model_name} as judge...")
+                
+                generation_config = {
+                    "temperature": 0,
+                    "max_output_tokens": 2000,
+                }
+                
+                model = genai.GenerativeModel(
+                    model_name=self.judge_model_name,
+                    generation_config=generation_config
+                )
+                
+                # Add JSON instruction to prompt
+                json_prompt = prompt + "\n\nIMPORTANT: Respond with valid JSON only, no markdown."
+                response = model.generate_content(json_prompt)
+                response_text = response.text
+                
+                logger.info(f"Judge response received: {len(response_text)} chars")
+                
+                # Parse JSON response
+                cleaned_response = self._clean_json_response(response_text)
+                return json.loads(cleaned_response)
+                
+            except Exception as e:
+                logger.error(f"Google Gemini judge call failed: {e}")
+
+        # Try OpenAI if judge model is gpt-* or openai key available
+        if not is_gemini and not is_claude and os.getenv("OPENAI_API_KEY"):
             try:
                 import openai
                 client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -260,7 +300,7 @@ Respond with JSON only:"""
             except Exception as e:
                 logger.error(f"OpenAI judge call failed: {e}")
 
-        # Try Anthropic if OpenAI failed or not available
+        # Try Anthropic if judge model is claude or anthropic key available
         if os.getenv("ANTHROPIC_API_KEY"):
             try:
                 import anthropic

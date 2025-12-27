@@ -58,3 +58,5 @@ cache/
 ground_truth_cache/
 .pytest_cache/
 
+
+docs/
