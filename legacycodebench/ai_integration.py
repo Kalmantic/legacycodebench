@@ -688,155 +688,313 @@ This COBOL program handles financial transactions in a legacy banking system. It
 
 class DocMoltInterface(AIModelInterface):
     """
-    Interface for DocMolt API - Specialized documentation generation service
+    Interface for DocMolt Enterprise API - Specialized documentation generation service
 
-    DocMolt is a specialized documentation generation service that supports
-    multiple backend models (GPT-4o, GPT-4o-mini, Claude, etc.) and various
-    documentation formats (technical specs, API docs, TDD, etc.).
+    New API Workflow:
+    1. Upload project as ZIP file
+    2. Poll status until completion
+    3. Download generated documentation
 
-    For fair comparison in LegacyCodeBench, we use the same evaluation pipeline
-    (DocumentationEvaluatorV2) as other models.
+    Base URL: https://legacyip.hexaview.ai
+    Auth: X-API-Key header
     """
 
     def __init__(self, model_id: str, mock_mode: bool = False):
         super().__init__(model_id, mock_mode)
-        self.api_endpoint = self.config["api_endpoint"]
-        self.docmolt_model = self.config["model"]
-        self.artefact = self.config.get("artefact", DOCMOLT_CONFIG["default_artefact"])
-        self.language = self.config.get("language", DOCMOLT_CONFIG["language"])
+        self.base_url = DOCMOLT_CONFIG["base_url"]
+        self.doc_type = self.config.get("doc_type", DOCMOLT_CONFIG["default_doc_type"])
         self.timeout = DOCMOLT_CONFIG["timeout_seconds"]
+        self.poll_interval = DOCMOLT_CONFIG["poll_interval_seconds"]
+        self.max_poll_attempts = DOCMOLT_CONFIG["max_poll_attempts"]
         self.max_retries = DOCMOLT_CONFIG["max_retries"]
         self.retry_delay = DOCMOLT_CONFIG["retry_delay_seconds"]
 
-        logger.info(f"DocMolt initialized: model={self.docmolt_model}, artefact={self.artefact}")
+        logger.info(f"DocMolt Enterprise initialized: doc_type={self.doc_type}")
 
     def generate_documentation(self, task, input_files: List[Path]) -> str:
-        """Generate documentation using DocMolt API"""
-        # Read input files
-        code_content = self._read_input_files(input_files)
+        """Generate documentation using DocMolt Enterprise API"""
+        import tempfile
+        import zipfile
+        import time
 
-        # Determine filename
-        filename = input_files[0].name if input_files else "program.cbl"
+        if self.mock_mode:
+            return self._generate_mock_documentation(task)
 
-        # Call DocMolt API with retry logic
-        return self._call_docmolt_with_retry(code_content, filename, task)
+        # Get API key
+        api_key = os.getenv(DOCMOLT_CONFIG["api_key_env_var"])
+        if not api_key:
+            logger.error(f"No {DOCMOLT_CONFIG['api_key_env_var']} environment variable set")
+            raise CredentialsError(f"Missing {DOCMOLT_CONFIG['api_key_env_var']}")
+
+        # Step 1: Create ZIP file from input files
+        with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp_zip:
+            zip_path = tmp_zip.name
+
+        try:
+            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+                for input_file in input_files:
+                    if input_file.exists():
+                        zf.write(input_file, input_file.name)
+                        logger.info(f"Added to ZIP: {input_file.name}")
+
+            # Step 2: Upload project
+            project_id = self._upload_project(zip_path, api_key)
+            logger.info(f"Project uploaded: {project_id}")
+
+            # Step 3: Poll for completion
+            self._poll_until_complete(project_id, api_key)
+            logger.info(f"Project completed: {project_id}")
+
+            # Step 4: Download documentation
+            documentation = self._download_documentation(project_id, api_key)
+            logger.info(f"Documentation downloaded: {len(documentation)} chars")
+
+            return documentation
+
+        finally:
+            # Clean up temp ZIP
+            if os.path.exists(zip_path):
+                os.remove(zip_path)
 
     def generate_understanding(self, task, input_files: List[Path]) -> str:
-        """
-        DocMolt is designed for documentation, not understanding tasks.
-
-        NOTE: v2.0 doesn't have understanding tasks anyway (documentation-only).
-        This method is here for v1.0 compatibility but should not be used with DocMolt.
-        """
+        """DocMolt is designed for documentation, not understanding tasks."""
         logger.warning("DocMolt is not designed for understanding tasks. Falling back to mock response.")
         return self._generate_mock_understanding(task, input_files)
 
-    def _call_docmolt_with_retry(self, code: str, filename: str, task) -> str:
-        """Call DocMolt API with retry logic"""
-        import time
-
-        for attempt in range(self.max_retries + 1):
-            try:
-                result = self._call_docmolt(code, filename)
-                return result
-            except Exception as e:
-                if attempt < self.max_retries:
-                    logger.warning(f"DocMolt API call failed (attempt {attempt + 1}/{self.max_retries + 1}): {e}")
-                    logger.info(f"Retrying in {self.retry_delay} seconds...")
-                    time.sleep(self.retry_delay)
-                else:
-                    logger.error(f"DocMolt API failed after {self.max_retries + 1} attempts: {e}")
-                    logger.info("Falling back to mock documentation")
-                    return self._generate_mock_documentation(task)
-
-    def _call_docmolt(self, code: str, filename: str) -> str:
-        """Call DocMolt API with proper error handling"""
+    def _upload_project(self, zip_path: str, api_key: str) -> str:
+        """Upload ZIP file and return project_id"""
         import requests
 
-        # Prepare payload
-        payload = {
-            "code": code,
-            "filename": filename,
-            "language": self.language,
-            "artefact": self.artefact,
-            "model": self.docmolt_model,
-        }
+        url = f"{self.base_url}/api/upload"
+        headers = {"X-API-Key": api_key}
 
-        # Prepare headers
-        headers = {"Content-Type": "application/json"}
-        api_key = os.getenv(DOCMOLT_CONFIG["api_key_env_var"])
-        if api_key:
-            headers["Authorization"] = f"Bearer {api_key}"
-            logger.info("Using DocMolt API key from environment")
-        else:
-            logger.warning(f"No {DOCMOLT_CONFIG['api_key_env_var']} found - attempting unauthenticated request")
+        with open(zip_path, 'rb') as f:
+            files = {'file': (os.path.basename(zip_path), f, 'application/zip')}
+            data = {'doc_type': self.doc_type}
 
-        logger.info(f"Calling DocMolt API: model={self.docmolt_model}, artefact={self.artefact}, code_size={len(code)} chars")
+            logger.info(f"Uploading to DocMolt: {url}, doc_type={self.doc_type}")
 
-        try:
             response = requests.post(
-                self.api_endpoint,
-                json=payload,
+                url,
                 headers=headers,
+                files=files,
+                data=data,
                 timeout=self.timeout
             )
 
-            # Log response details
-            logger.info(f"DocMolt response: status={response.status_code}, content_length={len(response.content)}")
+        if response.status_code == 200:
+            result = response.json()
+            return result.get("id")
+        elif response.status_code == 401:
+            raise CredentialsError("DocMolt authentication failed - check DOCMOLT_API_KEY")
+        else:
+            raise Exception(f"Upload failed: {response.status_code} - {response.text[:200]}")
+
+    def _poll_until_complete(self, project_id: str, api_key: str):
+        """Poll project status until completion"""
+        import requests
+        import time
+
+        url = f"{self.base_url}/api/projects/{project_id}/status"
+        headers = {"X-API-Key": api_key}
+
+        for attempt in range(self.max_poll_attempts):
+            response = requests.get(url, headers=headers, timeout=30)
 
             if response.status_code == 200:
                 result = response.json()
-                documentation = self._extract_documentation_from_response(result)
-                logger.info(f"DocMolt documentation extracted: {len(documentation)} chars")
-                return documentation
-            elif response.status_code == 401:
-                raise Exception("Authentication failed - check DOCMOLT_API_KEY")
-            elif response.status_code == 429:
-                raise Exception("Rate limit exceeded - too many requests")
-            elif response.status_code >= 500:
-                raise Exception(f"Server error: {response.status_code}")
+                status = result.get("status")
+                progress = result.get("progress", 0)
+                current_step = result.get("current_step", "")
+
+                logger.info(f"DocMolt status: {status} ({progress}%) - {current_step}")
+
+                if status == "completed":
+                    return
+                elif status == "failed":
+                    error = result.get("error_message", "Unknown error")
+                    raise Exception(f"DocMolt processing failed: {error}")
+                elif status in ["pending", "processing"]:
+                    time.sleep(self.poll_interval)
+                else:
+                    logger.warning(f"Unknown status: {status}")
+                    time.sleep(self.poll_interval)
             else:
-                raise Exception(f"Unexpected status code: {response.status_code}, body: {response.text[:200]}")
+                raise Exception(f"Status check failed: {response.status_code}")
 
-        except requests.exceptions.Timeout:
-            raise Exception(f"Request timed out after {self.timeout} seconds")
-        except requests.exceptions.ConnectionError as e:
-            raise Exception(f"Connection error: {e}")
-        except requests.exceptions.RequestException as e:
-            raise Exception(f"Request failed: {e}")
+        raise Exception(f"Timeout waiting for DocMolt completion after {self.max_poll_attempts * self.poll_interval}s")
 
-    def _extract_documentation_from_response(self, result: dict) -> str:
-        """
-        Extract documentation from DocMolt API response
+    def _download_documentation(self, project_id: str, api_key: str) -> str:
+        """Download ALL generated documentation and combine into one file"""
+        import requests
 
-        Note: The actual response structure needs to be determined from API testing.
-        This method tries common key patterns.
-        """
-        # Try common response keys
-        for key in ['documentation', 'output', 'content', 'result', 'data', 'text', 'markdown']:
-            if key in result:
-                content = result[key]
-                if isinstance(content, str):
-                    return content
-                elif isinstance(content, dict):
-                    # If nested, try to extract text
-                    for subkey in ['text', 'content', 'value']:
-                        if subkey in content:
-                            return str(content[subkey])
+        # First, get the documentation structure
+        docs_url = f"{self.base_url}/api/projects/{project_id}/docs"
+        headers = {"X-API-Key": api_key}
 
-        # If no known key found, try to stringify the whole response
-        logger.warning(f"Unknown DocMolt response structure. Keys: {list(result.keys())}")
+        response = requests.get(docs_url, headers=headers, timeout=30)
 
-        # Try to find any string value that looks like documentation
-        for key, value in result.items():
-            if isinstance(value, str) and len(value) > 100:  # Likely documentation
-                logger.info(f"Using response key '{key}' as documentation")
-                return value
+        if response.status_code != 200:
+            raise Exception(f"Failed to get docs structure: {response.status_code}")
 
-        # Last resort: return JSON representation
-        import json
-        logger.warning("Could not extract documentation string, returning JSON representation")
-        return json.dumps(result, indent=2)
+        docs_structure = response.json()
+        logger.info(f"DocMolt docs structure: {list(docs_structure.keys())}")
+
+        # Get all markdown file paths
+        all_md_paths = self._find_all_docs(docs_structure)
+        logger.info(f"Found {len(all_md_paths)} documentation files: {all_md_paths}")
+
+        if not all_md_paths:
+            raise Exception("No documentation files found in DocMolt response")
+
+        # Download and combine all markdown files
+        combined_content = []
+        
+        for doc_path in all_md_paths:
+            content_url = f"{self.base_url}/api/projects/{project_id}/docs/{doc_path}"
+            logger.info(f"Downloading: {doc_path}")
+            
+            response = requests.get(content_url, headers=headers, timeout=30)
+            
+            if response.status_code == 200:
+                # Add file header and content
+                filename = doc_path.split('/')[-1]
+                combined_content.append(f"<!-- Source: {doc_path} -->\n")
+                combined_content.append(response.text)
+                combined_content.append("\n\n---\n\n")
+            else:
+                logger.warning(f"Failed to download {doc_path}: {response.status_code}")
+
+        if combined_content:
+            # Remove trailing separator
+            if combined_content[-1] == "\n\n---\n\n":
+                combined_content.pop()
+            return "".join(combined_content)
+
+        # Fallback: try ZIP download
+        logger.warning("Direct downloads failed, trying ZIP download...")
+        return self._download_from_zip(project_id, api_key)
+
+    def _download_from_zip(self, project_id: str, api_key: str) -> str:
+        """Fallback: Download ZIP and extract all markdown files"""
+        import requests
+        import zipfile
+        import io
+
+        zip_url = f"{self.base_url}/api/projects/{project_id}/download"
+        headers = {"X-API-Key": api_key}
+        
+        response = requests.get(zip_url, headers=headers, timeout=60)
+        
+        if response.status_code != 200:
+            raise Exception(f"Failed to download ZIP: {response.status_code}")
+
+        combined_content = []
+        skip_patterns = ['__', '.zip', '.original', 'upload']
+        
+        def should_skip(name):
+            name_lower = name.lower()
+            return any(p in name_lower for p in skip_patterns)
+
+        with zipfile.ZipFile(io.BytesIO(response.content)) as zf:
+            all_files = zf.namelist()
+            logger.info(f"ZIP contains {len(all_files)} files")
+            
+            # Extract all markdown files
+            for name in sorted(all_files):
+                if name.endswith('.md') and not should_skip(name):
+                    logger.info(f"Extracting: {name}")
+                    content = zf.read(name).decode('utf-8')
+                    combined_content.append(f"<!-- Source: {name} -->\n")
+                    combined_content.append(content)
+                    combined_content.append("\n\n---\n\n")
+
+        if combined_content:
+            if combined_content[-1] == "\n\n---\n\n":
+                combined_content.pop()
+            return "".join(combined_content)
+
+        raise Exception(f"No markdown files found in ZIP")
+    def _find_all_docs(self, docs_structure: dict) -> list:
+        """Find ALL documentation file paths from DocMolt docs structure"""
+        # Handle 'tree' wrapper
+        if 'tree' in docs_structure:
+            docs_structure = docs_structure['tree']
+        
+        def collect_md_files(structure):
+            """Recursively collect all .md file paths"""
+            md_files = []
+            for key, value in structure.items():
+                if not isinstance(value, dict):
+                    continue
+                    
+                file_type = value.get("type")
+                
+                if file_type == "file":
+                    path = value.get("path", key)
+                    if path.endswith('.md') and '__' not in path:
+                        md_files.append(path)
+                elif file_type == "directory":
+                    children = value.get("children", {})
+                    md_files.extend(collect_md_files(children))
+            
+            return md_files
+        
+        all_md = collect_md_files(docs_structure)
+        
+        # Sort with overview files first
+        def sort_key(path):
+            if 'overview' in path.lower():
+                return (0, path)
+            elif 'readme' in path.lower():
+                return (1, path)
+            return (2, path)
+        
+        return sorted(all_md, key=sort_key)
+
+    def _find_main_doc(self, docs_structure: dict) -> str:
+        """Find the main documentation file path from DocMolt docs structure"""
+        # Handle 'tree' wrapper
+        if 'tree' in docs_structure:
+            docs_structure = docs_structure['tree']
+        
+        def collect_md_files(structure, current_path=""):
+            """Recursively collect all .md file paths"""
+            md_files = []
+            for key, value in structure.items():
+                if not isinstance(value, dict):
+                    continue
+                    
+                file_type = value.get("type")
+                
+                if file_type == "file":
+                    path = value.get("path", key)
+                    if path.endswith('.md') and '__' not in path:
+                        md_files.append(path)
+                elif file_type == "directory":
+                    children = value.get("children", {})
+                    md_files.extend(collect_md_files(children, key))
+            
+            return md_files
+        
+        # Collect all markdown files
+        all_md = collect_md_files(docs_structure)
+        logger.info(f"Found markdown files: {all_md}")
+        
+        if not all_md:
+            return "README.md"  # Default fallback
+        
+        # Priority: README.md > *_overview.md > file-specific .md
+        for md in all_md:
+            if 'README' in md.upper():
+                return md
+        
+        for md in all_md:
+            if 'overview' in md.lower():
+                return md
+        
+        # Return first file-specific documentation
+        return all_md[0]
 
 
 def get_ai_model(model_id: str, mock_mode: bool = False) -> AIModelInterface:
