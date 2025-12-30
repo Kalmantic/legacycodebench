@@ -524,33 +524,13 @@ AI_MODELS = {
         "max_tokens": 8000,
         "region": "us-east-1",  # Can be overridden by AWS_REGION env var
     },
-    # DocMolt - Specialized documentation generation service
-    "docmolt-gpt4o": {
+    # DocMolt Enterprise - Specialized documentation generation service
+    "docmolt-enterprise": {
         "provider": "docmolt",
-        "model": "gpt-4o",
-        "artefact": "documentation",  # Options: documentation, technical-spec, tdd, api-docs
-        "language": "cobol",
-        "api_endpoint": "https://docmolt.hexaview.ai/api/docstream",
-        "temperature": 0,  # FIXED (Issue 4.2): Enforce deterministic outputs
+        "model": "gpt-4o-mini",  # Backend model used by DocMolt
+        "doc_type": "enterprise_blueprint",  # Complete enterprise documentation
+        "temperature": 0,
         "max_tokens": 16384,
-    },
-    "docmolt-gpt4o-mini": {
-        "provider": "docmolt",
-        "model": "gpt-4o-mini",
-        "artefact": "documentation",
-        "language": "cobol",
-        "api_endpoint": "https://docmolt.hexaview.ai/api/docstream",
-        "temperature": 0,  # FIXED (Issue 4.2): Enforce deterministic outputs
-        "max_tokens": 16384,
-    },
-    "docmolt-claude": {
-        "provider": "docmolt",
-        "model": "claude-sonnet-4",  # If supported by DocMolt
-        "artefact": "documentation",
-        "language": "cobol",
-        "api_endpoint": "https://docmolt.hexaview.ai/api/docstream",
-        "temperature": 0,  # FIXED (Issue 4.2): Enforce deterministic outputs
-        "max_tokens": 16000,
     },
     # Google Gemini models
     "gemini-2.5-flash": {
@@ -573,22 +553,22 @@ AI_MODELS = {
     },
 }
 
-# DocMolt-specific configuration
+# DocMolt Enterprise API configuration
 DOCMOLT_CONFIG = {
-    "api_endpoint": "https://docmolt.hexaview.ai/api/docstream",
-    "timeout_seconds": 300,  # 5 minutes for large COBOL files
+    "base_url": "https://legacyip.hexaview.ai",
+    "timeout_seconds": 600,  # 10 minutes for large projects
+    "poll_interval_seconds": 30,  # Poll status every 30 seconds
+    "max_poll_attempts": 60,  # Max 30 minutes wait
     "max_retries": 3,
-    "retry_delay_seconds": 2,
-    "language": "cobol",
-    "default_artefact": "documentation",  # Best for LegacyCodeBench
+    "retry_delay_seconds": 5,
     "api_key_env_var": "DOCMOLT_API_KEY",
-    "supported_artefacts": [
-        "documentation",     # Comprehensive technical documentation
-        "technical-spec",    # Technical specification document
-        "tdd",              # Test-driven development documentation
-        "api-docs",         # API documentation
-        "readme",           # README file
-        "user-guide",       # User guide documentation
+    "default_doc_type": "enterprise_blueprint",
+    "supported_doc_types": [
+        "enterprise_blueprint",  # Complete enterprise documentation
+        "prd",                   # Product Requirements Document
+        "technical_spec",        # Technical Specification
+        "user_manual",           # User Manual
+        "api_documentation",     # API Documentation
     ],
 }
 
