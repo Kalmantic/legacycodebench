@@ -5,9 +5,9 @@
   "language": "COBOL",
   "domain": "enterprise",
   "input_files": [
-    "tools\\CobolSQLite3\\CobolSQLite3.cob"
+    "cobol_mf\\dbmconf.cbl"
   ],
-  "task_description": "Generate comprehensive documentation for CobolSQLite3.cob including business purpose, data structures, control flow, file operations, and business rules.",
+  "task_description": "Generate comprehensive documentation for dbmconf.cbl including business purpose, data structures, control flow, file operations, and business rules.",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T2",

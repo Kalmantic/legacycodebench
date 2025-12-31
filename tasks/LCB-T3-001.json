@@ -3,11 +3,13 @@
   "category": "documentation",
   "difficulty": "hard",
   "language": "COBOL",
-  "domain": "enterprise",
+  "domain": "banking",
   "input_files": [
-    "tools\\changeformat\\changeformat.cbl"
+    "app\\cbl\\CBACT01C.cbl",
+    "app\\cpy\\CVACT01Y.cpy",
+    "app\\cpy\\CODATECN.cpy"
   ],
-  "task_description": "Generate detailed technical documentation for changeformat.cbl covering business purpose, all data structures, control flow, external dependencies, business rules, and error handling.",
+  "task_description": "Generate detailed technical documentation for CBACT01C.cbl covering business purpose, all data structures, control flow, external dependencies, business rules, and error handling. Include analysis of 2 related copybook(s).",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T3",

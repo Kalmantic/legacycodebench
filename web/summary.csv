@@ -1,0 +1,5 @@
+rank,model,lcb_score,sc,bf,sq,tr,t1_score,t4_score,total_tasks,critical_failures
+1,Hexaview/Legacy Insights,86.9,91.1,83.6,88.6,0.0,65.9,34.3,9,2
+2,Claude/claude-sonnet-4,80.4,93.0,75.3,74.4,0.0,90.2,31.9,9,0
+3,Gemini/gemini-2.5-flash,79.7,91.9,77.0,68.1,0.0,90.2,32.4,9,0
+4,OpenAI/gpt-4o,75.5,90.3,68.9,69.6,0.0,58.6,31.1,9,2

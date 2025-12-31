@@ -111,7 +111,7 @@ def evaluate(task_id: str, submission: Path, output: Optional[Path],
         click.echo(f"  Using V2.3.1 Evaluator (Deterministic)")
         
         try:
-            from legacycodebench.evaluators_v213 import EvaluatorV213
+            from legacycodebench.evaluators_v231 import EvaluatorV231
             from legacycodebench.static_analysis.ground_truth_generator import GroundTruthGenerator
             
             # Load ground truth
@@ -144,7 +144,7 @@ def evaluate(task_id: str, submission: Path, output: Optional[Path],
                 click.echo(f"  Execution Mode: DISABLED (heuristic BF)")
             
             # Evaluate
-            evaluator_instance = EvaluatorV213(executor=executor)
+            evaluator_instance = EvaluatorV231(executor=executor)
             eval_result = evaluator_instance.evaluate(
                 task_id=task_id,
                 model=submitter_model,
@@ -621,7 +621,7 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
                 if evaluator_version == "v2.3.1":
                     # V2.3.1 evaluator (deterministic, 4 patches)
                     try:
-                        from legacycodebench.evaluators_v213 import EvaluatorV213
+                        from legacycodebench.evaluators_v231 import EvaluatorV231
 
                         # Load ground truth
                         source_files = task.get_input_files_absolute()
@@ -641,7 +641,7 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
                                 logger.warning(f"Executor init failed: {e}, using heuristic BF")
 
                         # Run V2.3.1 evaluation
-                        evaluator_instance = EvaluatorV213(executor=executor)
+                        evaluator_instance = EvaluatorV231(executor=executor)
                         eval_result = evaluator_instance.evaluate(
                             task_id=task.task_id,
                             model=model_id,
@@ -1102,7 +1102,7 @@ def validate_setup():
     # Check 6: Evaluators
     click.echo("\n[6/6] Evaluators:")
     try:
-        from legacycodebench.evaluators_v213 import EvaluatorV213
+        from legacycodebench.evaluators_v231 import EvaluatorV231
         click.echo("  [OK] V2.3.1 evaluators available")
     except ImportError as e:
         click.echo(f"  [ERROR] V2.3.1 evaluators not available: {e}")
@@ -1167,11 +1167,11 @@ def verify_reproducibility(model: str, task_id: str, runs: int):
 
     # Run evaluation N times
     click.echo(f"\n[3/3] Running evaluation {runs} times...")
-    from legacycodebench.evaluators_v213 import EvaluatorV213
+    from legacycodebench.evaluators_v231 import EvaluatorV231
 
     results = []
     for i in range(runs):
-        evaluator = EvaluatorV213()
+        evaluator = EvaluatorV231()
         eval_result = evaluator.evaluate(
             task_id=task_id,
             model=model,

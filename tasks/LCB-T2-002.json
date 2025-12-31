@@ -5,9 +5,10 @@
   "language": "COBOL",
   "domain": "enterprise",
   "input_files": [
-    "samples\\worldcities\\worldcities5.cbl"
+    "sources\\cobol\\core\\SCASH00P.cbl",
+    "sources\\copybook\\CCASHDAT.cpy"
   ],
-  "task_description": "Generate comprehensive documentation for worldcities5.cbl including business purpose, data structures, control flow, file operations, and business rules.",
+  "task_description": "Generate comprehensive documentation for SCASH00P.cbl including business purpose, data structures, control flow, file operations, and business rules. Include analysis of 1 related copybook(s).",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T2",

@@ -3,11 +3,15 @@
   "category": "documentation",
   "difficulty": "expert",
   "language": "COBOL",
-  "domain": "enterprise",
+  "domain": "banking",
   "input_files": [
-    "tools\\JC-SQL-Precompiler\\Variations\\presql2M.cbl"
+    "app\\app-authorization-ims-db2-mq\\cbl\\COPAUS0C.cbl",
+    "app\\cpy\\COCOM01Y.cpy",
+    "app\\app-authorization-ims-db2-mq\\cpy-bms\\COPAU00.cpy",
+    "app\\cpy\\COTTL01Y.cpy",
+    "app\\cpy\\CSDAT01Y.cpy"
   ],
-  "task_description": "Generate thorough documentation for the complex program presql2M.cbl explaining business purpose, complete data structures, control flow (including GO TO patterns), all external interfaces, business rules, error handling, and edge cases.",
+  "task_description": "Generate thorough documentation for the complex program COPAUS0C.cbl explaining business purpose, complete data structures, control flow (including GO TO patterns), all external interfaces, business rules, error handling, and edge cases. Include analysis of 4 related copybook(s).",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T4",

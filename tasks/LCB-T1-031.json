@@ -5,12 +5,9 @@
   "language": "COBOL",
   "domain": "enterprise",
   "input_files": [
-    "tools\\GCSORT\\tests\\src\\susesqf02b.cbl",
-    "tools\\GCSORT\\tests\\copy\\wktotsum01.cpy",
-    "tools\\GCSORT\\tests\\copy\\przerotot.cpy",
-    "tools\\GCSORT\\tests\\copy\\prtotout.cpy"
+    "cobol_mf\\sws.cbl"
   ],
-  "task_description": "Generate clear documentation for susesqf02b.cbl explaining its business purpose, main data structures, and key business rules. Include analysis of 3 related copybook(s).",
+  "task_description": "Generate clear documentation for sws.cbl explaining its business purpose, main data structures, and key business rules.",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T1",

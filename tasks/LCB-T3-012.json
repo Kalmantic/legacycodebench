@@ -3,11 +3,15 @@
   "category": "documentation",
   "difficulty": "hard",
   "language": "COBOL",
-  "domain": "enterprise",
+  "domain": "banking",
   "input_files": [
-    "tools\\GCSORT\\tests\\src\\gctestrun1E.cbl"
+    "app\\cbl\\CBTRN02C.cbl",
+    "app\\cpy\\CVTRA06Y.cpy",
+    "app\\cpy\\CVTRA05Y.cpy",
+    "app\\cpy\\CVACT03Y.cpy",
+    "app\\cpy\\CVACT01Y.cpy"
   ],
-  "task_description": "Generate detailed technical documentation for gctestrun1E.cbl covering business purpose, all data structures, control flow, external dependencies, business rules, and error handling.",
+  "task_description": "Generate detailed technical documentation for CBTRN02C.cbl covering business purpose, all data structures, control flow, external dependencies, business rules, and error handling. Include analysis of 4 related copybook(s).",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T3",

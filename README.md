@@ -2,7 +2,7 @@
 
 A benchmark for evaluating how well AI systems understand and document legacy COBOL code.
 
-**Version 2.0** — Ground truth-based evaluation with execution testing.
+**Version 2.3.1** — Ground truth-based evaluation with execution testing.
 
 ---
 
@@ -18,14 +18,14 @@ LegacyCodeBench tests whether AI can actually understand legacy code well enough
 
 | Component | Weight | Description |
 |-----------|--------|-------------|
-| **Behavioral Fidelity (BF)** | 35% | Code generated from the AI's documentation must produce identical outputs to the original COBOL |
-| **Structural Completeness (SC)** | 30% | All variables, control flow paths, and dependencies must be documented |
-| **Semantic Quality (SQ)** | 25% | Documentation must be clear enough that a developer could understand the code without reading the original |
-| **Traceability (TR)** | 10% | Line references and code citations must point to real code elements |
+| **Structural Completeness (SC)** | 30% | All business rules, data structures, control flow, and external calls must be documented |
+| **Documentation Quality (DQ)** | 45% | Structure, traceability, readability, and abstraction level |
+| **Behavioral Fidelity (BF)** | 25% | Execution-based verification (claims, BSM pattern matching, IUE classification) |
 
 ```
-LCB_Score = (0.35 × BF) + (0.30 × SC) + (0.25 × SQ) + (0.10 × TR)
+LCB_Score = (0.30 × SC) + (0.45 × DQ) + (0.25 × BF)
 ```
+
 
 Critical failures (hallucinated functions, incorrect business rules) result in a score of 0 for that task.
 
@@ -50,9 +50,9 @@ legacycodebench interactive
 ## Benchmark Details
 
 - **200 tasks** across banking, insurance, retail, and government COBOL systems
-- **4 difficulty tiers** (T1: single file → T4: multi-module enterprise)
-- **Ground truth extraction** via static analysis
-- **Execution-based testing** (requires Docker)
+- **4 difficulty tiers** (T1: 100-200 LOC → T4: 600+ LOC enterprise)
+- **Fully deterministic** evaluation (v2.3.1 removes LLM-as-judge)
+- **Execution-based testing** for behavioral fidelity (requires Docker)
 
 ---
 
@@ -66,11 +66,11 @@ cd docker/cobol-sandbox
 docker build -t legacycodebench-cobol:latest .
 cd ../..
 
-# Run with execution testing
+# Run with execution testing (v2.3.1 is default)
 legacycodebench run-full-benchmark --enable-execution --task-limit 200
 ```
 
-Without Docker, BF scores will be 0.
+**Note**: Without Docker, BF evaluation falls back to heuristic verification (claim quality analysis). For full accuracy, Docker is recommended.
 
 ---
 
@@ -80,10 +80,7 @@ Without Docker, BF scores will be 0.
 |-------|----------|----------------------|
 | `claude-sonnet-4` | Anthropic | `ANTHROPIC_API_KEY` |
 | `gpt-4o` | OpenAI | `OPENAI_API_KEY` |
-| `gpt-4` | OpenAI | `OPENAI_API_KEY` |
-| `aws-transform` | AWS Bedrock | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` |
-| `docmolt-gpt4o` | DocMolt | `DOCMOLT_API_KEY` |
-| `docmolt-claude` | DocMolt | `DOCMOLT_API_KEY` |
+| `gemini-2.5-flash` | Google | `GOOGLE_API_KEY` |
 
 ```bash
 legacycodebench run-full-benchmark --models "claude-sonnet-4,gpt-4o"
@@ -95,23 +92,25 @@ legacycodebench run-full-benchmark --models "claude-sonnet-4,gpt-4o"
 
 ```bash
 legacycodebench interactive         # Guided setup
-legacycodebench run-full-benchmark  # Full evaluation
+legacycodebench run-full-benchmark  # Full evaluation (v2.3.1 default)
 legacycodebench leaderboard         # Generate rankings
 legacycodebench evaluate            # Score single submission
 legacycodebench load-datasets       # Clone COBOL repositories
 legacycodebench create-tasks        # Generate task definitions
 ```
 
----
-
 ## View Results
 
 ```bash
-# Generate leaderboard
-legacycodebench leaderboard --detailed --export-csv results.csv
+# Generate leaderboard JSON
+legacycodebench leaderboard
 
-# Web UI
-cd web && python -m http.server 8080
+# Or with detailed output
+legacycodebench leaderboard --detailed
+
+# Serve web UI
+cd web
+python -m http.server 8080
 # Open http://localhost:8080
 ```
 
@@ -121,9 +120,12 @@ cd web && python -m http.server 8080
 
 ```
 legacycodebench/
-├── evaluators_v2/       # Ground-truth evaluation (SC, BF, SQ, TR)
+├── evaluators_v213/     # v2.3.1 evaluator (deterministic, default)
+├── evaluators_v2/       # v2.0 evaluator (LLM-as-judge, legacy)
 ├── static_analysis/     # COBOL parsing, ground truth extraction
-├── execution/           # Docker-based COBOL compilation
+├── execution/           
+│   ├── bsm/            # Behavioral Similarity Matching
+│   └── iue/            # Isolatable Unit Extraction
 └── cli.py
 
 datasets/                # COBOL source files (auto-cloned from GitHub)

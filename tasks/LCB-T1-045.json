@@ -3,11 +3,11 @@
   "category": "documentation",
   "difficulty": "easy",
   "language": "COBOL",
-  "domain": "banking",
+  "domain": "enterprise",
   "input_files": [
-    "WoodgroveBank\\ATM\\CICSLU0Pgms\\wbgcash.cbl"
+    "OpenCobol\\dastagg\\cbl\\HOSPEDIT.cbl"
   ],
-  "task_description": "Generate clear documentation for wbgcash.cbl explaining its business purpose, main data structures, and key business rules.",
+  "task_description": "Generate clear documentation for HOSPEDIT.cbl explaining its business purpose, main data structures, and key business rules.",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T1",

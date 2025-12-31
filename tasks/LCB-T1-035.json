@@ -5,10 +5,9 @@
   "language": "COBOL",
   "domain": "banking",
   "input_files": [
-    "app\\cbl\\CBCUS01C.cbl",
-    "app\\cpy\\CVCUS01Y.cpy"
+    "COBOL Programming Course #3 - Advanced Topics\\Labs\\cbl\\CBLDB21.cbl"
   ],
-  "task_description": "Generate clear documentation for CBCUS01C.cbl explaining its business purpose, main data structures, and key business rules. Include analysis of 1 related copybook(s).",
+  "task_description": "Generate clear documentation for CBLDB21.cbl explaining its business purpose, main data structures, and key business rules.",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T1",

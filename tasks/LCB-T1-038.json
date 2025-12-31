@@ -5,9 +5,9 @@
   "language": "COBOL",
   "domain": "enterprise",
   "input_files": [
-    "tools\\CobolSQLite3\\Test-1.cob"
+    "sources\\cobol\\core\\DFHUAINS.cbl"
   ],
-  "task_description": "Generate clear documentation for Test-1.cob explaining its business purpose, main data structures, and key business rules.",
+  "task_description": "Generate clear documentation for DFHUAINS.cbl explaining its business purpose, main data structures, and key business rules.",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T1",

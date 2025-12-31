@@ -3,11 +3,11 @@
   "category": "documentation",
   "difficulty": "easy",
   "language": "COBOL",
-  "domain": "enterprise",
+  "domain": "banking",
   "input_files": [
-    "OpenCobol\\ECBAP\\cbl\\ws81c.cbl"
+    "COBOL Programming Course #3 - Advanced Topics\\Labs\\cbl\\CBLDB22.cbl"
   ],
-  "task_description": "Generate clear documentation for ws81c.cbl explaining its business purpose, main data structures, and key business rules.",
+  "task_description": "Generate clear documentation for CBLDB22.cbl explaining its business purpose, main data structures, and key business rules.",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T1",

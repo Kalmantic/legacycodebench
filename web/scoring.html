@@ -25,17 +25,20 @@
 
   <main class="container">
     <section class="hero" aria-labelledby="scoring-title">
-      <h1 id="scoring-title">Scoring Methodology v2.0</h1>
-      <p>LegacyCodeBench v2.0 uses a ground-truth based evaluation approach. AI-generated documentation is validated
-        against source code elements extracted via static analysis, not human-written references.</p>
-      <p class="table-hint">All scores are deterministic and reproducible. The primary metric is LCB Score, a weighted
-        composite of four components.</p>
+      <h1 id="scoring-title">Scoring Methodology v2.3.1</h1>
+      <p>LegacyCodeBench v2.3.1 uses a deterministic, ground-truth based evaluation. AI-generated documentation is
+        validated
+        against source code elements extracted via static analysis.</p>
+      <p class="table-hint">All scores are deterministic and reproducible. No LLM-as-judge required.</p>
     </section>
 
     <section aria-labelledby="lcb-score">
-      <h2 class="section-title" id="lcb-score">LCB Score Formula</h2>
-      <div class="formula" style="font-size: 16px; padding: 24px;">
-        LCB Score = (0.35 × BF) + (0.30 × SC) + (0.25 × SQ) + (0.10 × TR)
+      <p class="page-description">
+        LegacyCodeBench uses a 3-pillar scoring system (v2.3.1) to ensure generated documentation is both legible and
+        executable.
+      </p>
+      <div class="formula">
+        LCB Score = (0.30 &times; SC) + (0.45 &times; DQ) + (0.25 &times; BF)
       </div>
       <p class="table-hint">Scores range from 0-100. Higher is better.</p>
     </section>
@@ -43,17 +46,6 @@
     <section aria-labelledby="components">
       <h2 class="section-title" id="components">Evaluation Components</h2>
       <div class="grid grid-2">
-        <div class="card">
-          <h3>Behavioral Fidelity (BF) — 35%</h3>
-          <p>Execution-based testing. Can code be regenerated from docs and produce matching outputs?</p>
-          <ul class="list-muted">
-            <li>Generate test cases from ground truth</li>
-            <li>Execute original COBOL with test inputs</li>
-            <li>Generate COBOL from documentation</li>
-            <li>Compare outputs for behavioral match</li>
-          </ul>
-          <p class="table-hint">Requires Docker with GnuCOBOL for execution.</p>
-        </div>
         <div class="card">
           <h3>Structural Completeness (SC) — 30%</h3>
           <p>Element coverage vs auto-extracted ground truth from source code.</p>
@@ -66,27 +58,27 @@
           <p class="table-hint">Ground truth extracted via static analysis (95%+ automated).</p>
         </div>
         <div class="card">
-          <h3>Semantic Quality (SQ) — 25%</h3>
-          <p>LLM-as-judge evaluation of documentation quality.</p>
-          <ul class="list-muted">
-            <li>Accuracy of explanations</li>
-            <li>Clarity and readability</li>
-            <li>Technical correctness</li>
-            <li>Completeness of coverage</li>
+          <h3>Documentation Quality (DQ) - 45%</h3>
+          <p>Measures the clarity, structure, and abstraction level of the documentation.</p>
+          <ul class="check-list">
+            <li><strong>Readability</strong> - Flesch-Kincaid & structure analysis</li>
+            <li><strong>Traceability</strong> - Accuracy of code references</li>
+            <li><strong>Abstraction</strong> - High-level vs low-level balance</li>
           </ul>
-          <p class="table-hint">Judge model must be different from evaluated model.</p>
+          <p class="table-hint">Fully deterministic - no LLM involved.</p>
         </div>
+
         <div class="card">
-          <h3>Traceability (TR) — 10%</h3>
-          <p>Reference validation — are code references accurate?</p>
-          <ul class="list-muted">
-            <li>Variable names exist in source</li>
-            <li>Paragraph names are valid</li>
-            <li>Line numbers are accurate</li>
-            <li>No hallucinated references</li>
+          <h3>Behavioral Fidelity (BF) - 25%</h3>
+          <p>Verifies that the documented logic can be used to regenerate the original code's behavior.</p>
+          <ul class="check-list">
+            <li><strong>Claim Verification</strong> - Testing claims against code</li>
+            <li><strong>Execution Testing</strong> - Running compiled code</li>
+            <li><strong>Pattern Matching</strong> - Validating external calls (BSM)</li>
           </ul>
-          <p class="table-hint">Catches hallucinations and fabricated references.</p>
-        </div>
+          <p class="table-hint">Requires Docker (heuristic fallback available).</p>
+        </div>--enable-execution</code> for full BF testing.</p>
+      </div>
       </div>
     </section>
 
@@ -152,16 +144,15 @@
         <h3>Sample Evaluation</h3>
         <div class="code-block">
           Component Scores:
-          Structural Completeness (SC): 75%
-          Behavioral Fidelity (BF): 80%
-          Semantic Quality (SQ): 70%
-          Traceability (TR): 60%
+          Structural Completeness (SC): 80%
+          Documentation Quality (DQ): 70%
+          Behavioral Fidelity (BF): 85%
 
-          LCB Score = (0.35 × 80) + (0.30 × 75) + (0.25 × 70) + (0.10 × 60)
-          = 28 + 22.5 + 17.5 + 6
-          = 74
+          LCB Score = (0.30 &times; 80) + (0.45 &times; 70) + (0.25 &times; 85)
+          = 24 + 14 + 42.5
+          = 80.5
         </div>
-        <p><strong>Result: LCB Score 74/100</strong></p>
+        <p><strong>Result: LCB Score 80.5/100</strong></p>
       </div>
     </section>
 
@@ -176,7 +167,8 @@
       <details class="faq">
         <summary>What if behavioral fidelity testing is unavailable?</summary>
         <p>BF testing requires Docker with GnuCOBOL. If unavailable, a placeholder score is used. Run with
-          <code>--enable-execution</code> for full BF evaluation.</p>
+          <code>--enable-execution</code> for full BF evaluation.
+        </p>
       </details>
       <details class="faq">
         <summary>How does LLM-as-judge work?</summary>
@@ -187,17 +179,18 @@
         <summary>Can I reproduce the scores?</summary>
         <p>Yes. All evaluation is deterministic. Run
           <code>python -m legacycodebench evaluate --task-id &lt;id&gt; --submission &lt;path&gt;</code> to get
-          identical scores.</p>
+          identical scores.
+        </p>
       </details>
     </section>
   </main>
 
   <footer>
     <div class="container" style="display:flex;flex-wrap:wrap;gap:1rem;justify-content:space-between;">
-      <span>LegacyCodeBench · Kalmantic AI Labs + Hexaview Tech</span>
-      <span>GitHub · <a href="https://github.com/kalmantic/legacycodebench" target="_blank"
+      <span>LegacyCodeBench &middot; Kalmantic AI Labs + Hexaview Tech</span>
+      <span>GitHub &middot; <a href="https://github.com/kalmantic/legacycodebench" target="_blank"
           rel="noreferrer">kalmantic/legacycodebench</a></span>
-      <span>Contact · <a href="mailto:nikita@kalmantic.com">nikita@kalmantic.com</a></span>
+      <span>Contact &middot; <a href="mailto:nikita@kalmantic.com">nikita@kalmantic.com</a></span>
     </div>
   </footer>
 </body>

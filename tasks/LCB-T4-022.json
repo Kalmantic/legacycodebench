@@ -1,0 +1,39 @@
+{
+  "task_id": "LCB-T4-022",
+  "category": "documentation",
+  "difficulty": "expert",
+  "language": "COBOL",
+  "domain": "banking",
+  "input_files": [
+    "sources\\cobol\\core\\ZBNKPRT1.cbl",
+    "sources\\copybook\\CBANKXT1.cpy",
+    "sources\\copybook\\CTIMERD.cpy",
+    "sources\\copybook\\CDATED.cpy",
+    "sources\\copybook\\CSTATESD.cpy",
+    "sources\\copybook\\CABENDD.cpy"
+  ],
+  "task_description": "Generate thorough documentation for the complex program ZBNKPRT1.cbl explaining business purpose, complete data structures, control flow (including GO TO patterns), all external interfaces, business rules, error handling, and edge cases. Include analysis of 5 related copybook(s).",
+  "evaluation_criteria": {
+    "version": "2.0",
+    "tier": "T4",
+    "required_sections": [
+      "business_purpose",
+      "business_rules",
+      "data_structures",
+      "control_flow",
+      "file_operations",
+      "dependencies",
+      "error_handling",
+      "edge_cases"
+    ],
+    "format": "markdown",
+    "evaluation_method": "ground_truth_based",
+    "scoring_weights": {
+      "structural_completeness": 0.3,
+      "behavioral_fidelity": 0.35,
+      "semantic_quality": 0.25,
+      "traceability": 0.1
+    }
+  },
+  "reference_solution": null
+}

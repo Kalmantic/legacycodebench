@@ -3,11 +3,11 @@
   "category": "documentation",
   "difficulty": "easy",
   "language": "COBOL",
-  "domain": "enterprise",
+  "domain": "hr",
   "input_files": [
-    "tools\\cobjapi\\AWT\\examples\\imageviewer\\imageviewer.cob"
+    "Mainframe\\ZOS\\ECBAP\\cbl\\TABLE2A.cbl"
   ],
-  "task_description": "Generate clear documentation for imageviewer.cob explaining its business purpose, main data structures, and key business rules.",
+  "task_description": "Generate clear documentation for TABLE2A.cbl explaining its business purpose, main data structures, and key business rules.",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T1",

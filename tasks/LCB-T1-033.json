@@ -5,9 +5,9 @@
   "language": "COBOL",
   "domain": "enterprise",
   "input_files": [
-    "tools\\cobjapi\\SWING\\examples\\charts\\cobjapichart.cob"
+    "OpenCobol\\ECBAP\\cbl\\tablewa.cbl"
   ],
-  "task_description": "Generate clear documentation for cobjapichart.cob explaining its business purpose, main data structures, and key business rules.",
+  "task_description": "Generate clear documentation for tablewa.cbl explaining its business purpose, main data structures, and key business rules.",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T1",

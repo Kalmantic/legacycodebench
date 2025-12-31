@@ -5,9 +5,9 @@
   "language": "COBOL",
   "domain": "enterprise",
   "input_files": [
-    "samples\\worldcities\\worldcities7.cbl"
+    "pgm_templates\\CICS\\basecics.cbl"
   ],
-  "task_description": "Generate comprehensive documentation for worldcities7.cbl including business purpose, data structures, control flow, file operations, and business rules.",
+  "task_description": "Generate comprehensive documentation for basecics.cbl including business purpose, data structures, control flow, file operations, and business rules.",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T2",

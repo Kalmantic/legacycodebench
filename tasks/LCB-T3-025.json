@@ -5,11 +5,12 @@
   "language": "COBOL",
   "domain": "banking",
   "input_files": [
-    "app\\app-transaction-type-db2\\cbl\\COTRTUPC.cbl",
-    "app\\cpy\\CVCRD01Y.cpy",
-    "app\\cpy\\COTTL01Y.cpy"
+    "sources\\cobol\\core\\SBANK00P.cbl",
+    "sources\\copybook\\CBANKDAT.cpy",
+    "sources\\copybook\\CBANKEXT.cpy",
+    "sources\\copybook\\CABENDD.cpy"
   ],
-  "task_description": "Generate detailed technical documentation for COTRTUPC.cbl covering business purpose, all data structures, control flow, external dependencies, business rules, and error handling. Include analysis of 2 related copybook(s).",
+  "task_description": "Generate detailed technical documentation for SBANK00P.cbl covering business purpose, all data structures, control flow, external dependencies, business rules, and error handling. Include analysis of 3 related copybook(s).",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T3",

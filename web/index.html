@@ -1,21 +1,23 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
-  <title>LegacyCodeBench — Benchmark for AI Code Understanding</title>
+  <title>LegacyCodeBench &mdash; Benchmark for AI Code Understanding</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="A benchmark for evaluating how well AI systems understand and document legacy COBOL code. 200 tasks, execution-based testing, ground-truth scoring.">
+  <meta name="description"
+    content="A benchmark for evaluating how well AI systems understand and document legacy COBOL code. 200 tasks, execution-based testing, ground-truth scoring.">
 
   <link rel="stylesheet" href="assets/styles.css">
   <script src="assets/leaderboard.js" defer></script>
 </head>
+
 <body>
   <!-- Header -->
   <header>
     <div class="header-inner">
       <a href="index.html" class="logo">
         LegacyCodeBench
-        <span class="version-badge">v2.0</span>
       </a>
       <nav>
         <a href="#leaderboard" class="active">Leaderboard</a>
@@ -32,7 +34,8 @@
       <h1 class="page-title">Can AI understand legacy code?</h1>
       <p class="page-description">
         LegacyCodeBench evaluates how well AI systems understand and document legacy COBOL.
-        We test whether documentation is accurate enough to regenerate working code—not just whether it looks plausible.
+        We test whether documentation is accurate enough to regenerate working code&mdash;not just whether it looks
+        plausible.
       </p>
     </div>
 
@@ -67,9 +70,8 @@
               <th>Model</th>
               <th class="center">LCB Score<span class="th-sub">0-100</span></th>
               <th class="num">SC<span class="th-sub">Structural</span></th>
+              <th class="num">DQ<span class="th-sub">Quality</span></th>
               <th class="num">BF<span class="th-sub">Behavioral</span></th>
-              <th class="num">SQ<span class="th-sub">Semantic</span></th>
-              <th class="num">TR<span class="th-sub">Traceability</span></th>
               <th class="num">T1<span class="th-sub">Basic</span></th>
               <th class="num">T4<span class="th-sub">Enterprise</span></th>
             </tr>
@@ -85,7 +87,8 @@
       </div>
 
       <div class="callout">
-        <strong>Scoring:</strong> LCB Score = 35% Behavioral Fidelity + 30% Structural Completeness + 25% Semantic Quality + 10% Traceability.
+        <strong>Scoring:</strong> LCB Score = 30% Structural Completeness + 45% Documentation Quality + 25% Behavioral
+        Fidelity.
         High BF means code generated from the AI's documentation produces correct outputs.
       </div>
     </section>
@@ -102,27 +105,25 @@
 
       <div class="methodology">
         <div class="method-card">
-          <h4>Behavioral Fidelity <span class="method-weight">35%</span></h4>
-          <p>Code generated from the AI's documentation is compiled and executed. Outputs must match the original COBOL program exactly.</p>
-        </div>
-
-        <div class="method-card">
           <h4>Structural Completeness <span class="method-weight">30%</span></h4>
-          <p>Static analysis extracts all variables, control flow paths, and dependencies. We check if the AI documented each one.</p>
+          <p>Static analysis extracts all business rules, data structures, control flow, and external calls. We check if
+            the AI documented each one.</p>
         </div>
 
         <div class="method-card">
-          <h4>Semantic Quality <span class="method-weight">25%</span></h4>
-          <p>A calibrated LLM evaluates whether a developer could understand the code without reading the original.</p>
+          <h4>Documentation Quality <span class="method-weight">45%</span></h4>
+          <p>Algorithmic assessment of structure, readability, traceability, and abstraction level. No LLM-as-judge
+            required.</p>
         </div>
 
         <div class="method-card">
-          <h4>Traceability <span class="method-weight">10%</span></h4>
-          <p>Line references and code citations must point to real code elements. Fabricated references are penalized.</p>
+          <h4>Behavioral Fidelity <span class="method-weight">25%</span></h4>
+          <p>Claim verification via execution. Documentation must accurately describe what the code actually does,
+            verified through test generation and pattern matching.</p>
         </div>
       </div>
 
-      <div class="formula">LCB Score = (0.35 × BF) + (0.30 × SC) + (0.25 × SQ) + (0.10 × TR)</div>
+      <div class="formula">LCB Score = (0.30 &times; SC) + (0.45 &times; DQ) + (0.25 &times; BF)</div>
 
       <div class="callout" style="margin-top: 24px;">
         Critical failures (hallucinated functions, incorrect business rules) result in a score of 0 for that task.
@@ -136,22 +137,23 @@
       </div>
 
       <div class="formula" style="font-size: 13px; line-height: 1.8;">
-# Install
-pip install -e .
+        # Install
+        pip install -e .
 
-# Set API keys
-export OPENAI_API_KEY="sk-..."
-export ANTHROPIC_API_KEY="sk-ant-..."
+        # Set API keys
+        export OPENAI_API_KEY="sk-..."
+        export ANTHROPIC_API_KEY="sk-ant-..."
 
-# Run
-legacycodebench interactive</div>
+        # Run
+        legacycodebench interactive</div>
 
       <div class="callout" style="margin-top: 24px;">
         For Behavioral Fidelity testing, build the Docker image:
         <br><br>
         <code style="font-size: 12px;">cd docker/cobol-sandbox && docker build -t legacycodebench-cobol:latest .</code>
         <br><br>
-        Without Docker, BF scores will be 0.
+        Without Docker, BF evaluation falls back to heuristic verification (claim quality analysis). For full accuracy,
+        Docker is recommended.
       </div>
 
       <div class="callout" style="margin-top: 16px;">
@@ -165,7 +167,7 @@ legacycodebench interactive</div>
 
   <footer>
     <div class="footer-inner">
-      <span>LegacyCodeBench · Kalmantic AI Labs + Hexaview Tech</span>
+      <span>LegacyCodeBench &middot; Kalmantic AI Labs + Hexaview Tech</span>
       <div class="footer-links">
         <a href="https://github.com/Kalmantic/legacycodebench" target="_blank" rel="noopener">GitHub</a>
         <a href="#">Paper</a>
@@ -174,4 +176,5 @@ legacycodebench interactive</div>
     </div>
   </footer>
 </body>
+
 </html>

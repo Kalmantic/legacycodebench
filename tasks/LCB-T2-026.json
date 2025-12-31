@@ -5,9 +5,12 @@
   "language": "COBOL",
   "domain": "enterprise",
   "input_files": [
-    "tools\\TUI-TOOLS\\GC76TABITEMS.COB"
+    "OpenCobol\\ECBAP\\cbl\\ws162o.cbl",
+    "common\\cpy\\PATIENT.cpy",
+    "Mainframe\\ZOS\\ECBAP\\cpy\\WSFST.cpy",
+    "Mainframe\\ZOS\\ECBAP\\cpy\\WSDT.cpy"
   ],
-  "task_description": "Generate comprehensive documentation for GC76TABITEMS.COB including business purpose, data structures, control flow, file operations, and business rules.",
+  "task_description": "Generate comprehensive documentation for ws162o.cbl including business purpose, data structures, control flow, file operations, and business rules. Include analysis of 3 related copybook(s).",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T2",

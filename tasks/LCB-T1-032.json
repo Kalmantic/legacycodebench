@@ -5,10 +5,9 @@
   "language": "COBOL",
   "domain": "enterprise",
   "input_files": [
-    "tools\\TUI-TOOLS\\GC01BOX.COB",
-    "tools\\TUI-TOOLS\\GC00COLORS.cpy"
+    "Mainframe\\ZOS\\ECBAP\\cbl\\TABLEWA.cbl"
   ],
-  "task_description": "Generate clear documentation for GC01BOX.COB explaining its business purpose, main data structures, and key business rules. Include analysis of 1 related copybook(s).",
+  "task_description": "Generate clear documentation for TABLEWA.cbl explaining its business purpose, main data structures, and key business rules.",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T1",

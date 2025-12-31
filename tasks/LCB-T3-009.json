@@ -3,11 +3,15 @@
   "category": "documentation",
   "difficulty": "hard",
   "language": "COBOL",
-  "domain": "enterprise",
+  "domain": "banking",
   "input_files": [
-    "samples\\cgiform\\cgiform.cob"
+    "app\\cbl\\CBSTM03A.CBL",
+    "app\\cpy\\COSTM01.cpy",
+    "app\\cpy\\CVACT03Y.cpy",
+    "app\\cpy\\CUSTREC.cpy",
+    "app\\cpy\\CVACT01Y.cpy"
   ],
-  "task_description": "Generate detailed technical documentation for cgiform.cob covering business purpose, all data structures, control flow, external dependencies, business rules, and error handling.",
+  "task_description": "Generate detailed technical documentation for CBSTM03A.CBL covering business purpose, all data structures, control flow, external dependencies, business rules, and error handling. Include analysis of 4 related copybook(s).",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T3",

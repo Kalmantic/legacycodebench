@@ -45,13 +45,6 @@ DATASET_SOURCES = {
         "estimated_files": 50,
         "commit_sha": None,  # TODO: Pin before release
     },
-    "cobol-banking": {
-        "url": "https://github.com/ak55m/cobol-banking-system",
-        "description": "GnuCOBOL banking system with transactions",
-        "tier": "T2",
-        "estimated_files": 30,
-        "commit_sha": None,  # TODO: Pin before release
-    },
     "microfocus-bankdemo": {
         "url": "https://github.com/MicroFocus/BankDemo",
         "description": "Micro Focus enterprise banking demo",

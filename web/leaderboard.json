@@ -1,0 +1,150 @@
+{
+  "version": "2.0",
+  "generated_at": "2025-12-30T18:17:28.237582",
+  "scoring_formula": "LCB Score = (0.25 x SC) + (0.35 x BF) + (0.25 x SQ) + (0.15 x TR)",
+  "scoring_weights": {
+    "behavioral_fidelity": 0.35,
+    "structural_completeness": 0.25,
+    "semantic_quality": 0.25,
+    "traceability": 0.15
+  },
+  "total_models": 4,
+  "leaderboard": [
+    {
+      "submitter": "Hexaview",
+      "model": "Legacy Insights",
+      "rank": 1,
+      "is_v231": true,
+      "is_v23": true,
+      "avg_lcb_score": 0.8686,
+      "avg_sc": 0.9111,
+      "avg_bf": 0.8363,
+      "avg_sq": 0.8856,
+      "avg_tr": 0.0,
+      "tasks_total": 9,
+      "critical_failures": 2,
+      "critical_failure_types": {
+        "CF-04": 2
+      },
+      "by_tier": {
+        "T1": {
+          "total": 6,
+          "avg_score": 0.6594833333333333
+        },
+        "T2": {
+          "total": 1,
+          "avg_score": 0.7476999999999999
+        },
+        "T3": {
+          "total": 1,
+          "avg_score": 0.8332999999999999
+        },
+        "T4": {
+          "total": 1,
+          "avg_score": 0.3427
+        }
+      }
+    },
+    {
+      "submitter": "Claude",
+      "model": "claude-sonnet-4",
+      "rank": 2,
+      "is_v231": true,
+      "is_v23": true,
+      "avg_lcb_score": 0.8041,
+      "avg_sc": 0.93,
+      "avg_bf": 0.7526,
+      "avg_sq": 0.7443,
+      "avg_tr": 0.0,
+      "tasks_total": 9,
+      "critical_failures": 0,
+      "critical_failure_types": {},
+      "by_tier": {
+        "T1": {
+          "total": 6,
+          "avg_score": 0.90205
+        },
+        "T2": {
+          "total": 1,
+          "avg_score": 0.5487500000000001
+        },
+        "T3": {
+          "total": 1,
+          "avg_score": 0.8715
+        },
+        "T4": {
+          "total": 1,
+          "avg_score": 0.319
+        }
+      }
+    },
+    {
+      "submitter": "Gemini",
+      "model": "gemini-2.5-flash",
+      "rank": 3,
+      "is_v231": true,
+      "is_v23": true,
+      "avg_lcb_score": 0.7969,
+      "avg_sc": 0.9189,
+      "avg_bf": 0.7703,
+      "avg_sq": 0.6806,
+      "avg_tr": 0.0,
+      "tasks_total": 9,
+      "critical_failures": 0,
+      "critical_failure_types": {},
+      "by_tier": {
+        "T1": {
+          "total": 6,
+          "avg_score": 0.9022833333333334
+        },
+        "T2": {
+          "total": 1,
+          "avg_score": 0.514
+        },
+        "T3": {
+          "total": 1,
+          "avg_score": 0.8275
+        },
+        "T4": {
+          "total": 1,
+          "avg_score": 0.3243
+        }
+      }
+    },
+    {
+      "submitter": "OpenAI",
+      "model": "gpt-4o",
+      "rank": 4,
+      "is_v231": true,
+      "is_v23": true,
+      "avg_lcb_score": 0.7548,
+      "avg_sc": 0.9033,
+      "avg_bf": 0.689,
+      "avg_sq": 0.6963,
+      "avg_tr": 0.0,
+      "tasks_total": 9,
+      "critical_failures": 2,
+      "critical_failure_types": {
+        "CF-03": 2
+      },
+      "by_tier": {
+        "T1": {
+          "total": 6,
+          "avg_score": 0.5856666666666667
+        },
+        "T2": {
+          "total": 1,
+          "avg_score": 0.5465
+        },
+        "T3": {
+          "total": 1,
+          "avg_score": 0.8008
+        },
+        "T4": {
+          "total": 1,
+          "avg_score": 0.31079999999999997
+        }
+      }
+    }
+  ]
+}
