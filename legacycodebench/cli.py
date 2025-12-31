@@ -459,7 +459,10 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
     click.echo("=" * 80)
     click.echo(header_label)
     click.echo("=" * 80)
-    click.echo(f"Evaluator: {evaluator_version.upper()} | Execution: {'Enabled' if enable_execution else 'Disabled'} | Judge: {judge_model}")
+    if evaluator_version == "v2.3.1":
+        click.echo(f"Evaluator: V2.3.1 (Deterministic) | Execution: {'Enabled' if enable_execution else 'Disabled'}")
+    else:
+        click.echo(f"Evaluator: {evaluator_version.upper()} | Execution: {'Enabled' if enable_execution else 'Disabled'} | Judge: {judge_model}")
     click.echo("=" * 80)
     
     # Step 1: Load datasets
@@ -586,12 +589,14 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
                 return default_judge
         return default_judge
     
-    actual_judge = _ensure_different_judge(models_to_test, judge_model)
-    if actual_judge != judge_model:
-        click.echo(f"  ⚠ Judge model changed from '{judge_model}' to '{actual_judge}' "
-                   f"(must be different from evaluated models)")
-        judge_model = actual_judge
-    
+    # Only process judge model for non-v2.3.1 (v2.3.1 is deterministic, no LLM-as-judge)
+    if evaluator_version != "v2.3.1":
+        actual_judge = _ensure_different_judge(models_to_test, judge_model)
+        if actual_judge != judge_model:
+            click.echo(f"  ⚠ Judge model changed from '{judge_model}' to '{actual_judge}' "
+                       f"(must be different from evaluated models)")
+            judge_model = actual_judge
+
     for model_id in models_to_test:
         click.echo(f"\n  Running {model_id}...")
         # Only show judge info for V2.1.3 which uses LLM-as-judge
@@ -601,7 +606,7 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
             ai_model = get_ai_model(model_id, mock_mode=mock_mode)
             
             for task in balanced_tasks:
-                click.echo(f"    Task: {task.task_id} ({task.category})")
+                click.echo(f"    Task: {task.task_id}")
                 
                 input_files = task.get_input_files_absolute()
                 if not input_files:
