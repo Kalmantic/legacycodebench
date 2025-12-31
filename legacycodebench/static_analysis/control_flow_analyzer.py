@@ -332,5 +332,6 @@ class ControlFlowAnalyzer:
             "name": paragraph.name,
             "start_line": paragraph.start_line,
             "end_line": paragraph.end_line,
-            "statement_count": len(paragraph.statements)
+            "statement_count": len(paragraph.statements),
+            "content": "\n".join(paragraph.statements)  # Required for PURE/MIXED/INFRA classification
         }

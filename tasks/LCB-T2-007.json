@@ -3,11 +3,11 @@
   "category": "documentation",
   "difficulty": "medium",
   "language": "COBOL",
-  "domain": "banking",
+  "domain": "enterprise",
   "input_files": [
-    "app\\app-authorization-ims-db2-mq\\cbl\\COPAUA0C.cbl"
+    "gnucobol-master\\extras\\CBL_OC_DUMP.cob"
   ],
-  "task_description": "Generate comprehensive documentation for COPAUA0C.cbl including business purpose, data structures, control flow, file operations, and business rules.",
+  "task_description": "Generate comprehensive documentation for CBL_OC_DUMP.cob including business purpose, data structures, control flow, file operations, and business rules.",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T2",

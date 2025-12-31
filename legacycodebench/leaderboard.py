@@ -292,6 +292,7 @@ class Leaderboard:
         }
         
         # Save JSON
+        output_path = Path(output_path)  # Ensure Path object
         with open(output_path, 'w') as f:
             json.dump(leaderboard_data, f, indent=2)
         

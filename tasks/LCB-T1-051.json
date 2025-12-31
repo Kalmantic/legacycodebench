@@ -3,11 +3,13 @@
   "category": "documentation",
   "difficulty": "easy",
   "language": "COBOL",
-  "domain": "banking",
+  "domain": "enterprise",
   "input_files": [
-    "COBOL Programming Course #3 - Advanced Topics\\Labs\\cbl\\CBLDB23.cbl"
+    "Mainframe\\ZOS\\ECBAP\\cbl\\WS172A.cbl",
+    "Mainframe\\ZOS\\ECBAP\\cpy\\WSFST.cpy",
+    "Mainframe\\ZOS\\ECBAP\\cpy\\WSDT.cpy"
   ],
-  "task_description": "Generate clear documentation for CBLDB23.cbl explaining its business purpose, main data structures, and key business rules.",
+  "task_description": "Generate clear documentation for WS172A.cbl explaining its business purpose, main data structures, and key business rules. Include analysis of 2 related copybook(s).",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T1",

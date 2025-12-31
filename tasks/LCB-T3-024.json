@@ -3,13 +3,16 @@
   "category": "documentation",
   "difficulty": "hard",
   "language": "COBOL",
-  "domain": "banking",
+  "domain": "finance",
   "input_files": [
-    "app\\cbl\\COCRDUPC.cbl",
-    "app\\cpy\\CVCRD01Y.cpy",
-    "app\\cpy\\COCOM01Y.cpy"
+    "sources\\cobol\\core\\BBANK70P.cbl",
+    "sources\\copybook\\CBANKDAT.cpy",
+    "sources\\copybook\\CHELPD01.cpy",
+    "sources\\copybook\\CABENDD.cpy",
+    "sources\\copybook\\CENTRY.cpy",
+    "sources\\copybook\\CHELPX01.cpy"
   ],
-  "task_description": "Generate detailed technical documentation for COCRDUPC.cbl covering business purpose, all data structures, control flow, external dependencies, business rules, and error handling. Include analysis of 2 related copybook(s).",
+  "task_description": "Generate detailed technical documentation for BBANK70P.cbl covering business purpose, all data structures, control flow, external dependencies, business rules, and error handling. Include analysis of 5 related copybook(s).",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T3",

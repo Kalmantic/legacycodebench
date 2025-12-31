@@ -3,13 +3,11 @@
   "category": "documentation",
   "difficulty": "medium",
   "language": "COBOL",
-  "domain": "banking",
+  "domain": "enterprise",
   "input_files": [
-    "app\\cbl\\COACTVWC.cbl",
-    "app\\cpy\\CVCRD01Y.cpy",
-    "app\\cpy\\COCOM01Y.cpy"
+    "extras\\CBL_OC_DUMP.cob"
   ],
-  "task_description": "Generate comprehensive documentation for COACTVWC.cbl including business purpose, data structures, control flow, file operations, and business rules. Include analysis of 2 related copybook(s).",
+  "task_description": "Generate comprehensive documentation for CBL_OC_DUMP.cob including business purpose, data structures, control flow, file operations, and business rules.",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T2",

@@ -3,11 +3,11 @@
   "category": "documentation",
   "difficulty": "hard",
   "language": "COBOL",
-  "domain": "hr",
+  "domain": "enterprise",
   "input_files": [
-    "tools\\TUI-TOOLS\\GC71CRUDECUD.COB"
+    "cobol_mf\\dbconf.cbl"
   ],
-  "task_description": "Generate detailed technical documentation for GC71CRUDECUD.COB covering business purpose, all data structures, control flow, external dependencies, business rules, and error handling.",
+  "task_description": "Generate detailed technical documentation for dbconf.cbl covering business purpose, all data structures, control flow, external dependencies, business rules, and error handling.",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T3",

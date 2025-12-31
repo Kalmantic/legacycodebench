@@ -303,7 +303,10 @@ class COBOLParser:
             # Check if this is a paragraph (starts at beginning, ends with period)
             match = self.paragraph_pattern.match(line)
 
-            if match and not self._is_statement(line):
+            # Filter out END- terminators (END-IF, END-EVALUATE, END-READ, etc.)
+            is_end_terminator = line.strip().upper().startswith('END-')
+
+            if match and not self._is_statement(line) and not is_end_terminator:
                 # This is likely a paragraph name
 
                 # Save previous paragraph

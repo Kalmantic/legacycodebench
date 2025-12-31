@@ -5,9 +5,9 @@
   "language": "COBOL",
   "domain": "enterprise",
   "input_files": [
-    "cobol_mf\\client.cbl"
+    "OpenCobol\\dastagg\\cbl\\CBL0006.cbl"
   ],
-  "task_description": "Generate clear documentation for client.cbl explaining its business purpose, main data structures, and key business rules.",
+  "task_description": "Generate clear documentation for CBL0006.cbl explaining its business purpose, main data structures, and key business rules.",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T1",

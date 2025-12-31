@@ -3,11 +3,13 @@
   "category": "documentation",
   "difficulty": "easy",
   "language": "COBOL",
-  "domain": "enterprise",
+  "domain": "banking",
   "input_files": [
-    "samples\\games\\game-of-life\\gol.cbl"
+    "sources\\cobol\\data\\sql\\DBANK51P.cbl",
+    "sources\\copybook\\CIOFUNCS.cpy",
+    "sources\\copybook\\CABENDD.cpy"
   ],
-  "task_description": "Generate clear documentation for gol.cbl explaining its business purpose, main data structures, and key business rules.",
+  "task_description": "Generate clear documentation for DBANK51P.cbl explaining its business purpose, main data structures, and key business rules. Include analysis of 2 related copybook(s).",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T1",

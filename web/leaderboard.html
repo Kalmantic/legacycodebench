@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>LegacyCodeBench | Leaderboard</title>
@@ -7,9 +8,11 @@
   <link rel="stylesheet" href="assets/styles.css">
   <script defer src="leaderboard.js"></script>
 </head>
+
 <body>
   <header>
-    <div class="container" style="display:flex;justify-content:space-between;align-items:center;padding:1.25rem 1.25rem 1rem;">
+    <div class="container"
+      style="display:flex;justify-content:space-between;align-items:center;padding:1.25rem 1.25rem 1rem;">
       <div class="logo">LegacyCodeBench</div>
       <nav aria-label="Primary">
         <a href="index.html">Overview</a>
@@ -24,8 +27,9 @@
   <main class="container">
     <section class="hero" aria-labelledby="leaderboard-title">
       <h1 id="leaderboard-title">Leaderboard</h1>
-      <p>Official benchmark results. Scores are updated when participants run the CLI evaluator and submit JSON outputs.</p>
-      <p class="table-hint">Overall = 0.50 × Documentation + 0.50 × Understanding.</p>
+      <p>Official benchmark results. Scores are updated when participants run the CLI evaluator and submit JSON outputs.
+      </p>
+      <p class="table-hint">LCB Score = 30% SC + 45% DQ + 25% BF</p>
     </section>
 
     <section aria-labelledby="current-results">
@@ -33,7 +37,8 @@
       <div id="leaderboard-state" class="state" role="status">Loading leaderboard...</div>
       <div class="leaderboard-placeholder" id="leaderboard-empty" hidden>No submissions available yet.</div>
       <div class="state" id="leaderboard-error" hidden>
-        Unable to load leaderboard. Ensure <code>results/leaderboard.json</code> exists or re-run <code>legacycodebench evaluate</code>.
+        Unable to load leaderboard. Ensure <code>results/leaderboard.json</code> exists or re-run
+        <code>legacycodebench evaluate</code>.
       </div>
 
       <div class="table-wrapper" style="overflow-x:auto;margin-top:1rem;">
@@ -42,13 +47,13 @@
             <tr>
               <th scope="col">Rank</th>
               <th scope="col">Model</th>
-              <th scope="col">Version</th>
-              <th scope="col">Overall (%)</th>
-              <th scope="col">Documentation (%)</th>
-              <th scope="col">Understanding (%)</th>
-              <th scope="col">Tasks Solved</th>
-              <th scope="col">Date</th>
-              <th scope="col">Paper</th>
+              <th scope="col">LCB Score</th>
+              <th scope="col">SC (%)</th>
+              <th scope="col">DQ (%)</th>
+              <th scope="col">BF (%)</th>
+              <th scope="col">Tasks</th>
+              <th scope="col">T1</th>
+              <th scope="col">T4</th>
             </tr>
           </thead>
           <tbody id="leaderboard-body"></tbody>
@@ -69,9 +74,10 @@
 
   <footer>
     <div class="container" style="display:flex;flex-wrap:wrap;gap:1rem;justify-content:space-between;">
-      <span>© 2025 LegacyCodeBench · Kalmantic Applied AI Lab</span>
-      <span>GitHub · <a href="https://github.com/kalmantic/legacycodebench" target="_blank" rel="noreferrer">kalmantic/legacycodebench</a></span>
-      <span>Contact · <a href="mailto:nikita@kalmantic.com">nikita@kalmantic.com</a></span>
+      <span>LegacyCodeBench &middot; Kalmantic AI Labs + Hexaview Tech</span>
+      <span>GitHub &middot; <a href="https://github.com/kalmantic/legacycodebench" target="_blank"
+          rel="noreferrer">kalmantic/legacycodebench</a></span>
+      <span>Contact &middot; <a href="mailto:nikita@kalmantic.com">nikita@kalmantic.com</a></span>
     </div>
   </footer>
 
@@ -83,18 +89,42 @@
       const empty = document.getElementById('leaderboard-empty');
       const error = document.getElementById('leaderboard-error');
 
-      const leaderboardUrl = new URL('../results/leaderboard.json', window.location.href);
-      leaderboardUrl.searchParams.set('t', Date.now());
+      // Try multiple paths for the leaderboard file
+      const paths = [
+        'leaderboard.json',
+        '../results/leaderboard.json',
+        'results/leaderboard.json',
+      ];
 
-      fetch(leaderboardUrl)
-        .then(res => {
-          if (!res.ok) throw new Error('Network response was not ok');
-          return res.json();
-        })
+      async function tryLoadLeaderboard() {
+        for (const path of paths) {
+          try {
+            const url = new URL(path, window.location.href);
+            url.searchParams.set('t', Date.now());
+            const res = await fetch(url);
+            if (res.ok) {
+              console.log('Loaded leaderboard from:', path);
+              return await res.json();
+            }
+          } catch (e) {
+            // Try next path
+          }
+        }
+        return null;
+      }
+
+      tryLoadLeaderboard()
         .then(data => {
           stateEl.hidden = true;
+
+          if (!data) {
+            error.hidden = false;
+            return;
+          }
+
           const entries = Array.isArray(data.leaderboard) ? data.leaderboard : [];
           console.log('Leaderboard entries', entries);
+
           if (entries.length === 0) {
             empty.hidden = false;
             return;
@@ -106,31 +136,42 @@
           entries.forEach((entry, idx) => {
             console.log('render row', idx, entry);
             const row = document.createElement('tr');
-            const overall = Number(entry.overall_score ?? 0);
-            const doc = Number(entry.documentation_score ?? 0);
-            const und = Number(entry.understanding_score ?? 0);
-            row.innerHTML = `
-              <td>${entry.rank ?? idx + 1}</td>
-              <td>${entry.submitter ?? ''}</td>
-              <td>${entry.model ?? ''}</td>
-              <td>${overall.toFixed(2)}</td>
-              <td>${doc.toFixed(2)}</td>
-              <td>${und.toFixed(2)}</td>
-              <td>${entry.tasks_completed ?? ''}</td>
-              <td>${entry.date ?? ''}</td>
-              <td>${entry.paper ? `<a href="${entry.paper}" target="_blank" rel="noreferrer">Paper</a>` : '—'}</td>
-            `;
+            // V2.3.1 format: avg_lcb_score, avg_sc, avg_bf, avg_sq (DQ)
+            const lcbScore = (entry.avg_lcb_score ?? 0) * 100;
+            const sc = (entry.avg_sc ?? 0) * 100;
+            const bf = (entry.avg_bf ?? 0) * 100;
+            const dq = (entry.avg_sq ?? 0) * 100;  // DQ stored as sq
+            const t1 = entry.by_tier?.T1?.avg_score ? entry.by_tier.T1.avg_score * 100 : 0;
+            const t4 = entry.by_tier?.T4?.avg_score ? entry.by_tier.T4.avg_score * 100 : 0;
+
+            // Format model name
+            const modelName = entry.model || entry.submitter || '';
+            const displayName = entry.submitter && entry.model && entry.submitter !== entry.model
+              ? entry.submitter + ' / ' + entry.model
+              : modelName;
+
+            row.innerHTML = 
+              '<td>' + (entry.rank ?? idx + 1) + '</td>' +
+              '<td><strong>' + displayName + '</strong></td>' +
+              '<td><strong>' + lcbScore.toFixed(1) + '%</strong></td>' +
+              '<td>' + sc.toFixed(1) + '%</td>' +
+              '<td>' + dq.toFixed(1) + '%</td>' +
+              '<td>' + bf.toFixed(1) + '%</td>' +
+              '<td>' + (entry.tasks_total ?? 0) + '</td>' +
+              '<td>' + t1.toFixed(0) + '%</td>' +
+              '<td>' + t4.toFixed(0) + '%</td>';
             body.appendChild(row);
           });
 
           table.hidden = false;
         })
-        .catch(() => {
+        .catch((err) => {
+          console.error('Failed to load leaderboard:', err);
           stateEl.hidden = true;
           error.hidden = false;
         });
     })();
   </script>
 </body>
-</html>
 
+</html>

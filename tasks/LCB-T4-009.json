@@ -3,11 +3,13 @@
   "category": "documentation",
   "difficulty": "expert",
   "language": "COBOL",
-  "domain": "enterprise",
+  "domain": "banking",
   "input_files": [
-    "tools\\cobweb\\cobweb-agar\\cobweb-agar.cob"
+    "app\\cbl\\COACTVWC.cbl",
+    "app\\cpy\\CVCRD01Y.cpy",
+    "app\\cpy\\COCOM01Y.cpy"
   ],
-  "task_description": "Generate thorough documentation for the complex program cobweb-agar.cob explaining business purpose, complete data structures, control flow (including GO TO patterns), all external interfaces, business rules, error handling, and edge cases.",
+  "task_description": "Generate thorough documentation for the complex program COACTVWC.cbl explaining business purpose, complete data structures, control flow (including GO TO patterns), all external interfaces, business rules, error handling, and edge cases. Include analysis of 2 related copybook(s).",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T4",

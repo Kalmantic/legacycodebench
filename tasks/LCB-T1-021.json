@@ -5,9 +5,9 @@
   "language": "COBOL",
   "domain": "enterprise",
   "input_files": [
-    "tools\\VFILES-virtual-heap-routines\\split001.cbl"
+    "OpenCobol\\ECBAP\\cbl\\ws72o.cbl"
   ],
-  "task_description": "Generate clear documentation for split001.cbl explaining its business purpose, main data structures, and key business rules.",
+  "task_description": "Generate clear documentation for ws72o.cbl explaining its business purpose, main data structures, and key business rules.",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T1",

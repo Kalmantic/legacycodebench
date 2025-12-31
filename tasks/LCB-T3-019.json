@@ -3,11 +3,15 @@
   "category": "documentation",
   "difficulty": "hard",
   "language": "COBOL",
-  "domain": "enterprise",
+  "domain": "banking",
   "input_files": [
-    "samples\\games\\star_trek\\ctrek.cob"
+    "app\\cbl\\CBTRN01C.cbl",
+    "app\\cpy\\CVTRA06Y.cpy",
+    "app\\cpy\\CVCUS01Y.cpy",
+    "app\\cpy\\CVACT03Y.cpy",
+    "app\\cpy\\CVACT02Y.cpy"
   ],
-  "task_description": "Generate detailed technical documentation for ctrek.cob covering business purpose, all data structures, control flow, external dependencies, business rules, and error handling.",
+  "task_description": "Generate detailed technical documentation for CBTRN01C.cbl covering business purpose, all data structures, control flow, external dependencies, business rules, and error handling. Include analysis of 4 related copybook(s).",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T3",

@@ -5,9 +5,14 @@
   "language": "COBOL",
   "domain": "enterprise",
   "input_files": [
-    "samples\\DBsample\\PostgreSQL\\example7\\PGMOD7.cbl"
+    "sources\\cobol\\core\\ZBNKLOAD.cbl",
+    "sources\\copybook\\CBANKVAC.cpy",
+    "sources\\copybook\\CBANKVCS.cpy",
+    "sources\\copybook\\CBANKVAT.cpy",
+    "sources\\copybook\\CBANKVTX.cpy",
+    "sources\\copybook\\CHELPVSM.cpy"
   ],
-  "task_description": "Generate detailed technical documentation for PGMOD7.cbl covering business purpose, all data structures, control flow, external dependencies, business rules, and error handling.",
+  "task_description": "Generate detailed technical documentation for ZBNKLOAD.cbl covering business purpose, all data structures, control flow, external dependencies, business rules, and error handling. Include analysis of 5 related copybook(s).",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T3",

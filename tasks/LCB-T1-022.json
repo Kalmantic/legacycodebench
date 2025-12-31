@@ -3,11 +3,11 @@
   "category": "documentation",
   "difficulty": "easy",
   "language": "COBOL",
-  "domain": "banking",
+  "domain": "insurance",
   "input_files": [
-    "WoodgroveBank\\CustomerCare\\TransactionIntegrator\\CICS\\ELMLink\\wtigacc.cbl"
+    "OpenCobol\\ECBAP\\cbl\\HOSPEDIT.cbl"
   ],
-  "task_description": "Generate clear documentation for wtigacc.cbl explaining its business purpose, main data structures, and key business rules.",
+  "task_description": "Generate clear documentation for HOSPEDIT.cbl explaining its business purpose, main data structures, and key business rules.",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T1",

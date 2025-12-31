@@ -3,11 +3,14 @@
   "category": "documentation",
   "difficulty": "medium",
   "language": "COBOL",
-  "domain": "enterprise",
+  "domain": "insurance",
   "input_files": [
-    "tools\\TUI-TOOLS\\GC71CRUDEMAIN.COB"
+    "OpenCobol\\ECBAP\\cbl\\ws120.cbl",
+    "Mainframe\\ZOS\\ECBAP\\cpy\\CLAIMREC.cpy",
+    "Mainframe\\ZOS\\ECBAP\\cpy\\WSFST.cpy",
+    "Mainframe\\ZOS\\ECBAP\\cpy\\WSDT.cpy"
   ],
-  "task_description": "Generate comprehensive documentation for GC71CRUDEMAIN.COB including business purpose, data structures, control flow, file operations, and business rules.",
+  "task_description": "Generate comprehensive documentation for ws120.cbl including business purpose, data structures, control flow, file operations, and business rules. Include analysis of 3 related copybook(s).",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T2",

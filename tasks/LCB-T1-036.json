@@ -3,13 +3,11 @@
   "category": "documentation",
   "difficulty": "easy",
   "language": "COBOL",
-  "domain": "enterprise",
+  "domain": "banking",
   "input_files": [
-    "tools\\GCSORT\\tests\\src\\iosqbi01c.cbl",
-    "tools\\GCSORT\\tests\\copy\\wkenvfield.cpy",
-    "tools\\GCSORT\\tests\\copy\\prenvfield2.cpy"
+    "sources\\cobol\\core\\DFHUAINS.cbl"
   ],
-  "task_description": "Generate clear documentation for iosqbi01c.cbl explaining its business purpose, main data structures, and key business rules. Include analysis of 2 related copybook(s).",
+  "task_description": "Generate clear documentation for DFHUAINS.cbl explaining its business purpose, main data structures, and key business rules.",
   "evaluation_criteria": {
     "version": "2.0",
     "tier": "T1",
