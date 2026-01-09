@@ -39,6 +39,12 @@ try:
 except ImportError:
     GOOGLE_AVAILABLE = False
 
+try:
+    from ibm_watsonx_ai.foundation_models import ModelInference as WatsonxModelInference
+    WATSONX_AVAILABLE = True
+except ImportError:
+    WATSONX_AVAILABLE = False
+
 from legacycodebench.config import AI_MODELS, DOCMOLT_CONFIG
 
 logging.basicConfig(level=logging.INFO)
@@ -58,6 +64,7 @@ MODEL_CONTEXT_LIMITS = {
     "claude-sonnet-4-20250514": 200000,
     "anthropic.claude-3-sonnet-20240229-v1:0": 200000,  # AWS Bedrock Claude 3 Sonnet
     "transform": 8000,  # Deprecated, kept for backward compatibility
+    "ibm/granite-3-3-8b-instruct": 8192,  # IBM Granite model
 }
 
 # FIXED (Issue 4.4): Normalize context to smallest for fair comparison
@@ -118,6 +125,8 @@ class AIModelInterface:
             return self._call_anthropic_with_continuation(prompt, is_documentation=True)
         elif self.provider == "google" and GOOGLE_AVAILABLE and os.getenv("GOOGLE_API_KEY"):
             return self._call_google_gemini(prompt)
+        elif self.provider == "watsonx" and WATSONX_AVAILABLE and os.getenv("IBM_WATSONX_API_KEY"):
+            return self._call_watsonx(prompt)
         elif self.provider == "aws":
             return self._call_aws_transform(prompt)
         else:
@@ -149,6 +158,9 @@ class AIModelInterface:
         elif self.provider == "google" and GOOGLE_AVAILABLE and os.getenv("GOOGLE_API_KEY"):
             response = self._call_google_gemini(prompt)
             return self._extract_json(response)
+        elif self.provider == "watsonx" and WATSONX_AVAILABLE and os.getenv("IBM_WATSONX_API_KEY"):
+            response = self._call_watsonx(prompt)
+            return self._extract_json(response)
         elif self.provider == "aws":
             response = self._call_aws_transform(prompt)
             return self._extract_json(response)
@@ -163,31 +175,28 @@ class AIModelInterface:
             )
     
     def _read_input_files(self, input_files: List[Path]) -> str:
-        """Read input files with size limit based on model context"""
+        """Read input files - FULL content, no truncation.
+        
+        RATIONALE (Jan 6, 2026): Removed artificial 16,800 char truncation.
+        - Models should use their full context window capability
+        - Truncation was handicapping Claude (200K) and GPT-4o (128K) unfairly
+        - Enterprise COBOL programs are 20K-80K+ chars - truncation hid real capability
+        - DocMolt was already getting full files, creating unfair comparison
+        """
         code_content = ""
         total_chars = 0
         
         for file_path in input_files:
-            if file_path.exists() and total_chars < self.max_input_chars:
+            if file_path.exists():
                 try:
                     with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                         file_content = f.read()
                     
-                    # Check if we can fit this file
                     header = f"\n\n=== {file_path.name} ===\n\n"
-                    remaining_chars = self.max_input_chars - total_chars - len(header)
+                    code_content += header
+                    code_content += file_content
+                    total_chars += len(header) + len(file_content)
                     
-                    if remaining_chars > 0:
-                        code_content += header
-                        if len(file_content) <= remaining_chars:
-                            code_content += file_content
-                            total_chars += len(header) + len(file_content)
-                        else:
-                            # Truncate this file but add note
-                            code_content += file_content[:remaining_chars]
-                            code_content += f"\n\n... [File truncated, {len(file_content) - remaining_chars} chars omitted] ..."
-                            total_chars = self.max_input_chars
-                            logger.info(f"Truncated {file_path.name} to fit context window")
                 except Exception as e:
                     logger.warning(f"Failed to read {file_path}: {e}")
         
@@ -543,6 +552,57 @@ Generate the JSON output now:"""
             # Re-raise unexpected errors
             raise
     
+    def _call_watsonx(self, prompt: str) -> str:
+        """Call IBM Watsonx AI API"""
+        if not WATSONX_AVAILABLE:
+            if self.mock_mode:
+                logger.info("Mock mode: returning fake Watsonx response")
+                return self._generate_mock_response()
+            raise CredentialsError(
+                "ibm-watsonx-ai not available. Install: pip install ibm-watsonx-ai"
+            )
+
+        api_key = os.getenv("IBM_WATSONX_API_KEY")
+        url = os.getenv("IBM_WATSONX_URL", self.config.get("url", "https://us-south.ml.cloud.ibm.com"))
+        project_id = os.getenv("IBM_WATSONX_PROJECT_ID")
+
+        if not api_key or not project_id:
+            if self.mock_mode:
+                logger.info("Mock mode: returning fake Watsonx response (no credentials)")
+                return self._generate_mock_response()
+            raise CredentialsError(
+                "IBM Watsonx credentials not set. Set IBM_WATSONX_API_KEY and IBM_WATSONX_PROJECT_ID. "
+                "Example: export IBM_WATSONX_API_KEY=your-key"
+            )
+
+        try:
+            model = WatsonxModelInference(
+                model_id=self.config["model"],
+                credentials={
+                    "apikey": api_key,
+                    "url": url,
+                },
+                project_id=project_id,
+            )
+
+            logger.info(f"Calling IBM Watsonx: model={self.config['model']}")
+
+            response = model.generate_text(
+                prompt=prompt,
+                params={
+                    "decoding_method": "greedy",  # Deterministic output
+                    "max_new_tokens": self.config["max_tokens"],
+                    "repetition_penalty": 1.0,
+                }
+            )
+
+            logger.info(f"Watsonx response: {len(response)} chars")
+            return response
+
+        except Exception as e:
+            logger.error(f"IBM Watsonx API error: {e}, using mock response")
+            return self._generate_mock_response()
+    
     def _extract_json(self, text: str) -> str:
         """Extract JSON from text response"""
         # Try to find JSON block
@@ -761,6 +821,106 @@ class DocMoltInterface(AIModelInterface):
         logger.warning("DocMolt is not designed for understanding tasks. Falling back to mock response.")
         return self._generate_mock_understanding(task, input_files)
 
+    def generate_documentation_multi_doctype(self, task, input_files: List[Path]) -> str:
+        """
+        Generate documentation using ALL 5 DocMolt doc types and combine results.
+        
+        This provides maximum coverage by calling:
+        - enterprise_blueprint: High-level architecture view
+        - technical_spec: Technical specifications
+        - prd: Product requirements document
+        - user_manual: End-user documentation
+        - api_documentation: API and integration details
+        
+        Note: Takes ~25 minutes per task (5 × ~5 min per doc type)
+        """
+        import tempfile
+        import zipfile
+        import time
+
+        if self.mock_mode:
+            return self._generate_mock_documentation(task)
+
+        # Get API key
+        api_key = os.getenv(DOCMOLT_CONFIG["api_key_env_var"])
+        if not api_key:
+            logger.error(f"No {DOCMOLT_CONFIG['api_key_env_var']} environment variable set")
+            raise CredentialsError(f"Missing {DOCMOLT_CONFIG['api_key_env_var']}")
+
+        # All 5 doc types
+        doc_types = [
+            "enterprise_blueprint",
+            "technical_spec",
+            "prd",
+            "user_manual",
+            "api_documentation"
+        ]
+
+        # Create ZIP file from input files (reusable across all doc types)
+        with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp_zip:
+            zip_path = tmp_zip.name
+
+        try:
+            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+                for input_file in input_files:
+                    if input_file.exists():
+                        zf.write(input_file, input_file.name)
+                        logger.info(f"Added to ZIP: {input_file.name}")
+
+            combined_documentation = []
+            successful_types = []
+
+            for doc_type in doc_types:
+                logger.info(f"\n{'='*50}")
+                logger.info(f"Generating {doc_type} documentation...")
+                logger.info(f"{'='*50}")
+                
+                try:
+                    # Temporarily override doc_type
+                    original_doc_type = self.doc_type
+                    self.doc_type = doc_type
+
+                    # Upload project with this doc type
+                    project_id = self._upload_project(zip_path, api_key)
+                    logger.info(f"[{doc_type}] Project uploaded: {project_id}")
+
+                    # Poll for completion
+                    self._poll_until_complete(project_id, api_key)
+                    logger.info(f"[{doc_type}] Project completed")
+
+                    # Download documentation
+                    documentation = self._download_documentation(project_id, api_key)
+                    logger.info(f"[{doc_type}] Downloaded: {len(documentation)} chars")
+
+                    # Restore original doc_type
+                    self.doc_type = original_doc_type
+
+                    # Add to combined output with clear section header
+                    combined_documentation.append(f"\n\n{'='*60}")
+                    combined_documentation.append(f"# DocMolt: {doc_type.upper().replace('_', ' ')}")
+                    combined_documentation.append(f"{'='*60}\n")
+                    combined_documentation.append(documentation)
+                    combined_documentation.append("\n")
+                    
+                    successful_types.append(doc_type)
+
+                except Exception as e:
+                    logger.error(f"[{doc_type}] Failed: {e}")
+                    combined_documentation.append(f"\n<!-- {doc_type} failed: {e} -->\n")
+
+            logger.info(f"\nMulti-doctype generation complete: {len(successful_types)}/{len(doc_types)} succeeded")
+            logger.info(f"Successful types: {successful_types}")
+
+            final_doc = "".join(combined_documentation)
+            logger.info(f"Combined documentation: {len(final_doc)} chars")
+
+            return final_doc
+
+        finally:
+            # Clean up temp ZIP
+            if os.path.exists(zip_path):
+                os.remove(zip_path)
+
     def _upload_project(self, zip_path: str, api_key: str) -> str:
         """Upload ZIP file and return project_id"""
         import requests
@@ -825,10 +985,23 @@ class DocMoltInterface(AIModelInterface):
         raise Exception(f"Timeout waiting for DocMolt completion after {self.max_poll_attempts * self.poll_interval}s")
 
     def _download_documentation(self, project_id: str, api_key: str) -> str:
-        """Download ALL generated documentation and combine into one file"""
+        """Download ALL generated documentation and combine into one file.
+        
+        Uses ZIP download as PRIMARY method since it captures all 100+ files.
+        The docs API sometimes only returns a subset.
+        """
         import requests
 
-        # First, get the documentation structure
+        # Try ZIP download FIRST - captures ALL files
+        logger.info("Downloading documentation via ZIP (captures all files)...")
+        try:
+            result = self._download_from_zip(project_id, api_key)
+            if result:
+                return result
+        except Exception as e:
+            logger.warning(f"ZIP download failed: {e}, falling back to docs API")
+
+        # Fallback: Try docs API
         docs_url = f"{self.base_url}/api/projects/{project_id}/docs"
         headers = {"X-API-Key": api_key}
 
@@ -838,11 +1011,15 @@ class DocMoltInterface(AIModelInterface):
             raise Exception(f"Failed to get docs structure: {response.status_code}")
 
         docs_structure = response.json()
-        logger.info(f"DocMolt docs structure: {list(docs_structure.keys())}")
+        logger.info(f"DocMolt docs structure keys: {list(docs_structure.keys())}")
+        
+        # Log full structure for debugging
+        import json
+        logger.debug(f"Full docs structure: {json.dumps(docs_structure, indent=2)[:2000]}")
 
         # Get all markdown file paths
         all_md_paths = self._find_all_docs(docs_structure)
-        logger.info(f"Found {len(all_md_paths)} documentation files: {all_md_paths}")
+        logger.info(f"Found {len(all_md_paths)} documentation files via API")
 
         if not all_md_paths:
             raise Exception("No documentation files found in DocMolt response")
@@ -860,7 +1037,22 @@ class DocMoltInterface(AIModelInterface):
                 # Add file header and content
                 filename = doc_path.split('/')[-1]
                 combined_content.append(f"<!-- Source: {doc_path} -->\n")
-                combined_content.append(response.text)
+
+                # FIX: Parse JSON response and extract actual content
+                # DocMolt API returns: {"file_path": "...", "content": "# Actual markdown...", ...}
+                try:
+                    doc_data = response.json()
+                    if isinstance(doc_data, dict) and "content" in doc_data:
+                        # Extract the actual documentation content from JSON wrapper
+                        actual_content = doc_data["content"]
+                        combined_content.append(actual_content)
+                    else:
+                        # Fallback: use raw text if not JSON or no content field
+                        combined_content.append(response.text)
+                except (ValueError, KeyError):
+                    # Not JSON, use as-is (plain markdown)
+                    combined_content.append(response.text)
+
                 combined_content.append("\n\n---\n\n")
             else:
                 logger.warning(f"Failed to download {doc_path}: {response.status_code}")
@@ -871,9 +1063,9 @@ class DocMoltInterface(AIModelInterface):
                 combined_content.pop()
             return "".join(combined_content)
 
-        # Fallback: try ZIP download
-        logger.warning("Direct downloads failed, trying ZIP download...")
-        return self._download_from_zip(project_id, api_key)
+        raise Exception("No documentation content downloaded")
+
+
 
     def _download_from_zip(self, project_id: str, api_key: str) -> str:
         """Fallback: Download ZIP and extract all markdown files"""
@@ -890,7 +1082,8 @@ class DocMoltInterface(AIModelInterface):
             raise Exception(f"Failed to download ZIP: {response.status_code}")
 
         combined_content = []
-        skip_patterns = ['__', '.zip', '.original', 'upload']
+        # Skip patterns: combined folder contains duplicate of individual files
+        skip_patterns = ['__', '.zip', '.original', 'upload', 'combined/', 'combined\\']
         
         def should_skip(name):
             name_lower = name.lower()

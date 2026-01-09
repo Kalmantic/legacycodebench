@@ -85,19 +85,24 @@ DATASET_SOURCES = {
         "tier": "T2",
         "estimated_files": 25,
     },
+    "az-legacy-engineering": {
+        "url": "https://github.com/bhbandam/AZ-Legacy-Engineering",
+        "description": "Woodgrove Bank ATM and Customer Care (CICS/Batch)",
+        "tier": "T2",
+        "estimated_files": 30,
+    },
 }
 
 # ===========================================
-# LegacyCodeBench v2.1 Scoring Weights
+# LegacyCodeBench v2.3.1 Scoring Weights
 # ===========================================
-# LCB_Score = (0.25 x SC) + (0.35 x BF) + (0.25 x SQ) + (0.15 x TR) − Critical_Penalty
-# BF = IUE (20%) + BSM (15%) for 100% program coverage
+# LCB_Score = (0.30 x SC) + (0.20 x DQ) + (0.50 x BF)
+# No TR (traceability) in v2.3.1 - absorbed into DQ
 
 EVALUATION_WEIGHTS = {
-    "behavioral_fidelity": 0.35,      # BF: IUE (paragraph execution) + BSM (external call validation)
-    "structural_completeness": 0.25,   # SC: Element coverage vs ground truth
-    "semantic_quality": 0.25,          # SQ: LLM-as-judge evaluation
-    "traceability": 0.15,              # TR: Reference validation
+    "structural_completeness": 0.30,   # SC: Element coverage vs ground truth
+    "semantic_quality": 0.20,          # DQ: Documentation quality (formerly SQ)
+    "behavioral_fidelity": 0.50,       # BF: Claim verification via execution
 }
 
 # ===========================================
@@ -543,6 +548,26 @@ AI_MODELS = {
         "model": "gemini-1.5-flash",
         "temperature": 0,  # Enforce deterministic outputs
         "max_tokens": 8192,
+    },
+    # AWS Transform for Mainframe - Manual submission workflow
+    # Documentation: docs/AWS_TRANSFORM_INTEGRATION_GUIDE.md
+    "aws-transform-mainframe": {
+        "provider": "manual",
+        "model": "aws-transform-mainframe",
+        "temperature": 0,  # N/A for manual but required for schema validation
+        "max_tokens": 16000,
+        "description": "AWS Transform for Mainframe - Semi-automated via console",
+        "input_method": "manual_paste",
+        "requires_manual_step": True,
+        "context_normalized": True,  # Uses same 16,800 char limit as other models
+    },
+    # IBM Watsonx Foundation Models
+    "ibm-granite-13b": {
+        "provider": "watsonx",
+        "model": "ibm/granite-3-3-8b-instruct",
+        "temperature": 0,  # Enforce deterministic outputs
+        "max_tokens": 8192,
+        "url": "https://us-south.ml.cloud.ibm.com",  # Default, can be overridden by env var
     },
 }
 

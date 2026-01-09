@@ -34,6 +34,7 @@ class COBOLFileAnalyzer:
         self.analysis = {
             "file_path": str(self.file_path),
             "file_name": self.file_path.name,
+            "file_size": self.file_path.stat().st_size,  # v2.1: File size for tier calculation
             "loc": self._count_loc(),
             "complexity": self._analyze_complexity(),
             "dependencies": self._find_dependencies(),
@@ -41,6 +42,10 @@ class COBOLFileAnalyzer:
             "file_operations": self._find_file_operations(),
             "has_comments": self._has_documentation_comments(),
             "domain_keywords": self._find_domain_keywords(),
+            # v2.1: Multi-factor tier scoring metrics
+            "exec_cics_count": self._count_exec_cics(),
+            "exec_sql_count": self._count_exec_sql(),
+            "goto_count": self._count_goto(),
         }
         
         return self.analysis
@@ -239,11 +244,30 @@ class COBOLFileAnalyzer:
         
         return score
     
+    def _count_exec_cics(self) -> int:
+        """Count EXEC CICS statements (v2.1 multi-factor scoring)"""
+        if not self.content:
+            return 0
+        return len(re.findall(r'EXEC\s+CICS', self.content, re.IGNORECASE))
+
+    def _count_exec_sql(self) -> int:
+        """Count EXEC SQL statements (v2.1 multi-factor scoring)"""
+        if not self.content:
+            return 0
+        return len(re.findall(r'EXEC\s+SQL', self.content, re.IGNORECASE))
+
+    def _count_goto(self) -> int:
+        """Count GO TO statements (v2.1 multi-factor scoring)"""
+        if not self.content:
+            return 0
+        return len(re.findall(r'\bGO\s+TO\b', self.content, re.IGNORECASE))
+
     def _empty_analysis(self) -> Dict:
         """Return empty analysis for failed reads"""
         return {
             "file_path": str(self.file_path),
             "file_name": self.file_path.name,
+            "file_size": 0,
             "loc": 0,
             "complexity": {"cyclomatic": 0, "nesting_depth": 0, "branches": 0},
             "dependencies": {"calls": [], "copies": [], "total": 0},
@@ -251,5 +275,8 @@ class COBOLFileAnalyzer:
             "file_operations": {"operations": [], "files": [], "total": 0},
             "has_comments": False,
             "domain_keywords": {},
+            "exec_cics_count": 0,
+            "exec_sql_count": 0,
+            "goto_count": 0,
         }
 

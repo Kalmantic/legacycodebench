@@ -21,10 +21,13 @@ class Task:
     difficulty: str  # "easy", "medium", "hard"
     language: str  # "COBOL"
     domain: str  # "banking", "finance", etc.
+    source_dataset: str  # Which dataset folder (e.g., "aws-carddemo")
     input_files: List[str]  # Relative paths to COBOL files
     task_description: str
     evaluation_criteria: Dict
     reference_solution: Optional[str] = None  # Path to reference solution
+    tier: Optional[str] = None  # Complexity tier: T1, T2, T3, T4
+    complexity_scoring: Optional[Dict] = None  # Multi-factor scoring breakdown
     
     def to_dict(self) -> Dict:
         """Convert to dictionary"""
@@ -55,16 +58,17 @@ class Task:
         return cls.from_dict(data)
     
     def get_input_files_absolute(self, datasets_dir: Path = DATASETS_DIR) -> List[Path]:
-        """Get absolute paths to input files"""
+        """Get absolute paths to input files using source_dataset"""
         absolute_files = []
+        dataset_path = datasets_dir / self.source_dataset
+        
         for file_path in self.input_files:
-            # Try to find the file in any dataset
-            for dataset_dir in datasets_dir.iterdir():
-                if dataset_dir.is_dir():
-                    full_path = dataset_dir / file_path
-                    if full_path.exists():
-                        absolute_files.append(full_path)
-                        break
+            full_path = dataset_path / file_path
+            if full_path.exists():
+                absolute_files.append(full_path)
+            else:
+                logger.warning(f"File not found: {full_path}")
+        
         return absolute_files
 
 
@@ -211,15 +215,32 @@ class TaskManager:
         if tier == "T4":
             evaluation_criteria["required_sections"].append("edge_cases")
         
+        # Build complexity scoring info
+        analysis = candidate.analysis or {}
+        complexity_scoring = {
+            "method": "multi-factor-v2.1",
+            "breakdown": {
+                "exec_cics": analysis.get("exec_cics_count", 0),
+                "exec_sql": analysis.get("exec_sql_count", 0),
+                "goto_count": analysis.get("goto_count", 0),
+                "call_count": analysis.get("dependencies", {}).get("total", 0),
+                "loc": loc,
+                "final_tier": tier,
+            }
+        }
+
         return Task(
             task_id=task_id,
             category="documentation",  # v2.0: All tasks are documentation
             difficulty=candidate.difficulty_level,
             language="COBOL",
             domain=candidate.domain,
+            source_dataset=candidate.dataset_name,
             input_files=input_files,
             task_description=task_description,
             evaluation_criteria=evaluation_criteria,
+            tier=tier,  # v2.1: Complexity tier
+            complexity_scoring=complexity_scoring,  # v2.1: Multi-factor scoring breakdown
         )
     
     def create_tasks_simple(self, datasets_dir: Path = DATASETS_DIR) -> List[Task]:
@@ -257,6 +278,7 @@ class TaskManager:
                     difficulty="medium" if task_counter["doc"] % 2 == 0 else "easy",
                     language="COBOL",
                     domain="banking" if "bank" in dataset_id.lower() else "finance",
+                    source_dataset=dataset_id,
                     input_files=[str(rel_path)],
                     task_description=f"Generate comprehensive documentation for {rel_path.name} explaining business purpose, business rules, edge cases, and data structures.",
                     evaluation_criteria={
@@ -282,6 +304,7 @@ class TaskManager:
                     difficulty="medium" if task_counter["und"] % 2 == 0 else "easy",
                     language="COBOL",
                     domain="banking" if "bank" in dataset_id.lower() else "finance",
+                    source_dataset=dataset_id,
                     input_files=[str(rel_path)],
                     task_description=f"Extract dependency graph, business rules, and data flow from {rel_path.name}.",
                     evaluation_criteria={

@@ -179,13 +179,12 @@ class Leaderboard:
                 task_id = result.get("task_id", "unknown")
                 logger.info(f"[CF-05 ADJUSTED] Task {task_id}: Removed CF-05 (TR={tr:.2%}, refs={total_refs})")
             
-            # If we removed CF-05 and score is 0.0, recalculate from components
+            # If we removed CF-05 and score is 0.0, recalculate from components (v2.3.1: no TR)
             if had_cf05 and len(critical_failures) == 0 and overall_score == 0.0:
                 overall_score = (
                     EVALUATION_WEIGHTS["structural_completeness"] * sc +
                     EVALUATION_WEIGHTS["behavioral_fidelity"] * bf +
-                    EVALUATION_WEIGHTS["semantic_quality"] * sq +
-                    EVALUATION_WEIGHTS["traceability"] * tr
+                    EVALUATION_WEIGHTS["semantic_quality"] * sq
                 )
             
             # Track scores
@@ -283,9 +282,9 @@ class Leaderboard:
         
         # Create leaderboard structure
         leaderboard_data = {
-            "version": "2.0",
+            "version": "2.3.1",
             "generated_at": datetime.now().isoformat(),
-            "scoring_formula": "LCB Score = (0.25 x SC) + (0.35 x BF) + (0.25 x SQ) + (0.15 x TR)",
+            "scoring_formula": "LCB Score = (0.30 x SC) + (0.20 x DQ) + (0.50 x BF)",
             "scoring_weights": EVALUATION_WEIGHTS,
             "total_models": len(leaderboard),
             "leaderboard": leaderboard,

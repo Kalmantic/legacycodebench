@@ -17,6 +17,59 @@ from legacycodebench.config import (
 )
 from legacycodebench.tasks import Task, TaskManager
 from legacycodebench.dataset_loader import DatasetLoader
+import re
+
+
+def extract_documentation_content(raw_content: str) -> str:
+    """
+    Extract actual documentation from potentially JSON-wrapped content.
+
+    DocMolt API returns JSON-wrapped markdown:
+    {"file_path": "...", "content": "# Actual Documentation...", "doc_type": "markdown", ...}
+
+    This function extracts the actual content from such wrappers.
+    """
+    # Check if content looks like JSON-wrapped documentation
+    # Pattern: <!-- Source: ... -->\n{"file_path":..., "content":..., ...}
+    if '{"file_path"' in raw_content and '"content"' in raw_content:
+        extracted_parts = []
+
+        # Split by source markers
+        parts = re.split(r'(<!-- Source: [^>]+ -->)', raw_content)
+
+        for i, part in enumerate(parts):
+            if part.strip().startswith('<!-- Source:'):
+                # This is a source marker, keep it
+                extracted_parts.append(part)
+            elif part.strip().startswith('{') and '"content"' in part:
+                # This looks like JSON, try to extract content
+                try:
+                    # Handle multiple JSON objects separated by ---
+                    json_blocks = part.split('\n\n---\n\n')
+                    for block in json_blocks:
+                        block = block.strip()
+                        if block.startswith('{') and block.endswith('}'):
+                            data = json.loads(block)
+                            if isinstance(data, dict) and 'content' in data:
+                                extracted_parts.append(data['content'])
+                            else:
+                                extracted_parts.append(block)
+                        elif block:
+                            extracted_parts.append(block)
+                except (json.JSONDecodeError, ValueError):
+                    # Not valid JSON, use as-is
+                    extracted_parts.append(part)
+            else:
+                # Plain content, use as-is
+                extracted_parts.append(part)
+
+        result = '\n\n'.join(p for p in extracted_parts if p.strip())
+        if result.strip():
+            return result
+
+    # Return original if not JSON-wrapped
+    return raw_content
+
 
 # v2.0 evaluators (default)
 from legacycodebench.evaluators_v2.documentation_v2 import DocumentationEvaluatorV2
@@ -119,9 +172,10 @@ def evaluate(task_id: str, submission: Path, output: Optional[Path],
             input_files = task.get_input_files_absolute()
             gt = gt_gen.generate(input_files, cache_dir=GROUND_TRUTH_CACHE_DIR)
             
-            # Read documentation
+            # Read documentation (handle JSON-wrapped DocMolt format)
             with open(submission_path, 'r', encoding='utf-8') as f:
-                documentation = f.read()
+                raw_documentation = f.read()
+            documentation = extract_documentation_content(raw_documentation)
             
             # Read source code
             source_code = ""
@@ -421,9 +475,10 @@ def leaderboard(output: Optional[Path], print_flag: bool, detailed: bool,
 
 def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBench Evaluation",
                    evaluator_version: str = "v2", enable_execution: bool = False,
-                   judge_model: str = "gpt-4o", task_limit: int = 3,
+                   judge_model: str = "gpt-4o", task_limit: int = 3, task_offset: int = 0,
                    skip_datasets: bool = False, skip_task_creation: bool = False,
-                   mock_mode: bool = False, clean_results: bool = False):
+                   mock_mode: bool = False, clean_results: bool = False,
+                   multi_doctype: bool = False):
     """Shared routine that runs the full benchmark pipeline
 
     Args:
@@ -433,10 +488,12 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
         enable_execution: Enable behavioral fidelity testing (requires Docker)
         judge_model: LLM model for semantic quality evaluation
         task_limit: Maximum number of tasks to run (for quick testing)
+        task_offset: Skip first N tasks (for batch processing)
         skip_datasets: Skip dataset loading step (use existing datasets)
         skip_task_creation: Skip task creation step (use existing tasks)
         mock_mode: Use mock responses for testing (no API keys required)
         clean_results: Clear old results before running (prevents stale data)
+        multi_doctype: For DocMolt, call all 5 doc types and combine results
     """
     if not models_to_test:
         click.echo("[ERROR] No models selected. Aborting.")
@@ -478,17 +535,24 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
         click.echo(f"[OK] Using {len(loaded)} existing datasets")
     
     # Step 2: Create tasks (uses v2.0 intelligent selection - documentation only, tier-based)
-    if not skip_task_creation:
+    # REPRODUCIBILITY FIX: Auto-skip task creation if 200 tasks already exist
+    # This ensures all users evaluate on the same canonical task set
+    manager = TaskManager()
+    existing_task_ids = manager.list_tasks()
+    
+    if not skip_task_creation and len(existing_task_ids) >= 200:
+        click.echo("\n[2/7] Using existing canonical tasks (200 tasks found)...")
+        click.echo("      [INFO] To regenerate tasks, delete tasks/*.json first")
+        tasks = [manager.get_task(tid) for tid in existing_task_ids]
+        click.echo(f"[OK] Using {len(tasks)} existing tasks (reproducible)")
+    elif not skip_task_creation:
         click.echo("\n[2/7] Selecting tasks (v2.0 tier-based intelligent selection)...")
-        manager = TaskManager()
         tasks = manager.create_tasks_from_datasets(use_intelligent_selection=True)
         manager.save_all(tasks)
         click.echo(f"[OK] Created {len(tasks)} documentation tasks")
     else:
         click.echo("\n[2/7] Skipping task creation (using existing tasks)...")
-        manager = TaskManager()
-        task_ids = manager.list_tasks()
-        tasks = [manager.get_task(tid) for tid in task_ids]
+        tasks = [manager.get_task(tid) for tid in existing_task_ids]
         click.echo(f"[OK] Using {len(tasks)} existing tasks")
     
     # Step 3: Generate ground truth (pre-generate for all tasks to show progress)
@@ -550,7 +614,13 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
 
         return selected[:limit]
 
-    balanced_tasks = _select_representative_tasks(tasks, limit=task_limit)
+    balanced_tasks = _select_representative_tasks(tasks, limit=task_limit + task_offset)
+    # Apply task offset for batch processing
+    if task_offset > 0:
+        balanced_tasks = balanced_tasks[task_offset:task_offset + task_limit]
+        click.echo(f"  Applied offset: skipping first {task_offset} tasks")
+    else:
+        balanced_tasks = balanced_tasks[:task_limit]
     
     # Log tier distribution
     tier_dist = {"T1": 0, "T2": 0, "T3": 0, "T4": 0, "other": 0}
@@ -614,7 +684,12 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
                     continue
                 
                 # v2.0: All tasks are documentation tasks
-                output = ai_model.generate_documentation(task, input_files)
+                # Check if we should use multi-doctype for DocMolt
+                if multi_doctype and hasattr(ai_model, 'generate_documentation_multi_doctype'):
+                    click.echo(f"    [MULTI-DOCTYPE] Calling all 5 doc types...")
+                    output = ai_model.generate_documentation_multi_doctype(task, input_files)
+                else:
+                    output = ai_model.generate_documentation(task, input_files)
                 output_file = SUBMISSIONS_DIR / f"{task.task_id}_{model_id}.md"
                 
                 output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -755,15 +830,21 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
                 result_file = RESULTS_DIR / f"{task.task_id}_{model_id}_{evaluator_version}.json"
                 # Normalize submitter name: use model name as submitter if not specified
                 # This prevents duplicates in leaderboard
-                submitter_name = model_id.split("-")[0].title() if "-" in model_id else model_id
-                
+                # Special mapping for DocMolt to show as Hexaview/Legacy Insights
+                if model_id == "docmolt-enterprise":
+                    submitter_name = "Hexaview"
+                    display_model = "Legacy Insights"
+                else:
+                    submitter_name = model_id.split("-")[0].title() if "-" in model_id else model_id
+                    display_model = model_id
+
                 result_entry = {
                     "task_id": task.task_id,
                     "task_category": task.category,
                     "evaluator_version": evaluator_version,
                     "submitter": {
                         "name": submitter_name,
-                        "model": model_id,  # Always use full model ID
+                        "model": display_model,  # Display name for leaderboard
                         "category": "verified",
                     },
                     "result": result,
@@ -821,6 +902,8 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
               help="LLM model for semantic quality evaluation")
 @click.option("--task-limit", default=3, type=int,
               help="Number of tasks to run (default: 3 for quick testing, use 200 for full benchmark)")
+@click.option("--task-offset", default=0, type=int,
+              help="Skip first N tasks (for batch processing with different API keys)")
 @click.option("--models", default="claude-sonnet-4,gpt-4o,gemini-2.0-flash",
               help="Comma-separated list of models to test")
 @click.option("--skip-datasets", is_flag=True, default=False,
@@ -831,9 +914,11 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
               help="Use mock responses for testing (no API keys required)")
 @click.option("--clean", is_flag=True, default=False,
               help="Clear old results before running (prevents stale data in leaderboard)")
+@click.option("--multi-doctype", is_flag=True, default=False,
+              help="For DocMolt: Call all 5 doc types and combine (takes ~25 min/task but better scores)")
 def run_full_benchmark(evaluation_version: str, enable_execution: bool, judge_model: str,
-                       task_limit: int, models: str, skip_datasets: bool,
-                       skip_task_creation: bool, mock: bool, clean: bool):
+                       task_limit: int, task_offset: int, models: str, skip_datasets: bool,
+                       skip_task_creation: bool, mock: bool, clean: bool, multi_doctype: bool):
     """Run complete benchmark pipeline (SWE-bench aligned)
     
     Single command that orchestrates the full pipeline:
@@ -894,10 +979,12 @@ def run_full_benchmark(evaluation_version: str, enable_execution: bool, judge_mo
         enable_execution=enable_execution,
         judge_model=judge_model,
         task_limit=task_limit,
+        task_offset=task_offset,
         skip_datasets=skip_datasets,
         skip_task_creation=skip_task_creation,
         mock_mode=mock,
-        clean_results=clean
+        clean_results=clean,
+        multi_doctype=multi_doctype
     )
 
 

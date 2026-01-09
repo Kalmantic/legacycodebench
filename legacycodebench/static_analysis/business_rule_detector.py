@@ -372,13 +372,42 @@ class BusinessRuleDetector:
         """
         error_handlers = []
 
+        # PRODUCTION GRADE: Comprehensive error pattern detection
+        # Includes standard COBOL constructs + common error handling idioms
         error_patterns = [
+            # Standard COBOL error handling constructs
             (r'ON\s+SIZE\s+ERROR', 'size_error'),
+            (r'NOT\s+ON\s+SIZE\s+ERROR', 'size_error_success'),
             (r'INVALID\s+KEY', 'invalid_key'),
+            (r'NOT\s+INVALID\s+KEY', 'valid_key'),
             (r'AT\s+END', 'end_of_file'),
             (r'NOT\s+AT\s+END', 'not_at_end'),
+            (r'ON\s+EXCEPTION', 'exception_handler'),
+            (r'NOT\s+ON\s+EXCEPTION', 'exception_success'),
+            (r'ON\s+OVERFLOW', 'overflow_handler'),
+            (r'NOT\s+ON\s+OVERFLOW', 'overflow_success'),
+
+            # File status checks
             (r'FILE-STATUS', 'file_status_check'),
-            (r'IF\s+.*-STATUS\s*(?:=|NOT)', 'status_check')
+            (r'IF\s+.*-STATUS\s*(?:=|NOT)', 'status_check'),
+
+            # Error display patterns (common COBOL idiom for error reporting)
+            (r'DISPLAY\s+["\']?\*\*\s*ERROR', 'error_display'),
+            (r'DISPLAY\s+["\']?ERROR[:\s]', 'error_display'),
+            (r'DISPLAY\s+["\']?Bad\s+', 'validation_error'),
+            (r'DISPLAY\s+["\']?Invalid\s+', 'validation_error'),
+
+            # EVALUATE default handler (catch-all for unexpected values)
+            (r'WHEN\s+OTHER', 'default_handler'),
+
+            # Abnormal termination patterns
+            (r'GOBACK', 'abnormal_termination'),
+            (r'STOP\s+RUN', 'program_termination'),
+
+            # CICS error handling
+            (r'HANDLE\s+CONDITION', 'cics_error_handler'),
+            (r'HANDLE\s+ABEND', 'cics_abend_handler'),
+            (r'RESP\s*\(', 'cics_response_check'),
         ]
 
         for paragraph in parsed_cobol.paragraphs:

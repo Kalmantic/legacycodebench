@@ -87,9 +87,9 @@
       </div>
 
       <div class="callout">
-        <strong>Scoring:</strong> LCB Score = 30% Structural Completeness + 45% Documentation Quality + 25% Behavioral
+        <strong>Scoring:</strong> LCB Score = 30% Structural Completeness + 20% Documentation Quality + 50% Behavioral
         Fidelity.
-        High BF means code generated from the AI's documentation produces correct outputs.
+        High BF means the AI's documentation accurately describes what the code actually does.
       </div>
     </section>
 
@@ -111,19 +111,19 @@
         </div>
 
         <div class="method-card">
-          <h4>Documentation Quality <span class="method-weight">45%</span></h4>
+          <h4>Documentation Quality <span class="method-weight">20%</span></h4>
           <p>Algorithmic assessment of structure, readability, traceability, and abstraction level. No LLM-as-judge
             required.</p>
         </div>
 
         <div class="method-card">
-          <h4>Behavioral Fidelity <span class="method-weight">25%</span></h4>
+          <h4>Behavioral Fidelity <span class="method-weight">50%</span></h4>
           <p>Claim verification via execution. Documentation must accurately describe what the code actually does,
             verified through test generation and pattern matching.</p>
         </div>
       </div>
 
-      <div class="formula">LCB Score = (0.30 &times; SC) + (0.45 &times; DQ) + (0.25 &times; BF)</div>
+      <div class="formula">LCB Score = (0.30 × SC) + (0.20 × DQ) + (0.50 × BF)</div>
 
       <div class="callout" style="margin-top: 24px;">
         Critical failures (hallucinated functions, incorrect business rules) result in a score of 0 for that task.

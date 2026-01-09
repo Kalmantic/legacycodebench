@@ -10,6 +10,7 @@ v2.0 Approach:
 from pathlib import Path
 from typing import Dict, List, Tuple
 import logging
+import hashlib
 
 from legacycodebench.file_analyzer import COBOLFileAnalyzer
 from legacycodebench.difficulty_calibrator import DifficultyCalibrator
@@ -37,6 +38,18 @@ class TaskCandidate:
         # FIXED (Issue 2.4): Added richer task metadata
         self.expected_challenges = []  # List of expected challenges for this task
         self.baseline_score = None  # Expected baseline score (for validation)
+        # REPRODUCIBILITY: File hash for deterministic sorting
+        self._file_hash = None
+    
+    @property
+    def file_hash(self) -> str:
+        """Get SHA256 hash of main file for deterministic sorting"""
+        if self._file_hash is None:
+            try:
+                self._file_hash = hashlib.sha256(self.main_file.read_bytes()).hexdigest()
+            except:
+                self._file_hash = str(self.main_file)  # Fallback to path
+        return self._file_hash
     
     def __repr__(self):
         return f"TaskCandidate({self.main_file.name}, {self.tier}, {self.difficulty_level}, score={self.interestingness_score:.1f})"
@@ -110,51 +123,66 @@ class TaskCandidateGenerator:
     
     def _determine_tier(self, loc: int, analysis: Dict) -> str:
         """
-        Determine complexity tier using multi-factor scoring (FIXED Issue 1.3/2.1).
-        
-        Uses composite score instead of LOC-only assignment.
-        A 200-line CICS program is now correctly classified as higher tier.
-        
-        Scoring factors:
-        - EXEC CICS statements: +15 each
-        - EXEC SQL statements: +12 each  
-        - GO TO statements: +3 each (max 30)
-        - External CALL statements: +5 each
-        - LOC baseline: +5/10/20 based on size
+        Determine complexity tier using v2.1 multi-factor approach.
+
+        Aligned with regenerate_tasks_v2.1.py for consistency.
+
+        Base tier from file size:
+        - T1: 0-20KB
+        - T2: 20-40KB
+        - T3: 40-80KB
+        - T4: 80KB+
+
+        Complexity boosts (tier jumps):
+        - EXEC CICS present: +2 tiers
+        - EXEC SQL present: +1 tier
+        - GO TO >10: +1 tier, >5: +0.5 tier
+        - CALL >5: +0.5 tier
         """
-        score = 0
-        
-        # CICS/DB2 indicators (most important for complexity)
+        # Size thresholds (same as regenerate_tasks_v2.1.py)
+        SIZE_TIERS = {
+            'T1': (0, 20000),
+            'T2': (20000, 40000),
+            'T3': (40000, 80000),
+            'T4': (80000, float('inf'))
+        }
+
+        # Get file size from analysis
+        file_size = analysis.get("file_size", 0)
+
+        # Base tier from size
+        base_tier = 'T1'
+        for tier, (min_size, max_size) in SIZE_TIERS.items():
+            if min_size <= file_size < max_size:
+                base_tier = tier
+                break
+
+        # Calculate complexity boosts
+        boosts = []
+
         exec_cics = analysis.get("exec_cics_count", 0)
         exec_sql = analysis.get("exec_sql_count", 0)
-        score += exec_cics * 15
-        score += exec_sql * 12
-        
-        # GO TO density (indicates spaghetti code)
         goto_count = analysis.get("goto_count", 0)
-        score += min(goto_count * 3, 30)  # Cap at 30 points
-        
-        # External calls (indicates integration complexity)
         calls = analysis.get("dependencies", {}).get("total", 0)
-        score += calls * 5
-        
-        # LOC-based baseline (secondary factor)
-        if loc > 2000:
-            score += 20
-        elif loc > 1000:
-            score += 10
-        elif loc > 500:
-            score += 5
-        
-        # Tier assignment based on composite score
-        if score >= 50:
-            return "T4"  # Enterprise: CICS/DB2, heavy GO TO, or very large
-        elif score >= 30:
-            return "T3"  # Complex: Multiple calls, moderate GO TO
-        elif score >= 15:
-            return "T2"  # Moderate: Some complexity indicators
-        else:
-            return "T1"  # Basic: Simple linear flow
+
+        if exec_cics > 0:
+            boosts.append(('cics', 2))
+        if exec_sql > 0:
+            boosts.append(('db2', 1))
+        if goto_count > 10:
+            boosts.append(('goto_heavy', 1))
+        elif goto_count > 5:
+            boosts.append(('goto_moderate', 0.5))
+        if calls > 5:
+            boosts.append(('external_calls', 0.5))
+
+        # Apply boosts
+        total_boost = sum(b[1] for b in boosts)
+        tiers = ['T1', 'T2', 'T3', 'T4']
+        current_idx = tiers.index(base_tier)
+        boosted_idx = min(current_idx + int(total_boost), len(tiers) - 1)
+
+        return tiers[boosted_idx]
     
     def select_best_tasks(self, candidates: List[TaskCandidate], 
                          total_tasks: int = 200) -> List[TaskCandidate]:
@@ -167,12 +195,13 @@ class TaskCandidateGenerator:
         Returns:
             List of selected TaskCandidate objects (documentation only)
         """
-        # Calculate targets per tier based on distribution
+        # Calculate targets per tier based on v2.1 distribution
+        # Multi-factor scoring naturally produces more T4 tasks (CICS/SQL/GOTO)
         tier_targets = {
-            "T1": int(total_tasks * 0.40),   # 40% basic
-            "T2": int(total_tasks * 0.35),   # 35% moderate
-            "T3": int(total_tasks * 0.20),   # 20% complex
-            "T4": int(total_tasks * 0.05),   # 5% enterprise
+            "T1": int(total_tasks * 0.25),   # 25% basic (50 tasks)
+            "T2": int(total_tasks * 0.205),  # 20.5% moderate (41 tasks)
+            "T3": int(total_tasks * 0.205),  # 20.5% complex (41 tasks)
+            "T4": int(total_tasks * 0.34),   # 34% enterprise (68 tasks)
         }
         
         # Group candidates by tier
@@ -180,9 +209,11 @@ class TaskCandidateGenerator:
         for candidate in candidates:
             by_tier[candidate.tier].append(candidate)
         
-        # Sort each tier by interestingness score
+        # REPRODUCIBILITY FIX: Sort deterministically by tier priority -> dataset -> file_hash
+        # This matches regenerate_tasks_v2.1.py for 100% reproducibility
+        tier_priority = {'T4': 0, 'T3': 1, 'T2': 2, 'T1': 3}
         for tier in by_tier:
-            by_tier[tier].sort(key=lambda c: c.interestingness_score, reverse=True)
+            by_tier[tier].sort(key=lambda c: (c.dataset_name, c.file_hash))
         
         # Select from each tier
         selected = []

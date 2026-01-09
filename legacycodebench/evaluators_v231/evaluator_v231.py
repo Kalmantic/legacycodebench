@@ -21,8 +21,85 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
 import logging
 import time
+import json
+import re
 
 from .config_v231 import V231_CONFIG
+
+
+def preprocess_documentation(documentation: str) -> str:
+    """
+    Preprocess documentation to extract content from JSON-wrapped formats.
+    
+    DocMolt outputs documentation in this format:
+        <!-- Source: 14_file_analysis/SCASH00P.cbl.md -->
+        {"file_path":"...","content":"# COBOL Program Analysis...\\n\\n...","doc_type":"markdown",...}
+    
+    This function extracts the actual markdown content from the JSON wrapper
+    so claim extraction and other evaluators can work properly.
+    
+    Args:
+        documentation: Raw documentation string (may be JSON-wrapped or plain markdown)
+        
+    Returns:
+        Extracted markdown content
+    """
+    if not documentation or not documentation.strip():
+        return documentation
+    
+    extracted_contents = []
+    
+    # Strategy: Find all JSON objects in the document and extract "content" fields
+    # The content field contains escaped markdown (\\n instead of newlines)
+    
+    # Find positions of {"file_path" or {"content" which indicate DocMolt JSON objects
+    doc = documentation
+    i = 0
+    
+    while i < len(doc):
+        # Look for JSON object start
+        if doc[i] == '{':
+            # Try to find the matching closing brace
+            brace_count = 1
+            j = i + 1
+            while j < len(doc) and brace_count > 0:
+                if doc[j] == '{':
+                    brace_count += 1
+                elif doc[j] == '}':
+                    brace_count -= 1
+                elif doc[j] == '"':
+                    # Skip string content
+                    j += 1
+                    while j < len(doc) and doc[j] != '"':
+                        if doc[j] == '\\':
+                            j += 1  # Skip escaped char
+                        j += 1
+                j += 1
+            
+            if brace_count == 0:
+                json_str = doc[i:j]
+                try:
+                    data = json.loads(json_str)
+                    if isinstance(data, dict) and "content" in data:
+                        content = data["content"]
+                        if content and isinstance(content, str) and len(content.strip()) > 50:
+                            extracted_contents.append(content)
+                except json.JSONDecodeError:
+                    pass
+                i = j
+            else:
+                i += 1
+        else:
+            i += 1
+    
+    if extracted_contents:
+        # Combine all extracted content with separators
+        combined = "\n\n---\n\n".join(extracted_contents)
+        logger.debug(f"Preprocessed documentation: extracted {len(extracted_contents)} content block(s), {len(combined)} chars total")
+        return combined
+    
+    # No JSON wrapper found - return original
+    return documentation
 from .structural_v231 import StructuralEvaluatorV231, StructuralResult
 from .documentation_v231 import DocumentationEvaluatorV231, DocumentationResult
 from .behavioral_v231 import BehavioralEvaluatorV231, BehavioralResult
@@ -104,6 +181,9 @@ class EvaluatorV231:
         """
         logger.info(f"Starting V2.3.1 evaluation for {task_id}")
         start_time = time.time()
+        
+        # Preprocess documentation to handle JSON-wrapped formats (e.g., DocMolt output)
+        documentation = preprocess_documentation(documentation)
         
         logger.debug(f"\n{'='*60}")
         logger.debug(f"V2.3.1 EVALUATION: {task_id}")

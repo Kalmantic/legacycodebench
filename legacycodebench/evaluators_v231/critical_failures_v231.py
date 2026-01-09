@@ -242,15 +242,22 @@ class CriticalFailureDetectorV231:
             "-PARAGRAPH", "-PROC", "-EXIT", "-ENTRY"
         ]
         
-        # COBOL keywords/statements - NOT variables (fix for END-IF false positive)
+        # COBOL keywords/statements - NOT variables (fix for END-IF/END-EXEC false positives)
         cobol_keywords = {
+            # END-* statement terminators
             "END-IF", "END-EVALUATE", "END-PERFORM", "END-READ", "END-WRITE",
             "END-CALL", "END-COMPUTE", "END-ADD", "END-SUBTRACT", "END-MULTIPLY",
             "END-DIVIDE", "END-STRING", "END-UNSTRING", "END-SEARCH", "END-START",
             "END-RETURN", "END-REWRITE", "END-DELETE", "END-ACCEPT", "END-DISPLAY",
+            # CICS/SQL embedded statement terminator
+            "END-EXEC", "EXEC-CICS", "EXEC-SQL",
+            # Error handling keywords
             "ON-SIZE-ERROR", "NOT-ON-SIZE-ERROR", "ON-OVERFLOW", "NOT-ON-OVERFLOW",
             "AT-END", "NOT-AT-END", "INVALID-KEY", "NOT-INVALID-KEY",
+            "ON-EXCEPTION", "NOT-ON-EXCEPTION",
+            # File/Program control
             "FILE-STATUS", "FILE-CONTROL", "I-O-CONTROL", "PROGRAM-ID",
+            "INPUT-OUTPUT", "WORKING-STORAGE", "LINKAGE-SECTION", "LOCAL-STORAGE",
         }
         
         hallucinated_io = []
@@ -405,27 +412,83 @@ class CriticalFailureDetectorV231:
     ) -> Optional[CriticalFailure]:
         """
         CF-04: Error handlers exist but undocumented
+
+        PRODUCTION GRADE LOGIC (v2.3.1):
+        - Check if actual handler identifiers are mentioned (not just "error" keyword)
+        - A model that documents WS-RFPIN-EOF has documented the AT END handler
+        - A model that just says "Error Handling" with no specifics should NOT pass
+        - Rewards specific documentation, not vague keyword usage
         """
         # Get error handlers from ground truth
         error_handlers = ground_truth.get("error_handlers", [])
-        
+
         if not error_handlers:
             return None  # No handlers to check
-        
-        doc_lower = documentation.lower()
-        
-        # Check if ANY error handling is mentioned
-        error_keywords = ["error", "exception", "invalid", "failure", "handler", "size error", "on error"]
-        
-        mentioned = any(kw in doc_lower for kw in error_keywords)
-        
-        if not mentioned:
+
+        doc_upper = documentation.upper()
+
+        handlers_documented = 0
+
+        for handler in error_handlers:
+            handler_type = handler.get("type", "")
+            handler_paragraph = handler.get("paragraph", "")
+            handler_statement = handler.get("statement", "")
+
+            # Method 1: Check if paragraph name is mentioned
+            if handler_paragraph:
+                if handler_paragraph.upper() in doc_upper:
+                    handlers_documented += 1
+                    continue
+
+            # Method 2: Extract variables from the handler statement
+            # Matches COBOL-style variable names (e.g., WS-RFPIN-EOF, FILE-STATUS)
+            vars_in_stmt = re.findall(
+                r'\b(WS-[A-Z0-9-]+|[A-Z][A-Z0-9]*-[A-Z0-9-]+)\b',
+                handler_statement.upper()
+            )
+            if any(var in doc_upper for var in vars_in_stmt):
+                handlers_documented += 1
+                continue
+
+            # Method 3: Check for handler-type-specific documentation
+            # Maps handler types to specific terms that indicate understanding
+            type_specific_terms = {
+                "end_of_file": ["EOF", "END-OF-FILE", "AT END", "END OF FILE"],
+                "not_at_end": ["NOT AT END", "RECORD FOUND", "SUCCESSFUL READ"],
+                "size_error": ["SIZE ERROR", "OVERFLOW", "ON SIZE", "ARITHMETIC OVERFLOW"],
+                "size_error_success": ["NOT ON SIZE ERROR", "SIZE OK"],
+                "file_status_check": ["FILE STATUS", "STATUS CODE", "FILE-STATUS"],
+                "status_check": ["STATUS =", "STATUS NOT =", "-STATUS", "STATUS CHECK"],
+                "invalid_key": ["INVALID KEY", "INVALID-KEY", "KEY NOT FOUND"],
+                "valid_key": ["NOT INVALID KEY", "KEY FOUND", "VALID KEY"],
+                "exception_handler": ["ON EXCEPTION", "EXCEPTION HANDLING"],
+                "exception_success": ["NOT ON EXCEPTION", "SUCCESS"],
+                "overflow_handler": ["ON OVERFLOW", "OVERFLOW HANDLING"],
+                "error_display": ["ERROR MESSAGE", "ERROR DISPLAY", "DISPLAY ERROR"],
+                "validation_error": ["VALIDATION ERROR", "INVALID INPUT", "BAD DATA"],
+                "default_handler": ["WHEN OTHER", "DEFAULT CASE", "OTHERWISE"],
+                "abnormal_termination": ["GOBACK", "ABNORMAL END", "TERMINATE", "ABEND", "ABENDS", "ABEND-CODE", "CABENDPO"],
+                "program_termination": ["STOP RUN", "PROGRAM END"],
+                "cics_error_handler": ["HANDLE CONDITION", "CICS ERROR"],
+                "cics_abend_handler": ["HANDLE ABEND", "ABEND HANDLING"],
+                "cics_response_check": ["RESP(", "RESPONSE CODE", "EIBRESP"],
+            }
+
+            if handler_type in type_specific_terms:
+                if any(term in doc_upper for term in type_specific_terms[handler_type]):
+                    handlers_documented += 1
+                    continue
+
+        # Require at least 50% of handlers documented (minimum 1)
+        min_required = max(1, len(error_handlers) // 2)
+
+        if handlers_documented < min_required:
             return CriticalFailure(
                 cf_id="CF-04",
                 name="Missing Error Handlers",
-                description=f"{len(error_handlers)} error handlers exist but undocumented",
+                description=f"Only {handlers_documented}/{len(error_handlers)} error handlers documented (min: {min_required})",
             )
-        
+
         return None
     
     def _detect_cf05(
@@ -479,35 +542,124 @@ class CriticalFailureDetectorV231:
     def _extract_valid_identifiers(self, ground_truth: Dict) -> Set[str]:
         """
         Extract all valid identifiers from ground truth.
+
+        PRODUCTION GRADE (v2.3.1):
+        - Recursively extract ALL nested data structures
+        - Include file records and their fields
+        - Include error handler variables
+        - Include external call parameters
         """
         valid = set()
-        
-        # From data structures
+
+        # Helper function for recursive field extraction
+        def extract_from_structure(struct: Dict, depth: int = 0):
+            """Recursively extract all identifiers from a data structure."""
+            if depth > 10:  # Prevent infinite recursion
+                return
+
+            # Extract structure name
+            name = struct.get("name", "")
+            if name:
+                valid.add(name.upper())
+
+            # Extract fields recursively
+            for field in struct.get("fields", []):
+                if isinstance(field, str):
+                    valid.add(field.upper())
+                elif isinstance(field, dict):
+                    fname = field.get("name", "")
+                    if fname:
+                        valid.add(fname.upper())
+                    # Recurse into nested structures
+                    extract_from_structure(field, depth + 1)
+
+            # Extract children (alternate nesting format)
+            for child in struct.get("children", []):
+                if isinstance(child, str):
+                    valid.add(child.upper())
+                elif isinstance(child, dict):
+                    extract_from_structure(child, depth + 1)
+
+            # Extract elements (array/table elements)
+            for elem in struct.get("elements", []):
+                if isinstance(elem, str):
+                    valid.add(elem.upper())
+                elif isinstance(elem, dict):
+                    extract_from_structure(elem, depth + 1)
+
+        # From data structures (handles multiple nesting formats)
         ds_data = ground_truth.get("data_structures", {})
         if isinstance(ds_data, dict):
-            structures = ds_data.get("structures", [])
+            # Try different keys used in ground truth formats
+            structures = (
+                ds_data.get("structures", []) or
+                ds_data.get("data_structures", [])  # Nested format
+            )
+            # Also extract from flat fields list if present
+            for field in ds_data.get("fields", []):
+                if isinstance(field, str):
+                    valid.add(field.upper())
+                elif isinstance(field, dict):
+                    fname = field.get("name", "")
+                    if fname:
+                        valid.add(fname.upper())
         elif isinstance(ds_data, list):
             structures = ds_data
         else:
             structures = []
-        
+
         for ds in structures:
             if isinstance(ds, str):
                 valid.add(ds.upper())
             elif isinstance(ds, dict):
-                name = ds.get("name", "")
-                if name:
-                    valid.add(name.upper())
-                
-                # Add fields
+                extract_from_structure(ds)
+                # Also add fields listed as strings in the structure
                 for field in ds.get("fields", []):
                     if isinstance(field, str):
                         valid.add(field.upper())
-                    elif isinstance(field, dict):
-                        fname = field.get("name", "")
+
+        # From file records (often stored separately)
+        file_records = ground_truth.get("file_records", [])
+        if isinstance(file_records, list):
+            for rec in file_records:
+                if isinstance(rec, str):
+                    valid.add(rec.upper())
+                elif isinstance(rec, dict):
+                    extract_from_structure(rec)
+
+        # From file definitions (can be at top level or nested in dependencies)
+        files_data = ground_truth.get("files", [])
+        if isinstance(files_data, list):
+            for file_def in files_data:
+                if isinstance(file_def, dict):
+                    fname = file_def.get("name", "")
+                    if fname:
+                        valid.add(fname.upper())
+                    rec_name = file_def.get("record", "")
+                    if rec_name:
+                        valid.add(rec_name.upper())
+                    status_var = file_def.get("status", "")
+                    if status_var:
+                        valid.add(status_var.upper())
+
+        # From dependencies.files (nested structure in some ground truth formats)
+        deps = ground_truth.get("dependencies", {})
+        if isinstance(deps, dict):
+            files_section = deps.get("files", {})
+            if isinstance(files_section, dict):
+                # Extract from files list
+                for file_def in files_section.get("files", []):
+                    if isinstance(file_def, dict):
+                        fname = file_def.get("name", "")
                         if fname:
                             valid.add(fname.upper())
-        
+                # Extract from file operations
+                for op in files_section.get("operations", []):
+                    if isinstance(op, dict):
+                        file_name = op.get("file", "")
+                        if file_name:
+                            valid.add(file_name.upper())
+
         # From control flow (paragraph names)
         cf_data = ground_truth.get("control_flow", {})
         if isinstance(cf_data, dict):
@@ -516,7 +668,7 @@ class CriticalFailureDetectorV231:
             paragraphs = cf_data
         else:
             paragraphs = []
-        
+
         for para in paragraphs:
             if isinstance(para, str):
                 valid.add(para.upper())
@@ -524,5 +676,56 @@ class CriticalFailureDetectorV231:
                 name = para.get("name", "")
                 if name:
                     valid.add(name.upper())
-        
+
+        # From error handlers (extract variables from statements)
+        error_handlers = ground_truth.get("error_handlers", [])
+        for handler in error_handlers:
+            if isinstance(handler, dict):
+                # Extract paragraph name
+                para = handler.get("paragraph", "")
+                if para:
+                    valid.add(para.upper())
+                # Extract variables from handler statement
+                stmt = handler.get("statement", "")
+                if stmt:
+                    # Find COBOL-style variable names
+                    vars_found = re.findall(
+                        r'\b([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+)\b',
+                        stmt.upper()
+                    )
+                    valid.update(vars_found)
+
+        # From external calls
+        external_calls = ground_truth.get("external_calls", [])
+        for call in external_calls:
+            if isinstance(call, dict):
+                # Program name
+                prog = call.get("program", "") or call.get("name", "")
+                if prog:
+                    valid.add(prog.upper())
+                # Parameters
+                for param in call.get("parameters", []):
+                    if isinstance(param, str):
+                        valid.add(param.upper())
+                    elif isinstance(param, dict):
+                        pname = param.get("name", "")
+                        if pname:
+                            valid.add(pname.upper())
+
+        # From business rules (extract keywords/variables)
+        br_data = ground_truth.get("business_rules", {})
+        if isinstance(br_data, dict):
+            rules = br_data.get("rules", [])
+        elif isinstance(br_data, list):
+            rules = br_data
+        else:
+            rules = []
+
+        for rule in rules:
+            if isinstance(rule, dict):
+                # Extract keywords
+                for kw in rule.get("keywords", []):
+                    if isinstance(kw, str) and '-' in kw:
+                        valid.add(kw.upper())
+
         return valid
