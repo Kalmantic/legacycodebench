@@ -3,32 +3,40 @@
   "category": "documentation",
   "difficulty": "medium",
   "language": "COBOL",
-  "domain": "insurance",
+  "domain": "banking",
   "input_files": [
-    "Mainframe\\ZOS\\ECBAP\\cbl\\WS193.cbl",
-    "Mainframe\\ZOS\\ECBAP\\cpy\\CLAIMREC.cpy",
-    "Mainframe\\ZOS\\ECBAP\\cpy\\WSFST.cpy",
-    "Mainframe\\ZOS\\ECBAP\\cpy\\WSDT.cpy"
+    "sources\\cobol\\data\\sql\\DBANK11P.cbl",
+    "sources\\copybook\\CABENDD.cpy",
+    "sources\\copybook\\CENTRY.cpy",
+    "sources\\copybook\\CRETURN.cpy"
   ],
-  "task_description": "Generate comprehensive documentation for WS193.cbl including business purpose, data structures, control flow, file operations, and business rules. Include analysis of 3 related copybook(s).",
+  "task_description": "Generate thorough documentation for the program DBANK11P.cbl explaining business purpose, complete data structures, control flow, all external interfaces, business rules, error handling, and edge cases. Include analysis of 3 related copybook(s).",
   "evaluation_criteria": {
-    "version": "2.0",
+    "version": "2.1",
     "tier": "T2",
     "required_sections": [
       "business_purpose",
       "business_rules",
       "data_structures",
-      "control_flow",
-      "file_operations"
+      "control_flow"
     ],
     "format": "markdown",
-    "evaluation_method": "ground_truth_based",
-    "scoring_weights": {
-      "structural_completeness": 0.3,
-      "behavioral_fidelity": 0.35,
-      "semantic_quality": 0.25,
-      "traceability": 0.1
-    }
+    "evaluation_method": "ground_truth_based"
   },
-  "reference_solution": null
+  "reference_solution": null,
+  "source_dataset": "microfocus-bankdemo",
+  "tier": "T2",
+  "complexity_scoring": {
+    "method": "multi-factor-v2.1",
+    "breakdown": {
+      "size": 9474,
+      "size_tier": "T1",
+      "boosts": [
+        [
+          "db2",
+          1
+        ]
+      ]
+    }
+  }
 }

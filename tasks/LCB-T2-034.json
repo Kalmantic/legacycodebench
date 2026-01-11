@@ -1,0 +1,44 @@
+{
+  "task_id": "LCB-T2-034",
+  "category": "documentation",
+  "difficulty": "medium",
+  "language": "COBOL",
+  "domain": "banking",
+  "input_files": [
+    "sources\\cobol\\core\\BBANK20P.cbl",
+    "sources\\copybook\\CBANKDAT.cpy",
+    "sources\\copybook\\CHELPD01.cpy",
+    "sources\\copybook\\CBANKD08.cpy",
+    "sources\\copybook\\CABENDD.cpy",
+    "sources\\copybook\\CENTRY.cpy"
+  ],
+  "task_description": "Generate thorough documentation for the program BBANK20P.cbl explaining business purpose, complete data structures, control flow, all external interfaces, business rules, error handling, and edge cases. Include analysis of 5 related copybook(s).",
+  "evaluation_criteria": {
+    "version": "2.1",
+    "tier": "T2",
+    "required_sections": [
+      "business_purpose",
+      "business_rules",
+      "data_structures",
+      "control_flow"
+    ],
+    "format": "markdown",
+    "evaluation_method": "ground_truth_based"
+  },
+  "reference_solution": null,
+  "source_dataset": "microfocus-bankdemo",
+  "tier": "T2",
+  "complexity_scoring": {
+    "method": "multi-factor-v2.1",
+    "breakdown": {
+      "size": 17727,
+      "size_tier": "T1",
+      "boosts": [
+        [
+          "goto_heavy",
+          1
+        ]
+      ]
+    }
+  }
+}

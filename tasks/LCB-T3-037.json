@@ -1,0 +1,43 @@
+{
+  "task_id": "LCB-T3-037",
+  "category": "documentation",
+  "difficulty": "hard",
+  "language": "COBOL",
+  "domain": "banking",
+  "input_files": [
+    "sources\\cobol\\core\\UBNKPLT1.cbl"
+  ],
+  "task_description": "Generate thorough documentation for the complex program UBNKPLT1.cbl explaining business purpose, data structures, control flow, and business rules.",
+  "evaluation_criteria": {
+    "version": "2.1",
+    "tier": "T3",
+    "required_sections": [
+      "business_purpose",
+      "business_rules",
+      "data_structures",
+      "control_flow",
+      "file_operations",
+      "dependencies",
+      "error_handling",
+      "edge_cases"
+    ],
+    "format": "markdown",
+    "evaluation_method": "ground_truth_based"
+  },
+  "reference_solution": null,
+  "source_dataset": "microfocus-bankdemo",
+  "tier": "T3",
+  "complexity_scoring": {
+    "method": "multi-factor-v2.1",
+    "breakdown": {
+      "size": 4017,
+      "size_tier": "T1",
+      "boosts": [
+        [
+          "cics",
+          2
+        ]
+      ]
+    }
+  }
+}

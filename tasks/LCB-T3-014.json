@@ -3,17 +3,13 @@
   "category": "documentation",
   "difficulty": "hard",
   "language": "COBOL",
-  "domain": "banking",
+  "domain": "enterprise",
   "input_files": [
-    "app\\cbl\\CBTRN03C.cbl",
-    "app\\cpy\\CVTRA05Y.cpy",
-    "app\\cpy\\CVACT03Y.cpy",
-    "app\\cpy\\CVTRA03Y.cpy",
-    "app\\cpy\\CVTRA04Y.cpy"
+    "pgm_templates\\CICS\\slt_base_ibm_cics.cob"
   ],
-  "task_description": "Generate detailed technical documentation for CBTRN03C.cbl covering business purpose, all data structures, control flow, external dependencies, business rules, and error handling. Include analysis of 4 related copybook(s).",
+  "task_description": "Generate thorough documentation for the complex program slt_base_ibm_cics.cob explaining business purpose, data structures, control flow, and business rules.",
   "evaluation_criteria": {
-    "version": "2.0",
+    "version": "2.1",
     "tier": "T3",
     "required_sections": [
       "business_purpose",
@@ -22,16 +18,26 @@
       "control_flow",
       "file_operations",
       "dependencies",
-      "error_handling"
+      "error_handling",
+      "edge_cases"
     ],
     "format": "markdown",
-    "evaluation_method": "ground_truth_based",
-    "scoring_weights": {
-      "structural_completeness": 0.3,
-      "behavioral_fidelity": 0.35,
-      "semantic_quality": 0.25,
-      "traceability": 0.1
-    }
+    "evaluation_method": "ground_truth_based"
   },
-  "reference_solution": null
+  "reference_solution": null,
+  "source_dataset": "dscobol-projects",
+  "tier": "T3",
+  "complexity_scoring": {
+    "method": "multi-factor-v2.1",
+    "breakdown": {
+      "size": 759,
+      "size_tier": "T1",
+      "boosts": [
+        [
+          "cics",
+          2
+        ]
+      ]
+    }
+  }
 }

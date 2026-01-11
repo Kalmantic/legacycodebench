@@ -3,29 +3,36 @@
   "category": "documentation",
   "difficulty": "easy",
   "language": "COBOL",
-  "domain": "enterprise",
+  "domain": "banking",
   "input_files": [
-    "OpenCobol\\ECBAP\\cbl\\ws182.cbl",
-    "Mainframe\\ZOS\\ECBAP\\cpy\\WSFST.cpy",
-    "Mainframe\\ZOS\\ECBAP\\cpy\\WSDT.cpy"
+    "app\\cbl\\CBTRN01C.cbl",
+    "app\\cpy\\CVTRA06Y.cpy",
+    "app\\cpy\\CVCUS01Y.cpy",
+    "app\\cpy\\CVACT03Y.cpy",
+    "app\\cpy\\CVACT02Y.cpy"
   ],
-  "task_description": "Generate clear documentation for ws182.cbl explaining its business purpose, main data structures, and key business rules. Include analysis of 2 related copybook(s).",
+  "task_description": "Generate thorough documentation for the program CBTRN01C.cbl explaining business purpose, complete data structures, control flow, all external interfaces, business rules, error handling, and edge cases. Include analysis of 4 related copybook(s).",
   "evaluation_criteria": {
-    "version": "2.0",
+    "version": "2.1",
     "tier": "T1",
     "required_sections": [
       "business_purpose",
       "business_rules",
-      "data_structures"
+      "data_structures",
+      "control_flow"
     ],
     "format": "markdown",
-    "evaluation_method": "ground_truth_based",
-    "scoring_weights": {
-      "structural_completeness": 0.3,
-      "behavioral_fidelity": 0.35,
-      "semantic_quality": 0.25,
-      "traceability": 0.1
-    }
+    "evaluation_method": "ground_truth_based"
   },
-  "reference_solution": null
+  "reference_solution": null,
+  "source_dataset": "aws-carddemo",
+  "tier": "T1",
+  "complexity_scoring": {
+    "method": "multi-factor-v2.1",
+    "breakdown": {
+      "size": 18461,
+      "size_tier": "T1",
+      "boosts": []
+    }
+  }
 }

@@ -1,0 +1,48 @@
+{
+  "task_id": "LCB-T3-045",
+  "category": "documentation",
+  "difficulty": "hard",
+  "language": "COBOL",
+  "domain": "banking",
+  "input_files": [
+    "sources\\cobol\\core\\BBANK70P.cbl",
+    "sources\\copybook\\CBANKDAT.cpy",
+    "sources\\copybook\\CHELPD01.cpy",
+    "sources\\copybook\\CABENDD.cpy",
+    "sources\\copybook\\CENTRY.cpy",
+    "sources\\copybook\\CHELPX01.cpy"
+  ],
+  "task_description": "Generate thorough documentation for the complex program BBANK70P.cbl explaining business purpose, complete data structures, control flow, all external interfaces, business rules, error handling, and edge cases. Include analysis of 5 related copybook(s).",
+  "evaluation_criteria": {
+    "version": "2.1",
+    "tier": "T3",
+    "required_sections": [
+      "business_purpose",
+      "business_rules",
+      "data_structures",
+      "control_flow",
+      "file_operations",
+      "dependencies",
+      "error_handling",
+      "edge_cases"
+    ],
+    "format": "markdown",
+    "evaluation_method": "ground_truth_based"
+  },
+  "reference_solution": null,
+  "source_dataset": "microfocus-bankdemo",
+  "tier": "T3",
+  "complexity_scoring": {
+    "method": "multi-factor-v2.1",
+    "breakdown": {
+      "size": 20522,
+      "size_tier": "T2",
+      "boosts": [
+        [
+          "goto_heavy",
+          1
+        ]
+      ]
+    }
+  }
+}

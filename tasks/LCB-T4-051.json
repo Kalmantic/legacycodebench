@@ -3,18 +3,18 @@
   "category": "documentation",
   "difficulty": "expert",
   "language": "COBOL",
-  "domain": "enterprise",
+  "domain": "banking",
   "input_files": [
-    "sources\\cobol\\core\\SBANK20P.cbl",
-    "sources\\copybook\\MBANK20.cpy",
+    "sources\\cobol\\core\\SBANK35P.cbl",
+    "sources\\copybook\\MBANK35.cpy",
     "sources\\copybook\\CDATED.cpy",
     "sources\\copybook\\CBANKDAT.cpy",
     "sources\\copybook\\CBANKEXT.cpy",
     "sources\\copybook\\CSCRNHDD.cpy"
   ],
-  "task_description": "Generate thorough documentation for the complex program SBANK20P.cbl explaining business purpose, complete data structures, control flow (including GO TO patterns), all external interfaces, business rules, error handling, and edge cases. Include analysis of 5 related copybook(s).",
+  "task_description": "Generate thorough documentation for the complex program SBANK35P.cbl explaining business purpose, complete data structures, control flow, all external interfaces, business rules, error handling, and edge cases. Include analysis of 5 related copybook(s).",
   "evaluation_criteria": {
-    "version": "2.0",
+    "version": "2.1",
     "tier": "T4",
     "required_sections": [
       "business_purpose",
@@ -27,13 +27,26 @@
       "edge_cases"
     ],
     "format": "markdown",
-    "evaluation_method": "ground_truth_based",
-    "scoring_weights": {
-      "structural_completeness": 0.3,
-      "behavioral_fidelity": 0.35,
-      "semantic_quality": 0.25,
-      "traceability": 0.1
-    }
+    "evaluation_method": "ground_truth_based"
   },
-  "reference_solution": null
+  "reference_solution": null,
+  "source_dataset": "microfocus-bankdemo",
+  "tier": "T4",
+  "complexity_scoring": {
+    "method": "multi-factor-v2.1",
+    "breakdown": {
+      "size": 19624,
+      "size_tier": "T1",
+      "boosts": [
+        [
+          "cics",
+          2
+        ],
+        [
+          "goto_heavy",
+          1
+        ]
+      ]
+    }
+  }
 }

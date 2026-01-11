@@ -1,0 +1,39 @@
+{
+  "task_id": "LCB-T2-036",
+  "category": "documentation",
+  "difficulty": "medium",
+  "language": "COBOL",
+  "domain": "banking",
+  "input_files": [
+    "sources\\cobol\\core\\ZBNKPRT1.cbl",
+    "sources\\copybook\\CBANKXT1.cpy",
+    "sources\\copybook\\CTIMERD.cpy",
+    "sources\\copybook\\CDATED.cpy",
+    "sources\\copybook\\CSTATESD.cpy",
+    "sources\\copybook\\CABENDD.cpy"
+  ],
+  "task_description": "Generate thorough documentation for the program ZBNKPRT1.cbl explaining business purpose, complete data structures, control flow, all external interfaces, business rules, error handling, and edge cases. Include analysis of 5 related copybook(s).",
+  "evaluation_criteria": {
+    "version": "2.1",
+    "tier": "T2",
+    "required_sections": [
+      "business_purpose",
+      "business_rules",
+      "data_structures",
+      "control_flow"
+    ],
+    "format": "markdown",
+    "evaluation_method": "ground_truth_based"
+  },
+  "reference_solution": null,
+  "source_dataset": "microfocus-bankdemo",
+  "tier": "T2",
+  "complexity_scoring": {
+    "method": "multi-factor-v2.1",
+    "breakdown": {
+      "size": 28500,
+      "size_tier": "T2",
+      "boosts": []
+    }
+  }
+}

@@ -5,11 +5,15 @@
   "language": "COBOL",
   "domain": "banking",
   "input_files": [
-    "app\\app-authorization-ims-db2-mq\\cbl\\COPAUA0C.cbl"
+    "app\\cbl\\COTRN02C.cbl",
+    "app\\cpy\\COCOM01Y.cpy",
+    "app\\cpy-bms\\COTRN02.CPY",
+    "app\\cpy\\COTTL01Y.cpy",
+    "app\\cpy\\CSDAT01Y.cpy"
   ],
-  "task_description": "Generate thorough documentation for the complex program COPAUA0C.cbl explaining business purpose, complete data structures, control flow (including GO TO patterns), all external interfaces, business rules, error handling, and edge cases.",
+  "task_description": "Generate thorough documentation for the complex program COTRN02C.cbl explaining business purpose, complete data structures, control flow, all external interfaces, business rules, error handling, and edge cases. Include analysis of 4 related copybook(s).",
   "evaluation_criteria": {
-    "version": "2.0",
+    "version": "2.1",
     "tier": "T4",
     "required_sections": [
       "business_purpose",
@@ -22,13 +26,22 @@
       "edge_cases"
     ],
     "format": "markdown",
-    "evaluation_method": "ground_truth_based",
-    "scoring_weights": {
-      "structural_completeness": 0.3,
-      "behavioral_fidelity": 0.35,
-      "semantic_quality": 0.25,
-      "traceability": 0.1
-    }
+    "evaluation_method": "ground_truth_based"
   },
-  "reference_solution": null
+  "reference_solution": null,
+  "source_dataset": "aws-carddemo",
+  "tier": "T4",
+  "complexity_scoring": {
+    "method": "multi-factor-v2.1",
+    "breakdown": {
+      "size": 34448,
+      "size_tier": "T2",
+      "boosts": [
+        [
+          "cics",
+          2
+        ]
+      ]
+    }
+  }
 }

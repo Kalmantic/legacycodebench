@@ -3,13 +3,17 @@
   "category": "documentation",
   "difficulty": "hard",
   "language": "COBOL",
-  "domain": "enterprise",
+  "domain": "banking",
   "input_files": [
-    "cobol_mf\\dbconf.cbl"
+    "app\\cbl\\CBTRN03C.cbl",
+    "app\\cpy\\CVTRA05Y.cpy",
+    "app\\cpy\\CVACT03Y.cpy",
+    "app\\cpy\\CVTRA03Y.cpy",
+    "app\\cpy\\CVTRA04Y.cpy"
   ],
-  "task_description": "Generate detailed technical documentation for dbconf.cbl covering business purpose, all data structures, control flow, external dependencies, business rules, and error handling.",
+  "task_description": "Generate thorough documentation for the complex program CBTRN03C.cbl explaining business purpose, complete data structures, control flow, all external interfaces, business rules, error handling, and edge cases. Include analysis of 4 related copybook(s).",
   "evaluation_criteria": {
-    "version": "2.0",
+    "version": "2.1",
     "tier": "T3",
     "required_sections": [
       "business_purpose",
@@ -18,16 +22,21 @@
       "control_flow",
       "file_operations",
       "dependencies",
-      "error_handling"
+      "error_handling",
+      "edge_cases"
     ],
     "format": "markdown",
-    "evaluation_method": "ground_truth_based",
-    "scoring_weights": {
-      "structural_completeness": 0.3,
-      "behavioral_fidelity": 0.35,
-      "semantic_quality": 0.25,
-      "traceability": 0.1
-    }
+    "evaluation_method": "ground_truth_based"
   },
-  "reference_solution": null
+  "reference_solution": null,
+  "source_dataset": "aws-carddemo",
+  "tier": "T3",
+  "complexity_scoring": {
+    "method": "multi-factor-v2.1",
+    "breakdown": {
+      "size": 52888,
+      "size_tier": "T3",
+      "boosts": []
+    }
+  }
 }

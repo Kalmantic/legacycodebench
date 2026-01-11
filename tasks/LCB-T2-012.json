@@ -3,30 +3,32 @@
   "category": "documentation",
   "difficulty": "medium",
   "language": "COBOL",
-  "domain": "banking",
+  "domain": "enterprise",
   "input_files": [
-    "app\\cbl\\CBCUS01C.cbl",
-    "app\\cpy\\CVCUS01Y.cpy"
+    "Mainframe\\ZOS\\ECBAP\\cbl\\WS81E.cbl"
   ],
-  "task_description": "Generate comprehensive documentation for CBCUS01C.cbl including business purpose, data structures, control flow, file operations, and business rules. Include analysis of 1 related copybook(s).",
+  "task_description": "Generate thorough documentation for the program WS81E.cbl explaining business purpose, data structures, control flow, and business rules.",
   "evaluation_criteria": {
-    "version": "2.0",
+    "version": "2.1",
     "tier": "T2",
     "required_sections": [
       "business_purpose",
       "business_rules",
       "data_structures",
-      "control_flow",
-      "file_operations"
+      "control_flow"
     ],
     "format": "markdown",
-    "evaluation_method": "ground_truth_based",
-    "scoring_weights": {
-      "structural_completeness": 0.3,
-      "behavioral_fidelity": 0.35,
-      "semantic_quality": 0.25,
-      "traceability": 0.1
-    }
+    "evaluation_method": "ground_truth_based"
   },
-  "reference_solution": null
+  "reference_solution": null,
+  "source_dataset": "dscobol-projects",
+  "tier": "T2",
+  "complexity_scoring": {
+    "method": "multi-factor-v2.1",
+    "breakdown": {
+      "size": 29191,
+      "size_tier": "T2",
+      "boosts": []
+    }
+  }
 }

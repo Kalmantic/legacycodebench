@@ -5,30 +5,31 @@
   "language": "COBOL",
   "domain": "enterprise",
   "input_files": [
-    "OpenCobol\\ECBAP\\cbl\\ws162e.cbl",
-    "common\\cpy\\PATIENT.cpy",
-    "Mainframe\\ZOS\\ECBAP\\cpy\\WSFST.cpy",
-    "Mainframe\\ZOS\\ECBAP\\cpy\\WSDT.cpy"
+    "Mainframe\\ZOS\\ECBAP\\cbl\\TABLE1.cbl",
+    "OpenCobol\\Internal-Sort\\cpy\\WSFST.cpy"
   ],
-  "task_description": "Generate comprehensive documentation for ws162e.cbl including business purpose, data structures, control flow, file operations, and business rules. Include analysis of 3 related copybook(s).",
+  "task_description": "Generate thorough documentation for the program TABLE1.cbl explaining business purpose, complete data structures, control flow, all external interfaces, business rules, error handling, and edge cases. Include analysis of 1 related copybook(s).",
   "evaluation_criteria": {
-    "version": "2.0",
+    "version": "2.1",
     "tier": "T2",
     "required_sections": [
       "business_purpose",
       "business_rules",
       "data_structures",
-      "control_flow",
-      "file_operations"
+      "control_flow"
     ],
     "format": "markdown",
-    "evaluation_method": "ground_truth_based",
-    "scoring_weights": {
-      "structural_completeness": 0.3,
-      "behavioral_fidelity": 0.35,
-      "semantic_quality": 0.25,
-      "traceability": 0.1
-    }
+    "evaluation_method": "ground_truth_based"
   },
-  "reference_solution": null
+  "reference_solution": null,
+  "source_dataset": "dscobol-projects",
+  "tier": "T2",
+  "complexity_scoring": {
+    "method": "multi-factor-v2.1",
+    "breakdown": {
+      "size": 25985,
+      "size_tier": "T2",
+      "boosts": []
+    }
+  }
 }

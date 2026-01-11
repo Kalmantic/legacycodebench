@@ -3,29 +3,37 @@
   "category": "documentation",
   "difficulty": "medium",
   "language": "COBOL",
-  "domain": "enterprise",
+  "domain": "banking",
   "input_files": [
-    "extras\\CBL_OC_DUMP.cob"
+    "app\\cbl\\CBSTM03B.CBL"
   ],
-  "task_description": "Generate comprehensive documentation for CBL_OC_DUMP.cob including business purpose, data structures, control flow, file operations, and business rules.",
+  "task_description": "Generate thorough documentation for the program CBSTM03B.CBL explaining business purpose, data structures, control flow, and business rules.",
   "evaluation_criteria": {
-    "version": "2.0",
+    "version": "2.1",
     "tier": "T2",
     "required_sections": [
       "business_purpose",
       "business_rules",
       "data_structures",
-      "control_flow",
-      "file_operations"
+      "control_flow"
     ],
     "format": "markdown",
-    "evaluation_method": "ground_truth_based",
-    "scoring_weights": {
-      "structural_completeness": 0.3,
-      "behavioral_fidelity": 0.35,
-      "semantic_quality": 0.25,
-      "traceability": 0.1
-    }
+    "evaluation_method": "ground_truth_based"
   },
-  "reference_solution": null
+  "reference_solution": null,
+  "source_dataset": "aws-carddemo",
+  "tier": "T2",
+  "complexity_scoring": {
+    "method": "multi-factor-v2.1",
+    "breakdown": {
+      "size": 7213,
+      "size_tier": "T1",
+      "boosts": [
+        [
+          "goto_heavy",
+          1
+        ]
+      ]
+    }
+  }
 }

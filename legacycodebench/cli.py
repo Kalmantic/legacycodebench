@@ -683,19 +683,25 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
                     click.echo(f"    ⚠ No input files found, skipping")
                     continue
                 
-                # v2.0: All tasks are documentation tasks
-                # Check if we should use multi-doctype for DocMolt
-                if multi_doctype and hasattr(ai_model, 'generate_documentation_multi_doctype'):
-                    click.echo(f"    [MULTI-DOCTYPE] Calling all 5 doc types...")
-                    output = ai_model.generate_documentation_multi_doctype(task, input_files)
-                else:
-                    output = ai_model.generate_documentation(task, input_files)
                 output_file = SUBMISSIONS_DIR / f"{task.task_id}_{model_id}.md"
                 
-                output_file.parent.mkdir(parents=True, exist_ok=True)
-                with open(output_file, 'w', encoding='utf-8') as f:
-                    f.write(output)
-                click.echo(f"    [OK] Generated submission")
+                # FIXED: Check if submission exists to prevent overwriting (crucial for resuming)
+                if output_file.exists() and not clean_results: # Reuse existing submission
+                    click.echo(f"    [SKIP] Submission already exists (resuming): {output_file.name}")
+                    # We continue to evaluation using this file
+                else:
+                    # v2.0: All tasks are documentation tasks
+                    # Check if we should use multi-doctype for DocMolt
+                    if multi_doctype and hasattr(ai_model, 'generate_documentation_multi_doctype'):
+                        click.echo(f"    [MULTI-DOCTYPE] Calling all 5 doc types...")
+                        output = ai_model.generate_documentation_multi_doctype(task, input_files)
+                    else:
+                        output = ai_model.generate_documentation(task, input_files)
+                    
+                    output_file.parent.mkdir(parents=True, exist_ok=True)
+                    with open(output_file, 'w', encoding='utf-8') as f:
+                        f.write(output)
+                    click.echo(f"    [OK] Generated submission")
                 
                 # Evaluate using selected evaluator version
                 if evaluator_version == "v2.3.1":

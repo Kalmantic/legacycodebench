@@ -636,8 +636,8 @@ class BehavioralEvaluatorV231:
                         logger.debug(f"Test PASSED: {desc}... (execution success)")
                 else:
                     # Check if this is a compilation failure (should fallback to heuristic)
-                    error_msg = result.error_message if hasattr(result, 'error_message') else ""
-                    if "compilation failed" in error_msg.lower() or "No such file" in error_msg:
+                    error_msg = getattr(result, 'error_message', None) or ""
+                    if "compilation failed" in error_msg.lower() or "no such file" in error_msg.lower():
                         compilation_failures += 1
                         desc = test.description[:50] if test.description else test.test_id
                         logger.debug(f"Test SKIPPED (compilation): {desc}...")

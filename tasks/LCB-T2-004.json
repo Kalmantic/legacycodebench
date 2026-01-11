@@ -3,29 +3,41 @@
   "category": "documentation",
   "difficulty": "medium",
   "language": "COBOL",
-  "domain": "enterprise",
+  "domain": "banking",
   "input_files": [
-    "pgm_templates\\CICS\\basecics.cbl"
+    "app\\app-authorization-ims-db2-mq\\cbl\\DBUNLDGS.CBL",
+    "app\\app-authorization-ims-db2-mq\\cpy\\IMSFUNCS.cpy",
+    "app\\app-authorization-ims-db2-mq\\cpy\\CIPAUSMY.cpy",
+    "app\\app-authorization-ims-db2-mq\\cpy\\CIPAUDTY.cpy",
+    "app\\app-authorization-ims-db2-mq\\cpy\\PAUTBPCB.CPY"
   ],
-  "task_description": "Generate comprehensive documentation for basecics.cbl including business purpose, data structures, control flow, file operations, and business rules.",
+  "task_description": "Generate thorough documentation for the program DBUNLDGS.CBL explaining business purpose, complete data structures, control flow, all external interfaces, business rules, error handling, and edge cases. Include analysis of 4 related copybook(s).",
   "evaluation_criteria": {
-    "version": "2.0",
+    "version": "2.1",
     "tier": "T2",
     "required_sections": [
       "business_purpose",
       "business_rules",
       "data_structures",
-      "control_flow",
-      "file_operations"
+      "control_flow"
     ],
     "format": "markdown",
-    "evaluation_method": "ground_truth_based",
-    "scoring_weights": {
-      "structural_completeness": 0.3,
-      "behavioral_fidelity": 0.35,
-      "semantic_quality": 0.25,
-      "traceability": 0.1
-    }
+    "evaluation_method": "ground_truth_based"
   },
-  "reference_solution": null
+  "reference_solution": null,
+  "source_dataset": "aws-carddemo",
+  "tier": "T2",
+  "complexity_scoring": {
+    "method": "multi-factor-v2.1",
+    "breakdown": {
+      "size": 29561,
+      "size_tier": "T2",
+      "boosts": [
+        [
+          "external_calls",
+          0.5
+        ]
+      ]
+    }
+  }
 }

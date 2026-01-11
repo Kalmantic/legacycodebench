@@ -3,17 +3,13 @@
   "category": "documentation",
   "difficulty": "expert",
   "language": "COBOL",
-  "domain": "banking",
+  "domain": "enterprise",
   "input_files": [
-    "app\\cbl\\CORPT00C.cbl",
-    "app\\cpy\\COCOM01Y.cpy",
-    "app\\cpy-bms\\CORPT00.cpy",
-    "app\\cpy\\COTTL01Y.cpy",
-    "app\\cpy\\CSDAT01Y.cpy"
+    "WoodgroveBank\\CustomerCare\\3270Emulation\\wgrvadda.cbl"
   ],
-  "task_description": "Generate thorough documentation for the complex program CORPT00C.cbl explaining business purpose, complete data structures, control flow (including GO TO patterns), all external interfaces, business rules, error handling, and edge cases. Include analysis of 4 related copybook(s).",
+  "task_description": "Generate thorough documentation for the complex program wgrvadda.cbl explaining business purpose, data structures, control flow, and business rules.",
   "evaluation_criteria": {
-    "version": "2.0",
+    "version": "2.1",
     "tier": "T4",
     "required_sections": [
       "business_purpose",
@@ -26,13 +22,26 @@
       "edge_cases"
     ],
     "format": "markdown",
-    "evaluation_method": "ground_truth_based",
-    "scoring_weights": {
-      "structural_completeness": 0.3,
-      "behavioral_fidelity": 0.35,
-      "semantic_quality": 0.25,
-      "traceability": 0.1
-    }
+    "evaluation_method": "ground_truth_based"
   },
-  "reference_solution": null
+  "reference_solution": null,
+  "source_dataset": "az-legacy-engineering",
+  "tier": "T4",
+  "complexity_scoring": {
+    "method": "multi-factor-v2.1",
+    "breakdown": {
+      "size": 36186,
+      "size_tier": "T2",
+      "boosts": [
+        [
+          "cics",
+          2
+        ],
+        [
+          "goto_heavy",
+          1
+        ]
+      ]
+    }
+  }
 }

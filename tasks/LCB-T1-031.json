@@ -5,25 +5,30 @@
   "language": "COBOL",
   "domain": "enterprise",
   "input_files": [
-    "cobol_mf\\sws.cbl"
+    "COBOL Programming Course #3 - Advanced Topics\\Challenges\\Debugging\\cbl\\CBL0106.cbl"
   ],
-  "task_description": "Generate clear documentation for sws.cbl explaining its business purpose, main data structures, and key business rules.",
+  "task_description": "Generate thorough documentation for the program CBL0106.cbl explaining business purpose, data structures, control flow, and business rules.",
   "evaluation_criteria": {
-    "version": "2.0",
+    "version": "2.1",
     "tier": "T1",
     "required_sections": [
       "business_purpose",
       "business_rules",
-      "data_structures"
+      "data_structures",
+      "control_flow"
     ],
     "format": "markdown",
-    "evaluation_method": "ground_truth_based",
-    "scoring_weights": {
-      "structural_completeness": 0.3,
-      "behavioral_fidelity": 0.35,
-      "semantic_quality": 0.25,
-      "traceability": 0.1
-    }
+    "evaluation_method": "ground_truth_based"
   },
-  "reference_solution": null
+  "reference_solution": null,
+  "source_dataset": "cobol-course",
+  "tier": "T1",
+  "complexity_scoring": {
+    "method": "multi-factor-v2.1",
+    "breakdown": {
+      "size": 7342,
+      "size_tier": "T1",
+      "boosts": []
+    }
+  }
 }

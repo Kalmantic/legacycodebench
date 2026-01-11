@@ -5,25 +5,30 @@
   "language": "COBOL",
   "domain": "enterprise",
   "input_files": [
-    "tests\\testsuite.src\\tutorial.cob"
+    "Mainframe\\ZOS\\Normal\\cbl\\BDS0702.cbl"
   ],
-  "task_description": "Generate clear documentation for tutorial.cob explaining its business purpose, main data structures, and key business rules.",
+  "task_description": "Generate thorough documentation for the program BDS0702.cbl explaining business purpose, data structures, control flow, and business rules.",
   "evaluation_criteria": {
-    "version": "2.0",
+    "version": "2.1",
     "tier": "T1",
     "required_sections": [
       "business_purpose",
       "business_rules",
-      "data_structures"
+      "data_structures",
+      "control_flow"
     ],
     "format": "markdown",
-    "evaluation_method": "ground_truth_based",
-    "scoring_weights": {
-      "structural_completeness": 0.3,
-      "behavioral_fidelity": 0.35,
-      "semantic_quality": 0.25,
-      "traceability": 0.1
-    }
+    "evaluation_method": "ground_truth_based"
   },
-  "reference_solution": null
+  "reference_solution": null,
+  "source_dataset": "dscobol-projects",
+  "tier": "T1",
+  "complexity_scoring": {
+    "method": "multi-factor-v2.1",
+    "breakdown": {
+      "size": 3761,
+      "size_tier": "T1",
+      "boosts": []
+    }
+  }
 }

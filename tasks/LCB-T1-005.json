@@ -1,0 +1,36 @@
+{
+  "task_id": "LCB-T1-005",
+  "category": "documentation",
+  "difficulty": "easy",
+  "language": "COBOL",
+  "domain": "banking",
+  "input_files": [
+    "app\\cbl\\CBACT01C.cbl",
+    "app\\cpy\\CVACT01Y.cpy",
+    "app\\cpy\\CODATECN.cpy"
+  ],
+  "task_description": "Generate thorough documentation for the program CBACT01C.cbl explaining business purpose, complete data structures, control flow, all external interfaces, business rules, error handling, and edge cases. Include analysis of 2 related copybook(s).",
+  "evaluation_criteria": {
+    "version": "2.1",
+    "tier": "T1",
+    "required_sections": [
+      "business_purpose",
+      "business_rules",
+      "data_structures",
+      "control_flow"
+    ],
+    "format": "markdown",
+    "evaluation_method": "ground_truth_based"
+  },
+  "reference_solution": null,
+  "source_dataset": "aws-carddemo",
+  "tier": "T1",
+  "complexity_scoring": {
+    "method": "multi-factor-v2.1",
+    "breakdown": {
+      "size": 17880,
+      "size_tier": "T1",
+      "boosts": []
+    }
+  }
+}

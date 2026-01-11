@@ -5,26 +5,30 @@
   "language": "COBOL",
   "domain": "enterprise",
   "input_files": [
-    "Mainframe\\ZOS\\Zowe\\Simple_Report\\COBOL\\prtrpt1.cbl",
-    "Mainframe\\ZOS\\ECBAP\\cpy\\wsfst.cpy"
+    "Mainframe\\ZOS\\Normal\\cbl\\ODS000C.cbl"
   ],
-  "task_description": "Generate clear documentation for prtrpt1.cbl explaining its business purpose, main data structures, and key business rules. Include analysis of 1 related copybook(s).",
+  "task_description": "Generate thorough documentation for the program ODS000C.cbl explaining business purpose, data structures, control flow, and business rules.",
   "evaluation_criteria": {
-    "version": "2.0",
+    "version": "2.1",
     "tier": "T1",
     "required_sections": [
       "business_purpose",
       "business_rules",
-      "data_structures"
+      "data_structures",
+      "control_flow"
     ],
     "format": "markdown",
-    "evaluation_method": "ground_truth_based",
-    "scoring_weights": {
-      "structural_completeness": 0.3,
-      "behavioral_fidelity": 0.35,
-      "semantic_quality": 0.25,
-      "traceability": 0.1
-    }
+    "evaluation_method": "ground_truth_based"
   },
-  "reference_solution": null
+  "reference_solution": null,
+  "source_dataset": "dscobol-projects",
+  "tier": "T1",
+  "complexity_scoring": {
+    "method": "multi-factor-v2.1",
+    "breakdown": {
+      "size": 6225,
+      "size_tier": "T1",
+      "boosts": []
+    }
+  }
 }
