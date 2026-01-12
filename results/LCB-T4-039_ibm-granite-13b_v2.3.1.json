@@ -1,0 +1,61 @@
+{
+  "task_id": "LCB-T4-039",
+  "task_category": "documentation",
+  "evaluator_version": "v2.3.1",
+  "submitter": {
+    "name": "Ibm",
+    "model": "ibm-granite-13b",
+    "category": "verified"
+  },
+  "result": {
+    "version": "2.3.1",
+    "lcb_score": 0.0,
+    "passed": false,
+    "pass_status": {
+      "passed": false,
+      "reason": "Critical failure: BSM Pattern Failures",
+      "sc_met": true,
+      "dq_met": true,
+      "bf_met": true,
+      "has_critical_failure": true
+    },
+    "scores": {
+      "sc": 69.6,
+      "dq": 48.2,
+      "bf": 65.4,
+      "overall": 0.0
+    },
+    "critical_failures": [
+      {
+        "id": "CF-05",
+        "name": "BSM Pattern Failures",
+        "description": "Only 0/5 external calls correctly documented"
+      }
+    ],
+    "breakdown": {
+      "sc": {
+        "business_rules": 1.0,
+        "data_structures": 1.0,
+        "control_flow": 0.23076923076923078,
+        "external_calls": 0.0
+      },
+      "dq": {
+        "structure": 0.5,
+        "traceability": 0.5,
+        "readability": 0.7759892819351684,
+        "abstraction": 0.13513513513513514
+      },
+      "bf": {
+        "claims": 1.0,
+        "bsm": 0.0,
+        "pure_score": 1.0,
+        "mixed_score": 0.0,
+        "infrastructure_score": 0.6,
+        "pure_weight": 0.3076923076923077,
+        "mixed_weight": 0.11538461538461539,
+        "infrastructure_weight": 0.5769230769230769
+      }
+    }
+  },
+  "overall_score": 0.0
+}

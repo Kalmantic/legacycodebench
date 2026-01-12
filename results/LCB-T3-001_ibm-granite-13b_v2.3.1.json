@@ -1,0 +1,55 @@
+{
+  "task_id": "LCB-T3-001",
+  "task_category": "documentation",
+  "evaluator_version": "v2.3.1",
+  "submitter": {
+    "name": "Ibm",
+    "model": "ibm-granite-13b",
+    "category": "verified"
+  },
+  "result": {
+    "version": "2.3.1",
+    "lcb_score": 81.15,
+    "passed": true,
+    "pass_status": {
+      "passed": true,
+      "reason": "All thresholds met",
+      "sc_met": true,
+      "dq_met": true,
+      "bf_met": true,
+      "has_critical_failure": false
+    },
+    "scores": {
+      "sc": 77.5,
+      "dq": 74.5,
+      "bf": 86.0,
+      "overall": 81.2
+    },
+    "critical_failures": [],
+    "breakdown": {
+      "sc": {
+        "business_rules": 1.0,
+        "data_structures": 1.0,
+        "control_flow": 0.0,
+        "external_calls": 0.8333333333333334
+      },
+      "dq": {
+        "structure": 1.0,
+        "traceability": 0.5,
+        "readability": 1.0,
+        "abstraction": 0.47619047619047616
+      },
+      "bf": {
+        "claims": 1.0,
+        "bsm": 0.8333333333333334,
+        "pure_score": 1.0,
+        "mixed_score": 0.8600000000000001,
+        "infrastructure_score": 1.0,
+        "pure_weight": 0.0,
+        "mixed_weight": 1.0,
+        "infrastructure_weight": 0.0
+      }
+    }
+  },
+  "overall_score": 0.8115476190476191
+}

@@ -1,0 +1,56 @@
+{
+  "task_id": "LCB-T1-041",
+  "task_category": "documentation",
+  "evaluator_version": "v2.3.1",
+  "submitter": {
+    "name": "AWS",
+    "model": "aws-transform-mainframe",
+    "category": "verified"
+  },
+  "result": {
+    "version": "2.3.1",
+    "lcb_score": 0.0,
+    "passed": false,
+    "pass_status": {
+      "passed": false,
+      "reason": "Critical failure: Behavioral Contradiction",
+      "sc_met": true,
+      "dq_met": true,
+      "bf_met": true,
+      "has_critical_failure": true
+    },
+    "scores": {
+      "sc": 100.0,
+      "dq": 61.3,
+      "bf": 52.0,
+      "overall": 0.0
+    },
+    "critical_failures": [
+      {
+        "id": "CF-03",
+        "name": "Behavioral Contradiction",
+        "description": "80% of claims failed verification"
+      }
+    ],
+    "breakdown": {
+      "sc": {
+        "business_rules": 1.0,
+        "data_structures": 1.0,
+        "control_flow": 1.0,
+        "external_calls": 1.0
+      },
+      "dq": {
+        "structure": 1.0,
+        "traceability": 0.0,
+        "readability": 0.6491291035113105,
+        "abstraction": 0.916030534351145
+      },
+      "bf": {
+        "claims": 0.2,
+        "bsm": 1.0,
+        "claim_weight": 0.6
+      }
+    }
+  },
+  "overall_score": 0.0
+}

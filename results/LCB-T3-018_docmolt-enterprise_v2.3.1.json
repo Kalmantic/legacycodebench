@@ -1,0 +1,55 @@
+{
+  "task_id": "LCB-T3-018",
+  "task_category": "documentation",
+  "evaluator_version": "v2.3.1",
+  "submitter": {
+    "name": "Hexaview",
+    "model": "Legacy Insights",
+    "category": "verified"
+  },
+  "result": {
+    "version": "2.3.1",
+    "lcb_score": 92.06,
+    "passed": true,
+    "pass_status": {
+      "passed": true,
+      "reason": "All thresholds met",
+      "sc_met": true,
+      "dq_met": true,
+      "bf_met": true,
+      "has_critical_failure": false
+    },
+    "scores": {
+      "sc": 86.7,
+      "dq": 92.8,
+      "bf": 95.0,
+      "overall": 92.1
+    },
+    "critical_failures": [],
+    "breakdown": {
+      "sc": {
+        "business_rules": 1.0,
+        "data_structures": 1.0,
+        "control_flow": 0.3333333333333333,
+        "external_calls": 1.0
+      },
+      "dq": {
+        "structure": 1.0,
+        "traceability": 1.0,
+        "readability": 0.9127329681535409,
+        "abstraction": 0.7261904761904762
+      },
+      "bf": {
+        "claims": 0.9836065573770492,
+        "bsm": 1.0,
+        "pure_score": 0.9333333333333333,
+        "mixed_score": 1.0,
+        "infrastructure_score": 1.0,
+        "pure_weight": 0.75,
+        "mixed_weight": 0.0,
+        "infrastructure_weight": 0.25
+      }
+    }
+  },
+  "overall_score": 0.9205569377737607
+}

@@ -1,0 +1,55 @@
+{
+  "task_id": "LCB-T4-020",
+  "task_category": "documentation",
+  "evaluator_version": "v2.3.1",
+  "submitter": {
+    "name": "Claude",
+    "model": "claude-sonnet-4",
+    "category": "verified"
+  },
+  "result": {
+    "version": "2.3.1",
+    "lcb_score": 90.29,
+    "passed": true,
+    "pass_status": {
+      "passed": true,
+      "reason": "All thresholds met",
+      "sc_met": true,
+      "dq_met": true,
+      "bf_met": true,
+      "has_critical_failure": false
+    },
+    "scores": {
+      "sc": 95.6,
+      "dq": 58.1,
+      "bf": 100.0,
+      "overall": 90.3
+    },
+    "critical_failures": [],
+    "breakdown": {
+      "sc": {
+        "business_rules": 1.0,
+        "data_structures": 1.0,
+        "control_flow": 0.7777777777777778,
+        "external_calls": 1.0
+      },
+      "dq": {
+        "structure": 0.75,
+        "traceability": 0.5,
+        "readability": 0.8222340370207855,
+        "abstraction": 0.20833333333333331
+      },
+      "bf": {
+        "claims": 1.0,
+        "bsm": 1.0,
+        "pure_score": 1.0,
+        "mixed_score": 1.0,
+        "infrastructure_score": 1.0,
+        "pure_weight": 0.0,
+        "mixed_weight": 0.1111111111111111,
+        "infrastructure_weight": 0.8888888888888888
+      }
+    }
+  },
+  "overall_score": 0.9028893614808314
+}

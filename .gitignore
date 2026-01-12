@@ -34,7 +34,9 @@ ENV/
 # Datasets and results
 datasets/
 submissions/
-results/
+results/*
+!results/*.json
+!results/leaderboard.json
 design/
 
 # Block all markdown except README

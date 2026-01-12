@@ -1,0 +1,55 @@
+{
+  "task_id": "LCB-T1-018",
+  "task_category": "documentation",
+  "evaluator_version": "v2.3.1",
+  "submitter": {
+    "name": "Gpt",
+    "model": "gpt-4o",
+    "category": "verified"
+  },
+  "result": {
+    "version": "2.3.1",
+    "lcb_score": 71.85,
+    "passed": false,
+    "pass_status": {
+      "passed": false,
+      "reason": "Failed thresholds: BF (54% < 55%)",
+      "sc_met": true,
+      "dq_met": true,
+      "bf_met": false,
+      "has_critical_failure": false
+    },
+    "scores": {
+      "sc": 100.0,
+      "dq": 74.6,
+      "bf": 53.8,
+      "overall": 71.8
+    },
+    "critical_failures": [],
+    "breakdown": {
+      "sc": {
+        "business_rules": 1.0,
+        "data_structures": 1.0,
+        "control_flow": 1.0,
+        "external_calls": 1.0
+      },
+      "dq": {
+        "structure": 1.0,
+        "traceability": 0.5,
+        "readability": 1.0,
+        "abstraction": 0.4807692307692308
+      },
+      "bf": {
+        "claims": 0.5384615384615384,
+        "bsm": 1.0,
+        "pure_score": 0.5384615384615384,
+        "mixed_score": 1.0,
+        "infrastructure_score": 1.0,
+        "pure_weight": 1.0,
+        "mixed_weight": 0.0,
+        "infrastructure_weight": 0.0
+      }
+    }
+  },
+  "overall_score": 0.7184615384615385
+}
