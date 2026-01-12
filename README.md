@@ -125,7 +125,7 @@ legacycodebench/
 ├── static_analysis/     # COBOL parsing, ground truth extraction
 ├── execution/           
 │   ├── bsm/            # Behavioral Similarity Matching
-│   └── iue/            # Isolatable Unit Extraction
+
 └── cli.py
 
 datasets/                # COBOL source files (auto-cloned from GitHub)
@@ -149,4 +149,4 @@ Apache 2.0 (code) · CC-BY 4.0 (data)
 
 ---
 
-Built by [Kalmantic AI Labs](https://kalmantic.com) in partnership with [Hexaview Tech](https://hexaviewtech.com)
+Built by [Kalmantic AI Labs](https://kalmantic.com)

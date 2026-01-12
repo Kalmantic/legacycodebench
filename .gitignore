@@ -67,3 +67,8 @@ test_classification_debug.py
 test_infra_comparison.py
 test_infra_fix.py
 test_v2_evaluator.py
+
+# Legacy Scripts (Local Only)
+run_benchmark.bat
+run_benchmark.ps1
+web/ui-options/

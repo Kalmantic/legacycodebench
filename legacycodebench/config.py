@@ -27,14 +27,14 @@ DATASET_SOURCES = {
         "description": "AWS Mainframe Modernization Card Demo",
         "tier": "T2",
         "estimated_files": 25,
-        "commit_sha": None,  # TODO: Pin before release
+        "commit_sha": "59cc6c2fd7ebd7ef7925cad552a01a4b8b6e4d5e",
     },
     "rocket-bank": {
         "url": "https://github.com/RocketSoftwareCOBOLandMainframe/BankDemo",
         "description": "Rocket Software Bank Demo",
         "tier": "T3",
         "estimated_files": 15,
-        "commit_sha": None,  # TODO: Pin before release
+        "commit_sha": "1a9034db690ffc8302618e745bca2ca279eefe88",
     },
     
     # Tier 1: High Priority - IBM and Enterprise
@@ -43,13 +43,14 @@ DATASET_SOURCES = {
         "description": "IBM Developer COBOL tutorials and applications",
         "tier": "T1",
         "estimated_files": 50,
-        "commit_sha": None,  # TODO: Pin before release
+        "commit_sha": "d9244e6292db65fb5f87399246c0c70255f15255",
     },
     "microfocus-bankdemo": {
         "url": "https://github.com/MicroFocus/BankDemo",
         "description": "Micro Focus enterprise banking demo",
         "tier": "T4",
         "estimated_files": 10,
+        "commit_sha": "1a9034db690ffc8302618e745bca2ca279eefe88",
     },
     "gnucobol-tests": {
         "url": "https://github.com/OCamlPro/gnucobol",
@@ -57,6 +58,7 @@ DATASET_SOURCES = {
         "subpath": "tests/cobol85",  # COBOL test files are in this subdirectory
         "tier": "T1",
         "estimated_files": 100,
+        "commit_sha": "fb8f358e91ce2c5bf2e1d5e040507df22a8d364b",
     },
     "ibm-db2-samples": {
         "url": "https://github.com/IBM/db2-samples",
@@ -64,6 +66,7 @@ DATASET_SOURCES = {
         "subpath": "cobol_mf",  # COBOL files are in this subdirectory
         "tier": "T3",
         "estimated_files": 20,
+        "commit_sha": "b7f0ef652543c0ab0fd92b758c1da8a51bcf7cb9",
     },
     
     # Tier 2: Secondary - Training and Examples
@@ -72,24 +75,28 @@ DATASET_SOURCES = {
         "description": "Open Mainframe Project COBOL training",
         "tier": "T1",
         "estimated_files": 50,
+        "commit_sha": "11aca51998e11181925ff16c20b32c220360ff66",
     },
     "dscobol-projects": {
         "url": "https://github.com/dscobol/Cobol-Projects",
         "description": "IBM Enterprise COBOL course projects",
         "tier": "T2",
         "estimated_files": 40,
+        "commit_sha": "2cc05108d07d8d1ee2297e4f5bd6d274638b7f6e",
     },
     "gnucobol-examples": {
         "url": "https://github.com/OlegKunitsyn/gnucobol-examples",
         "description": "Modern COBOL microservice examples",
         "tier": "T2",
         "estimated_files": 25,
+        "commit_sha": "c861c1b2929a35c952e3f5b3d0d879a9061185f1",
     },
     "az-legacy-engineering": {
         "url": "https://github.com/bhbandam/AZ-Legacy-Engineering",
         "description": "Woodgrove Bank ATM and Customer Care (CICS/Batch)",
         "tier": "T2",
         "estimated_files": 30,
+        "commit_sha": "4e3df78be3ad24cfab8f52caf722f38de817fd55",
     },
 }
 
