@@ -61,8 +61,10 @@ cache/
 ground_truth_cache/
 .pytest_cache/
 
-
-docs/
+# Docs (but allow GitHub Pages site in docs/)
+/docs/
+!docs/index.html
+!docs/paper/
 
 # Temporary debug scripts
 test_classification_debug.py

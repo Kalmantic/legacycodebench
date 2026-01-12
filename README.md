@@ -4,6 +4,8 @@ A benchmark for evaluating how well AI systems understand and document legacy CO
 
 Ground truth-based evaluation with execution testing.
 
+📄 **Read the Paper:** [LegacyCodeBench Paper](https://kalmantic.github.io/legacycodebench/)
+
 ---
 
 ## Why This Exists
@@ -50,7 +52,10 @@ legacycodebench run-full-benchmark --enable-execution
 ## Benchmark Details
 
 - **200 tasks** across banking, insurance, retail, and government COBOL systems
-- **4 difficulty tiers** (T1: 100-200 LOC → T4: 600+ LOC enterprise)
+  - T1: 80 basic tasks (300-500 LOC)
+  - T2: 31 moderate tasks (500-1000 LOC)
+  - T3: 30 complex tasks (1000-2000 LOC)
+  - T4: 59 enterprise tasks (2000-5000 LOC)
 - **Fully deterministic** evaluation (removes LLM-as-judge)
 - **Execution-based testing** for behavioral fidelity (requires Docker)
 

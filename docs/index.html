@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LegacyCodeBench: Execution-Based Evaluation of AI Comprehension for Legacy COBOL Systems</title>
+    <meta name="description" content="LegacyCodeBench is the first execution-based benchmark for evaluating AI systems on legacy COBOL code understanding. 200 real-world programs, claim-based behavioral verification, deterministic evaluation.">
+    <meta property="og:title" content="LegacyCodeBench: Execution-Based COBOL Comprehension Benchmark">
+    <meta property="og:description" content="First execution-based benchmark for legacy COBOL code understanding. Specialized models achieve 88-92%, general models 86-90%.">
+    <meta property="og:type" content="article">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f9fafb;
+            color: #1a1a2e;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        code, pre {
+            font-family: 'JetBrains Mono', 'SF Mono', Monaco, Consolas, monospace;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 4rem 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        h1 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: #1a1a2e;
+        }
+
+        h2 {
+            font-size: 1.25rem;
+            margin: 2rem 0 1rem;
+            font-weight: 600;
+            color: #1a1a2e;
+        }
+
+        .subtitle {
+            font-size: 1.125rem;
+            color: #6b7280;
+            margin-bottom: 1rem;
+        }
+
+        .authors {
+            color: #6b7280;
+            font-size: 0.95rem;
+        }
+
+        .authors a {
+            color: #1a1a2e;
+            text-decoration: none;
+        }
+
+        .authors a:hover {
+            color: #ca8a04;
+        }
+
+        .date {
+            color: #6b7280;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
+
+        .abstract {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .abstract h3 {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #6b7280;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+
+        .abstract p {
+            color: #1a1a2e;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .abstract p:last-child {
+            margin-bottom: 0;
+        }
+
+        .highlights {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .highlight-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .highlight-card .number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+
+        .highlight-card .label {
+            color: #6b7280;
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 2rem 0;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.875rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #1a1a2e;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2d2d44;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #1a1a2e;
+            border: 1px solid #e5e7eb;
+        }
+
+        .btn-secondary:hover {
+            border-color: #1a1a2e;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            font-size: 0.9rem;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .results-table th,
+        .results-table td {
+            padding: 0.75rem 1rem;
+            text-align: center;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .results-table th:first-child,
+        .results-table td:first-child {
+            text-align: left;
+        }
+
+        .results-table th {
+            color: #6b7280;
+            font-weight: 500;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: white;
+        }
+
+        .results-table td {
+            color: #1a1a2e;
+        }
+
+        .results-table tr:hover {
+            background: #f9fafb;
+        }
+
+        .results-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .highlight-best {
+            color: #2d6a4f;
+            font-weight: 600;
+        }
+
+        .feature-box {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .feature-box h3 {
+            color: #1a1a2e;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .feature-box p {
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        .methodology {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .citation {
+            background: #1a1a2e;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            font-size: 0.8rem;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            color: #e5e5e5;
+        }
+
+        .citation-header {
+            font-size: 0.875rem;
+            color: #1a1a2e;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+
+        footer {
+            margin-top: 4rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+
+        footer a {
+            color: #1a1a2e;
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            color: #ca8a04;
+        }
+
+        .tier-table {
+            font-size: 0.85rem;
+        }
+
+        .tier-table td {
+            text-align: right;
+        }
+
+        .tier-table td:first-child {
+            text-align: left;
+        }
+
+        .warning {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            color: #92400e;
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.75rem;
+            }
+            .container {
+                padding: 2rem 1rem;
+            }
+            .buttons {
+                flex-direction: column;
+            }
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+            .highlights {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>LegacyCodeBench</h1>
+            <p class="subtitle">Execution-Based Evaluation of AI Comprehension for Legacy COBOL Systems</p>
+            <p class="authors">
+                <a href="mailto:nikita@kalmantic.com">Nikita</a> &
+                <a href="mailto:thiyagarajan@kalmantic.com">Thiyagarajan M</a><br>
+                <strong>Kalmantic Labs</strong>
+            </p>
+            <p class="date">January 2026</p>
+        </header>
+
+        <div class="abstract">
+            <h3>Abstract</h3>
+            <p>We introduce LegacyCodeBench, a benchmark for evaluating whether AI systems can accurately understand and document legacy COBOL code. Unlike existing benchmarks that test code generation (HumanEval, SWE-bench), LegacyCodeBench tests code comprehension—a critical capability for the $2 trillion legacy modernization industry.</p>
+            <p>Our key methodological innovation is <strong>claim-based behavioral verification</strong>: instead of using LLM-as-judge or LLM code regeneration, we extract behavioral claims from AI-generated documentation and verify them by executing the original program. This approach provides objective verification while remaining 100% deterministic.</p>
+            <p>LegacyCodeBench comprises 200 real-world COBOL programs across 4 complexity tiers. Evaluating 5 state-of-the-art models, we find specialized COBOL models (Legacy Insights, AWS Transform) achieve 88-92% on the benchmark, while general-purpose models (Claude Sonnet 4, GPT-4o) achieve 86-90%. Models maintain strong performance across complexity tiers (0-9% degradation).</p>
+        </div>
+
+        <div class="highlights">
+            <div class="highlight-card">
+                <div class="number">200</div>
+                <div class="label">real-world COBOL programs</div>
+            </div>
+            <div class="highlight-card">
+                <div class="number">92%</div>
+                <div class="label">best model performance</div>
+            </div>
+            <div class="highlight-card">
+                <div class="number">100%</div>
+                <div class="label">deterministic evaluation</div>
+            </div>
+            <div class="highlight-card">
+                <div class="number">0-9%</div>
+                <div class="label">performance degradation (T1→T4)</div>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <a href="paper/legacycodebench.pdf" class="btn btn-primary">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                Download PDF
+            </a>
+            <a href="https://github.com/kalmantic/legacycodebench" class="btn btn-secondary">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+                View Code
+            </a>
+        </div>
+
+        <h2>Model Performance Results</h2>
+        <table class="results-table">
+            <thead>
+                <tr>
+                    <th>Model</th>
+                    <th>Provider</th>
+                    <th>LCB Score</th>
+                    <th>SC</th>
+                    <th>DQ</th>
+                    <th>BF</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Legacy Insights</strong></td>
+                    <td>Hexaview</td>
+                    <td class="highlight-best">92%</td>
+                    <td>94%</td>
+                    <td class="highlight-best">96%</td>
+                    <td>90%</td>
+                </tr>
+                <tr>
+                    <td>Claude Sonnet 4</td>
+                    <td>Anthropic</td>
+                    <td>90%</td>
+                    <td class="highlight-best">96%</td>
+                    <td>78%</td>
+                    <td class="highlight-best">91%</td>
+                </tr>
+                <tr>
+                    <td>AWS Transform</td>
+                    <td>AWS</td>
+                    <td>88%</td>
+                    <td>98%</td>
+                    <td>68%</td>
+                    <td>91%</td>
+                </tr>
+                <tr>
+                    <td>IBM Granite 13B</td>
+                    <td>IBM</td>
+                    <td>87%</td>
+                    <td>93%</td>
+                    <td>72%</td>
+                    <td>90%</td>
+                </tr>
+                <tr>
+                    <td>GPT-4o</td>
+                    <td>OpenAI</td>
+                    <td>86%</td>
+                    <td>92%</td>
+                    <td>71%</td>
+                    <td>89%</td>
+                </tr>
+            </tbody>
+        </table>
+        <p style="color: #6b7280; font-size: 0.875rem; margin: 1rem 0;">SC = Structural Completeness (30%) | DQ = Documentation Quality (20%) | BF = Behavioral Fidelity (50%)</p>
+
+        <h2>Complexity Tier Analysis</h2>
+        <table class="results-table tier-table">
+            <thead>
+                <tr>
+                    <th>Model</th>
+                    <th>T1 (Basic)</th>
+                    <th>T4 (Enterprise)</th>
+                    <th>Degradation</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Legacy Insights</td>
+                    <td>96%</td>
+                    <td>90%</td>
+                    <td>6%</td>
+                </tr>
+                <tr>
+                    <td>Claude Sonnet 4</td>
+                    <td>92%</td>
+                    <td>92%</td>
+                    <td>0%</td>
+                </tr>
+                <tr>
+                    <td>AWS Transform</td>
+                    <td>88%</td>
+                    <td>87%</td>
+                    <td>1%</td>
+                </tr>
+                <tr>
+                    <td>IBM Granite 13B</td>
+                    <td>89%</td>
+                    <td>84%</td>
+                    <td>5%</td>
+                </tr>
+                <tr>
+                    <td>GPT-4o</td>
+                    <td>91%</td>
+                    <td>82%</td>
+                    <td>9%</td>
+                </tr>
+            </tbody>
+        </table>
+        <p style="color: #6b7280; font-size: 0.875rem; margin: 1rem 0;"><strong>Key Finding:</strong> All models maintain strong performance across complexity tiers. Specialized COBOL models demonstrate robustness to enterprise complexity.</p>
+
+        <h2>Benchmark Design</h2>
+        <div class="methodology">
+            <div class="feature-box">
+                <h3>📊 Three-Track Scoring</h3>
+                <p><strong>Structural Completeness (30%)</strong>: All required sections present | <strong>Documentation Quality (20%)</strong>: Content accuracy | <strong>Behavioral Fidelity (50%)</strong>: Execution-based verification</p>
+            </div>
+            <div class="feature-box">
+                <h3>✅ Claim-Based Verification</h3>
+                <p>Extract behavioral claims from AI-generated documentation and verify by executing the original COBOL program. Completely deterministic, no LLM-as-judge.</p>
+            </div>
+            <div class="feature-box">
+                <h3>🛡️ Anti-Gaming Mechanisms</h3>
+                <p>Silence Penalty penalizes vague documentation. Critical Failure detection triggers hard stops for hallucinated variables or external calls.</p>
+            </div>
+            <div class="feature-box">
+                <h3>🎯 4 Complexity Tiers</h3>
+                <p><strong>T1:</strong> 80 tasks (Basic) | <strong>T2:</strong> 31 tasks (Moderate) | <strong>T3:</strong> 30 tasks (Complex) | <strong>T4:</strong> 59 tasks (Enterprise)</p>
+            </div>
+            <div class="feature-box">
+                <h3>🔒 Reproducibility</h3>
+                <p>100% deterministic evaluation with minimal LLM usage. Frozen TF-IDF vectorizer, deterministic BSM patterns, versioned Docker image.</p>
+            </div>
+            <div class="feature-box">
+                <h3>📈 Real-World Data</h3>
+                <p>200 programs from 8 public GitHub repositories, 300-3000 LOC each, spanning banking, finance, insurance, and retail domains.</p>
+            </div>
+        </div>
+
+        <h2>Key Findings</h2>
+        <div class="feature-box">
+            <h3>Specialized Models Outperform</h3>
+            <p>Legacy Insights (92%) and AWS Transform (88%) significantly outperform general-purpose models. Domain specialization is key to enterprise COBOL comprehension.</p>
+        </div>
+        <div class="feature-box">
+            <h3>No Complexity Wall</h3>
+            <p>Contrary to prior assumptions, models maintain strong performance across complexity tiers (0-9% degradation from T1 to T4). Enterprise-scale COBOL is increasingly solvable with specialized approaches.</p>
+        </div>
+        <div class="feature-box">
+            <h3>Execution-Based Evaluation Works</h3>
+            <p>Claim-based behavioral verification provides objective assessment without circular validation problems. This methodology transfers to other legacy code comprehension tasks.</p>
+        </div>
+
+        <div class="citation-header">Cite this paper</div>
+        <div class="citation">@article{legacycodebench2026,
+  title={LegacyCodeBench: Execution-Based Evaluation of AI Comprehension for Legacy COBOL Systems},
+  author={Nikita and Maruthavanan, Thiyagarajan},
+  year={2026},
+  month={January},
+  url={https://github.com/kalmantic/legacycodebench},
+  journal={arXiv},
+}</div>
+
+        <footer>
+            <p>
+                <a href="https://github.com/kalmantic/legacycodebench">GitHub</a> &middot;
+                <a href="https://github.com/kalmantic/legacycodebench/issues">Issues</a> &middot;
+                <a href="https://legacycodebench.com">Website</a>
+            </p>
+            <p style="margin-top: 0.5rem;">&copy; 2026 Kalmantic Labs. Apache 2.0 License.</p>
+        </footer>
+    </div>
+</body>
+</html>
