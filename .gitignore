@@ -72,3 +72,5 @@ test_v2_evaluator.py
 run_benchmark.bat
 run_benchmark.ps1
 web/ui-options/
+
+.claude/
