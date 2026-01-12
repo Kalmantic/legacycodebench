@@ -2,7 +2,7 @@
 
 A benchmark for evaluating how well AI systems understand and document legacy COBOL code.
 
-**Version 2.3.1** — Ground truth-based evaluation with execution testing.
+Ground truth-based evaluation with execution testing.
 
 ---
 
@@ -19,11 +19,11 @@ LegacyCodeBench tests whether AI can actually understand legacy code well enough
 | Component | Weight | Description |
 |-----------|--------|-------------|
 | **Structural Completeness (SC)** | 30% | All business rules, data structures, control flow, and external calls must be documented |
-| **Documentation Quality (DQ)** | 45% | Structure, traceability, readability, and abstraction level |
-| **Behavioral Fidelity (BF)** | 25% | Execution-based verification (claims, BSM pattern matching, IUE classification) |
+| **Documentation Quality (DQ)** | 20% | Structure, traceability, readability, and abstraction level |
+| **Behavioral Fidelity (BF)** | 50% | Execution-based verification (claims, BSM pattern matching, IUE classification) |
 
 ```
-LCB_Score = (0.30 × SC) + (0.45 × DQ) + (0.25 × BF)
+LCB_Score = (0.30 × SC) + (0.20 × DQ) + (0.50 × BF)
 ```
 
 
@@ -41,8 +41,8 @@ pip install -e .
 export OPENAI_API_KEY="sk-..."
 export ANTHROPIC_API_KEY="sk-ant-..."
 
-# Run interactive mode
-legacycodebench interactive
+# Run the benchmark
+legacycodebench run-full-benchmark --enable-execution
 ```
 
 ---
@@ -51,7 +51,7 @@ legacycodebench interactive
 
 - **200 tasks** across banking, insurance, retail, and government COBOL systems
 - **4 difficulty tiers** (T1: 100-200 LOC → T4: 600+ LOC enterprise)
-- **Fully deterministic** evaluation (v2.3.1 removes LLM-as-judge)
+- **Fully deterministic** evaluation (removes LLM-as-judge)
 - **Execution-based testing** for behavioral fidelity (requires Docker)
 
 ---
@@ -66,7 +66,7 @@ cd docker/cobol-sandbox
 docker build -t legacycodebench-cobol:latest .
 cd ../..
 
-# Run with execution testing (v2.3.1 is default)
+# Run with execution testing
 legacycodebench run-full-benchmark --enable-execution --task-limit 200
 ```
 
@@ -92,7 +92,7 @@ legacycodebench run-full-benchmark --models "claude-sonnet-4,gpt-4o"
 
 ```bash
 legacycodebench interactive         # Guided setup
-legacycodebench run-full-benchmark  # Full evaluation (v2.3.1 default)
+legacycodebench run-full-benchmark  # Full evaluation
 legacycodebench leaderboard         # Generate rankings
 legacycodebench evaluate            # Score single submission
 legacycodebench load-datasets       # Clone COBOL repositories
@@ -120,8 +120,8 @@ python -m http.server 8080
 
 ```
 legacycodebench/
-├── evaluators_v213/     # v2.3.1 evaluator (deterministic, default)
-├── evaluators_v2/       # v2.0 evaluator (LLM-as-judge, legacy)
+├── evaluators_v213/     # Evaluator (deterministic, default)
+
 ├── static_analysis/     # COBOL parsing, ground truth extraction
 ├── execution/           
 │   ├── bsm/            # Behavioral Similarity Matching

@@ -118,8 +118,9 @@
 
         <div class="method-card">
           <h4>Behavioral Fidelity <span class="method-weight">50%</span></h4>
-          <p>Claim verification via execution. Documentation must accurately describe what the code actually does,
-            verified through test generation and pattern matching.</p>
+          <p>Claim verification via execution (with Behavioral Specification Matching fallback for infrastructure).
+            Documentation must accurately describe what the code actually does,
+            verified through test generation for logic and pattern matching for dependencies.</p>
         </div>
       </div>
 
@@ -144,8 +145,8 @@
         export OPENAI_API_KEY="sk-..."
         export ANTHROPIC_API_KEY="sk-ant-..."
 
-        # Run
-        legacycodebench interactive</div>
+        # Run full benchmark (recommended)
+        legacycodebench run-full-benchmark --enable-execution</div>
 
       <div class="callout" style="margin-top: 24px;">
         For Behavioral Fidelity testing, build the Docker image:

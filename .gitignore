@@ -61,3 +61,9 @@ ground_truth_cache/
 
 
 docs/
+
+# Temporary debug scripts
+test_classification_debug.py
+test_infra_comparison.py
+test_infra_fix.py
+test_v2_evaluator.py

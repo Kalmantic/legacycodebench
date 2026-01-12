@@ -22,6 +22,8 @@ const MODEL_ORGS = {
   'llama-3.1-70b': 'Meta',
   'llama-3.1-405b': 'Meta',
   'aws-transform': 'AWS',
+  'aws-transform-mainframe': 'AWS',
+  'ibm-granite-13b': 'IBM',
 };
 
 // Format model name for display
@@ -36,6 +38,8 @@ function formatModelName(model) {
     'gemini-2.0-flash': 'Gemini 2.0 Flash',
     'llama-3.1-70b': 'Llama 3.1 70B',
     'aws-transform': 'AWS Transform',
+    'aws-transform-mainframe': 'AWS Transform (Mainframe)',
+    'ibm-granite-13b': 'IBM Granite 13B',
   };
   return nameMap[model] || model;
 }
