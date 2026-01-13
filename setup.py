@@ -5,6 +5,7 @@ setup(
     version="1.0.0",
     description="Benchmark for AI systems on legacy code understanding and documentation",
     author="Kalmantic Applied AI Lab",
+    license="MIT",
     packages=find_packages(),
     install_requires=[
         "pyyaml>=6.0",

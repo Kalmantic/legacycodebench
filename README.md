@@ -150,7 +150,7 @@ Run the benchmark and open a PR with your `results/` directory. Results will be 
 
 ## License
 
-Apache 2.0 (code) · CC-BY 4.0 (data)
+MIT License (code) · CC-BY 4.0 (data)
 
 ---
 
