@@ -1,16 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LegacyCodeBench: Execution-Based Evaluation of AI Comprehension for Legacy COBOL Systems</title>
-    <meta name="description" content="LegacyCodeBench is the first execution-based benchmark for evaluating AI systems on legacy COBOL code understanding. 200 real-world programs, claim-based behavioral verification, deterministic evaluation.">
+    <meta name="description"
+        content="LegacyCodeBench is the first execution-based benchmark for evaluating AI systems on legacy COBOL code understanding. 200 real-world programs, claim-based behavioral verification, deterministic evaluation.">
     <meta property="og:title" content="LegacyCodeBench: Execution-Based COBOL Comprehension Benchmark">
-    <meta property="og:description" content="First execution-based benchmark for legacy COBOL code understanding. Specialized models achieve 88-92%, general models 86-90%.">
+    <meta property="og:description"
+        content="First execution-based benchmark for legacy COBOL code understanding. Specialized models achieve 88-92%, general models 86-90%.">
     <meta property="og:type" content="article">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -26,7 +31,8 @@
             min-height: 100vh;
         }
 
-        code, pre {
+        code,
+        pre {
             font-family: 'JetBrains Mono', 'SF Mono', Monaco, Consolas, monospace;
         }
 
@@ -311,22 +317,27 @@
             h1 {
                 font-size: 1.75rem;
             }
+
             .container {
                 padding: 2rem 1rem;
             }
+
             .buttons {
                 flex-direction: column;
             }
+
             .btn {
                 width: 100%;
                 justify-content: center;
             }
+
             .highlights {
                 grid-template-columns: 1fr;
             }
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <header>
@@ -342,9 +353,18 @@
 
         <div class="abstract">
             <h3>Abstract</h3>
-            <p>We introduce LegacyCodeBench, a benchmark for evaluating whether AI systems can accurately understand and document legacy COBOL code. Unlike existing benchmarks that test code generation (HumanEval, SWE-bench), LegacyCodeBench tests code comprehension—a critical capability for the $2 trillion legacy modernization industry.</p>
-            <p>Our key methodological innovation is <strong>claim-based behavioral verification</strong>: instead of using LLM-as-judge or LLM code regeneration, we extract behavioral claims from AI-generated documentation and verify them by executing the original program. This approach provides objective verification while remaining 100% deterministic.</p>
-            <p>LegacyCodeBench comprises 200 real-world COBOL programs across 4 complexity tiers. Evaluating 5 state-of-the-art models, we find specialized COBOL models (Legacy Insights, AWS Transform) achieve 88-92% on the benchmark, while general-purpose models (Claude Sonnet 4, GPT-4o) achieve 86-90%. Models maintain strong performance across complexity tiers (0-9% degradation).</p>
+            <p>We introduce LegacyCodeBench, a benchmark for evaluating whether AI systems can accurately understand and
+                document legacy COBOL code. Unlike existing benchmarks that test code generation (HumanEval, SWE-bench),
+                LegacyCodeBench tests code comprehension—a critical capability for the $2 trillion legacy modernization
+                industry.</p>
+            <p>Our key methodological innovation is <strong>claim-based behavioral verification</strong>: instead of
+                using LLM-as-judge or LLM code regeneration, we extract behavioral claims from AI-generated
+                documentation and verify them by executing the original program. This approach provides objective
+                verification while remaining 100% deterministic.</p>
+            <p>LegacyCodeBench comprises 200 real-world COBOL programs across 4 complexity tiers. Evaluating 5
+                state-of-the-art models, we find specialized COBOL models (Legacy Insights, AWS Transform) achieve
+                88-92% on the benchmark, while general-purpose models (Claude Sonnet 4, GPT-4o) achieve 86-90%. Models
+                maintain strong performance across complexity tiers (0-9% degradation).</p>
         </div>
 
         <div class="highlights">
@@ -379,7 +399,8 @@
             </a>
             <a href="https://github.com/kalmantic/legacycodebench" class="btn btn-secondary">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    <path
+                        d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
                 </svg>
                 View Code
             </a>
@@ -440,7 +461,8 @@
                 </tr>
             </tbody>
         </table>
-        <p style="color: #6b7280; font-size: 0.875rem; margin: 1rem 0;">SC = Structural Completeness (30%) | DQ = Documentation Quality (20%) | BF = Behavioral Fidelity (50%)</p>
+        <p style="color: #6b7280; font-size: 0.875rem; margin: 1rem 0;">SC = Structural Completeness (30%) | DQ =
+            Documentation Quality (20%) | BF = Behavioral Fidelity (50%)</p>
 
         <h2>Complexity Tier Analysis</h2>
         <table class="results-table tier-table">
@@ -485,59 +507,73 @@
                 </tr>
             </tbody>
         </table>
-        <p style="color: #6b7280; font-size: 0.875rem; margin: 1rem 0;"><strong>Key Finding:</strong> All models maintain strong performance across complexity tiers. Specialized COBOL models demonstrate robustness to enterprise complexity.</p>
+        <p style="color: #6b7280; font-size: 0.875rem; margin: 1rem 0;"><strong>Key Finding:</strong> All models
+            maintain strong performance across complexity tiers. Specialized COBOL models demonstrate robustness to
+            enterprise complexity.</p>
 
         <h2>Benchmark Design</h2>
         <div class="methodology">
             <div class="feature-box">
                 <h3>📊 Three-Track Scoring</h3>
-                <p><strong>Structural Completeness (30%)</strong>: All required sections present | <strong>Documentation Quality (20%)</strong>: Content accuracy | <strong>Behavioral Fidelity (50%)</strong>: Execution-based verification</p>
+                <p><strong>Structural Completeness (30%)</strong>: All required sections present | <strong>Documentation
+                        Quality (20%)</strong>: Content accuracy | <strong>Behavioral Fidelity (50%)</strong>:
+                    Execution-based verification</p>
             </div>
             <div class="feature-box">
                 <h3>✅ Claim-Based Verification</h3>
-                <p>Extract behavioral claims from AI-generated documentation and verify by executing the original COBOL program. Completely deterministic, no LLM-as-judge.</p>
+                <p>Extract behavioral claims from AI-generated documentation and verify by executing the original COBOL
+                    program. Completely deterministic, no LLM-as-judge.</p>
             </div>
             <div class="feature-box">
                 <h3>🛡️ Anti-Gaming Mechanisms</h3>
-                <p>Silence Penalty penalizes vague documentation. Critical Failure detection triggers hard stops for hallucinated variables or external calls.</p>
+                <p>Silence Penalty penalizes vague documentation. Critical Failure detection triggers hard stops for
+                    hallucinated variables or external calls.</p>
             </div>
             <div class="feature-box">
                 <h3>🎯 4 Complexity Tiers</h3>
-                <p><strong>T1:</strong> 80 tasks (Basic) | <strong>T2:</strong> 31 tasks (Moderate) | <strong>T3:</strong> 30 tasks (Complex) | <strong>T4:</strong> 59 tasks (Enterprise)</p>
+                <p><strong>T1:</strong> 80 tasks (Basic) | <strong>T2:</strong> 31 tasks (Moderate) |
+                    <strong>T3:</strong> 30 tasks (Complex) | <strong>T4:</strong> 59 tasks (Enterprise)
+                </p>
             </div>
             <div class="feature-box">
                 <h3>🔒 Reproducibility</h3>
-                <p>100% deterministic evaluation with minimal LLM usage. Frozen TF-IDF vectorizer, deterministic BSM patterns, versioned Docker image.</p>
+                <p>100% deterministic evaluation with minimal LLM usage. Frozen TF-IDF vectorizer, deterministic BSM
+                    patterns, versioned Docker image.</p>
             </div>
             <div class="feature-box">
                 <h3>📈 Real-World Data</h3>
-                <p>200 programs from 8 public GitHub repositories, 300-3000 LOC each, spanning banking, finance, insurance, and retail domains.</p>
+                <p>200 programs from 8 public GitHub repositories, 300-3000 LOC each, spanning banking, finance,
+                    insurance, and retail domains.</p>
             </div>
         </div>
 
         <h2>Key Findings</h2>
         <div class="feature-box">
             <h3>Specialized Models Outperform</h3>
-            <p>Legacy Insights (92%) and AWS Transform (88%) significantly outperform general-purpose models. Domain specialization is key to enterprise COBOL comprehension.</p>
+            <p>Legacy Insights (92%) and AWS Transform (88%) significantly outperform general-purpose models. Domain
+                specialization is key to enterprise COBOL comprehension.</p>
         </div>
         <div class="feature-box">
             <h3>No Complexity Wall</h3>
-            <p>Contrary to prior assumptions, models maintain strong performance across complexity tiers (0-9% degradation from T1 to T4). Enterprise-scale COBOL is increasingly solvable with specialized approaches.</p>
+            <p>Contrary to prior assumptions, models maintain strong performance across complexity tiers (0-9%
+                degradation from T1 to T4). Enterprise-scale COBOL is increasingly solvable with specialized approaches.
+            </p>
         </div>
         <div class="feature-box">
             <h3>Execution-Based Evaluation Works</h3>
-            <p>Claim-based behavioral verification provides objective assessment without circular validation problems. This methodology transfers to other legacy code comprehension tasks.</p>
+            <p>Claim-based behavioral verification provides objective assessment without circular validation problems.
+                This methodology transfers to other legacy code comprehension tasks.</p>
         </div>
 
         <div class="citation-header">Cite this paper</div>
         <div class="citation">@article{legacycodebench2026,
-  title={LegacyCodeBench: Execution-Based Evaluation of AI Comprehension for Legacy COBOL Systems},
-  author={Nikita and Maruthavanan, Thiyagarajan},
-  year={2026},
-  month={January},
-  url={https://github.com/kalmantic/legacycodebench},
-  journal={arXiv},
-}</div>
+            title={LegacyCodeBench: Execution-Based Evaluation of AI Comprehension for Legacy COBOL Systems},
+            author={Nikita and Maruthavanan, Thiyagarajan},
+            year={2026},
+            month={January},
+            url={https://github.com/kalmantic/legacycodebench},
+            journal={arXiv},
+            }</div>
 
         <footer>
             <p>
@@ -545,8 +581,9 @@
                 <a href="https://github.com/kalmantic/legacycodebench/issues">Issues</a> &middot;
                 <a href="https://legacycodebench.com">Website</a>
             </p>
-            <p style="margin-top: 0.5rem;">&copy; 2026 Kalmantic Labs. Apache 2.0 License.</p>
+            <p style="margin-top: 0.5rem;">&copy; 2026 Kalmantic Labs. MIT License.</p>
         </footer>
     </div>
 </body>
+
 </html>
