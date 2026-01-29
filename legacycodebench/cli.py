@@ -179,18 +179,20 @@ def load_datasets(language: str):
 @main.command()
 @click.option("--language", type=click.Choice(["cobol", "unibasic", "all"]), default="cobol",
               help="Language to create tasks for (v2.4)")
-def create_tasks(language: str):
+@click.option("--start-id", type=int, default=1,
+              help="Starting ID sequence for tasks (safe additive mode)")
+def create_tasks(language: str, start_id: int):
     """Create tasks from loaded datasets (V2.4: multi-language)"""
-    click.echo(f"Creating {language.upper()} tasks from datasets...")
+    click.echo(f"Creating {language.upper()} tasks from datasets (Start ID: {start_id})...")
     manager = TaskManager()
     
     if language == "all":
         # Create both COBOL and UniBasic tasks
-        cobol_tasks = manager.create_tasks_from_datasets(language="cobol")
-        unibasic_tasks = manager.create_tasks_from_datasets(language="unibasic")
+        cobol_tasks = manager.create_tasks_from_datasets(language="cobol", start_id=start_id)
+        unibasic_tasks = manager.create_tasks_from_datasets(language="unibasic", start_id=start_id)
         tasks = cobol_tasks + unibasic_tasks
     else:
-        tasks = manager.create_tasks_from_datasets(language=language)
+        tasks = manager.create_tasks_from_datasets(language=language, start_id=start_id)
     
     manager.save_all(tasks)
     
@@ -1313,8 +1315,8 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
               help="Comma-separated list of models to test")
 @click.option("--skip-datasets", is_flag=True, default=False,
               help="Skip dataset loading (use existing datasets)")
-@click.option("--skip-task-creation", is_flag=True, default=False,
-              help="Skip task creation (use existing tasks)")
+@click.option("--skip-task-creation", is_flag=True, default=True,
+              help="Skip task creation (use existing tasks) [Default: True]")
 @click.option("--mock", is_flag=True, default=False,
               help="Use mock responses for testing (no API keys required)")
 @click.option("--clean", is_flag=True, default=False,
@@ -1518,7 +1520,8 @@ def interactive():
         evaluator_version="v2.3.1",
         enable_execution=enable_exec,
         judge_model=judge,
-        task_limit=task_count
+        task_limit=task_count,
+        skip_task_creation=True,  # Default to safety (v2.4)
     )
 
 

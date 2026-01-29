@@ -6,7 +6,7 @@
   <title>LegacyCodeBench | Leaderboard</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="stylesheet" href="assets/styles.css">
-  <script defer src="leaderboard.js"></script>
+  <script defer src="assets/leaderboard.js"></script>
 </head>
 
 <body>
@@ -29,7 +29,7 @@
       <h1 id="leaderboard-title">Leaderboard</h1>
       <p>Official benchmark results. Scores are updated when participants run the CLI evaluator and submit JSON outputs.
       </p>
-      <p class="table-hint">LCB Score = 30% SC + 45% DQ + 25% BF</p>
+      <p class="table-hint">LCB Score = 30% SC + 20% DQ + 50% BF</p>
     </section>
 
     <section aria-labelledby="current-results">
@@ -45,15 +45,15 @@
         <table aria-describedby="leaderboard-title" id="leaderboard-table" hidden>
           <thead>
             <tr>
-              <th scope="col">Rank</th>
-              <th scope="col">Model</th>
-              <th scope="col">LCB Score</th>
-              <th scope="col">SC (%)</th>
-              <th scope="col">DQ (%)</th>
-              <th scope="col">BF (%)</th>
-              <th scope="col">Tasks</th>
-              <th scope="col">T1</th>
-              <th scope="col">T4</th>
+              <th scope="col">#</th>
+              <th scope="col">MODEL</th>
+              <th scope="col">LCB SCORE<br><span style="font-weight:normal;font-size:0.8em">0-100</span></th>
+              <th scope="col">STRUCTURAL<br>COMPLETENESS</th>
+              <th scope="col">DOCUMENTATION<br>QUALITY</th>
+              <th scope="col">BEHAVIORAL<br>FIDELITY</th>
+              <th scope="col">T1<br><span style="font-weight:normal;font-size:0.8em">Basic</span></th>
+              <th scope="col">T4<br><span style="font-weight:normal;font-size:0.8em">Enterprise</span></th>
+              <th scope="col">LANG</th>
             </tr>
           </thead>
           <tbody id="leaderboard-body"></tbody>
@@ -81,97 +81,7 @@
     </div>
   </footer>
 
-  <script>
-    (function initLeaderboard() {
-      const stateEl = document.getElementById('leaderboard-state');
-      const table = document.getElementById('leaderboard-table');
-      const body = document.getElementById('leaderboard-body');
-      const empty = document.getElementById('leaderboard-empty');
-      const error = document.getElementById('leaderboard-error');
-
-      // Try multiple paths for the leaderboard file
-      const paths = [
-        'leaderboard.json',
-        '../results/leaderboard.json',
-        'results/leaderboard.json',
-      ];
-
-      async function tryLoadLeaderboard() {
-        for (const path of paths) {
-          try {
-            const url = new URL(path, window.location.href);
-            url.searchParams.set('t', Date.now());
-            const res = await fetch(url);
-            if (res.ok) {
-              console.log('Loaded leaderboard from:', path);
-              return await res.json();
-            }
-          } catch (e) {
-            // Try next path
-          }
-        }
-        return null;
-      }
-
-      tryLoadLeaderboard()
-        .then(data => {
-          stateEl.hidden = true;
-
-          if (!data) {
-            error.hidden = false;
-            return;
-          }
-
-          const entries = Array.isArray(data.leaderboard) ? data.leaderboard : [];
-          console.log('Leaderboard entries', entries);
-
-          if (entries.length === 0) {
-            empty.hidden = false;
-            return;
-          }
-
-          // Clear any previous rows (helps during hot reloads)
-          body.innerHTML = '';
-
-          entries.forEach((entry, idx) => {
-            console.log('render row', idx, entry);
-            const row = document.createElement('tr');
-            // V2.3.1 format: avg_lcb_score, avg_sc, avg_bf, avg_sq (DQ)
-            const lcbScore = (entry.avg_lcb_score ?? 0) * 100;
-            const sc = (entry.avg_sc ?? 0) * 100;
-            const bf = (entry.avg_bf ?? 0) * 100;
-            const dq = (entry.avg_sq ?? 0) * 100;  // DQ stored as sq
-            const t1 = entry.by_tier?.T1?.avg_score ? entry.by_tier.T1.avg_score * 100 : 0;
-            const t4 = entry.by_tier?.T4?.avg_score ? entry.by_tier.T4.avg_score * 100 : 0;
-
-            // Format model name
-            const modelName = entry.model || entry.submitter || '';
-            const displayName = entry.submitter && entry.model && entry.submitter !== entry.model
-              ? entry.submitter + ' / ' + entry.model
-              : modelName;
-
-            row.innerHTML =
-              '<td>' + (entry.rank ?? idx + 1) + '</td>' +
-              '<td><strong>' + displayName + '</strong></td>' +
-              '<td><strong>' + lcbScore.toFixed(1) + '%</strong></td>' +
-              '<td>' + sc.toFixed(1) + '%</td>' +
-              '<td>' + dq.toFixed(1) + '%</td>' +
-              '<td>' + bf.toFixed(1) + '%</td>' +
-              '<td>' + (entry.tasks_total ?? 0) + '</td>' +
-              '<td>' + t1.toFixed(0) + '%</td>' +
-              '<td>' + t4.toFixed(0) + '%</td>';
-            body.appendChild(row);
-          });
-
-          table.hidden = false;
-        })
-        .catch((err) => {
-          console.error('Failed to load leaderboard:', err);
-          stateEl.hidden = true;
-          error.hidden = false;
-        });
-    })();
-  </script>
+  <!-- Script initialization is handled by assets/leaderboard.js, but we need to ensure the DOM is ready -->
 </body>
 
 </html>
