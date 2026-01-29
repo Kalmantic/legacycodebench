@@ -80,7 +80,20 @@ V231_CONFIG: Dict[str, Any] = {
         "tests_per_calc_claim": 3,   # min, mid, max
         "max_tests_total": 15,       # Cap total tests per task
     },
-    
+
+    # =========================================================================
+    # HYBRID CLAIM SCORING (V2.4.2)
+    # =========================================================================
+    # Instead of dividing by total claims (which penalizes comprehensive docs),
+    # use absolute count with a target threshold.
+    # Formula: effective = verified + partial × 0.5
+    #          claim_score = min(effective / target, 1.0)
+    "hybrid_claim_scoring": {
+        "enabled": True,
+        "target": 6,           # Verified claims needed for full score
+        "partial_weight": 0.5, # Weight for partial matches
+    },
+
     # =========================================================================
     # COBOL SYNONYM DICTIONARY (Frozen for determinism)
     # =========================================================================
@@ -152,7 +165,10 @@ V231_CONFIG: Dict[str, Any] = {
             r"`?\(?([\w-]+)\)?`?\s+(?:receives?|gets?|is set to)\s+(.+)",
             # More flexible patterns
             r"(?:stored|saved|placed|written)\s+(?:to|in|into)\s+(?:the\s+)?`?\(?([\w-]+)\)?`?",
-            r"`?\(?([\w-]+)\)?`?\s+(?:contains?|holds?|stores?)\s+(.+)",
+            # V2.4 FIX: Require backticks OR hyphenated name to avoid matching prose
+            # "file contains fields" should NOT match, but "`WS-DATA` contains" should
+            r"`([\w-]+)`\s+(?:contains?|holds?|stores?)\s+(.+)",
+            r"([\w]+-[\w-]+)\s+(?:contains?|holds?|stores?)\s+(.+)",
         ],
         "range": [
             # Support markdown formatting
@@ -378,3 +394,17 @@ def get_synonym(word: str) -> str:
 def get_bsm_pattern(pattern_name: str) -> dict:
     """Get BSM pattern configuration."""
     return V231_CONFIG["bsm_patterns"].get(pattern_name, {})
+
+
+def get_hybrid_scoring_config() -> dict:
+    """Get hybrid claim scoring configuration."""
+    return V231_CONFIG.get("hybrid_claim_scoring", {
+        "enabled": False,
+        "target": 6,
+        "partial_weight": 0.5,
+    })
+
+
+def get_claim_target() -> int:
+    """Get target number of verified claims for full score."""
+    return get_hybrid_scoring_config().get("target", 6)

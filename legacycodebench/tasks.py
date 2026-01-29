@@ -13,6 +13,64 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+# ============================================================
+# V2.4 Task Protection and Language Detection
+# ============================================================
+
+# Frozen task IDs - these cannot be modified after deployment
+FROZEN_TASK_IDS = set()  # Populated after initial deployment
+
+def is_frozen(task_id: str) -> bool:
+    """
+    Check if a task is frozen (cannot be modified).
+    
+    Frozen tasks are protected after deployment to ensure
+    reproducible benchmark results.
+    
+    Args:
+        task_id: Task identifier
+        
+    Returns:
+        True if task is frozen
+    """
+    return task_id in FROZEN_TASK_IDS
+
+
+def detect_task_language(task_id: str) -> str:
+    """
+    Detect language from task ID prefix.
+    
+    - LCB-UB-* → unibasic
+    - LCB-T* → cobol
+    
+    Args:
+        task_id: Task identifier
+        
+    Returns:
+        Language string ("cobol" or "unibasic")
+    """
+    if task_id.startswith("LCB-UB-"):
+        return "unibasic"
+    return "cobol"
+
+
+def filter_tasks_by_language(task_ids: List[str], language: str) -> List[str]:
+    """
+    Filter task IDs by language.
+    
+    Args:
+        task_ids: List of task IDs
+        language: "cobol", "unibasic", or "all"
+        
+    Returns:
+        Filtered list of task IDs
+    """
+    if language == "all":
+        return task_ids
+    
+    return [tid for tid in task_ids if detect_task_language(tid) == language]
+
+
 @dataclass
 class Task:
     """Represents a single benchmark task"""
@@ -36,6 +94,9 @@ class Task:
     @classmethod
     def from_dict(cls, data: Dict) -> "Task":
         """Create from dictionary"""
+        # V2.4 Compatibility: Map task_category to category if needed
+        if "task_category" in data and "category" not in data:
+            data["category"] = data.pop("task_category")
         return cls(**data)
     
     def save(self, tasks_dir: Path = TASKS_DIR):
@@ -79,73 +140,108 @@ class TaskManager:
         self.tasks_dir = tasks_dir
         self.tasks_dir.mkdir(parents=True, exist_ok=True)
     
-    def create_tasks_from_datasets(self, datasets_dir: Path = DATASETS_DIR, 
-                                   use_intelligent_selection: bool = True) -> List[Task]:
-        """Create tasks from datasets with intelligent or simple selection"""
+    def create_tasks_from_datasets(self, datasets_dir: Path = DATASETS_DIR,
+                                   use_intelligent_selection: bool = True,
+                                   language: str = None) -> List[Task]:
+        """Create tasks from datasets with intelligent or simple selection
+
+        Args:
+            datasets_dir: Path to datasets directory
+            use_intelligent_selection: Use intelligent tier-based selection
+            language: "cobol", "unibasic", or None (default: cobol)
+
+        Returns:
+            List of created Task objects
+        """
+        # V2.4: Default to COBOL for backward compatibility
+        if language is None:
+            language = "cobol"
+
         if use_intelligent_selection:
-            return self.create_tasks_intelligent(datasets_dir)
+            return self.create_tasks_intelligent(datasets_dir, language=language)
         else:
-            return self.create_tasks_simple(datasets_dir)
+            return self.create_tasks_simple(datasets_dir, language=language)
     
-    def create_tasks_intelligent(self, datasets_dir: Path = DATASETS_DIR) -> List[Task]:
+    def create_tasks_intelligent(self, datasets_dir: Path = DATASETS_DIR,
+                                  language: str = "cobol") -> List[Task]:
         """Create tasks using intelligent PRD v2.0 aligned selection
-        
+
         v2.0 Approach:
         - ALL tasks are documentation tasks
         - Tasks are categorized by complexity TIER (T1-T4)
         - No separate "understanding" tasks
         - Understanding is validated through Behavioral Fidelity (execution)
+
+        V2.4: Multi-language support (COBOL + UniBasic)
         """
         from legacycodebench.task_generator import TaskCandidateGenerator
         from legacycodebench.config import TASK_SELECTION_CONFIG
-        
-        logger.info("Using v2.0 intelligent task selection (documentation only, tier-based)")
-        
-        # Initialize generator
+
+        lang_upper = language.upper()
+        logger.info(f"Using v2.0 intelligent task selection for {lang_upper} (documentation only, tier-based)")
+
+        # Initialize generator with language
         generator = TaskCandidateGenerator(datasets_dir)
-        
+
         # Get configuration
         config = TASK_SELECTION_CONFIG
         min_loc = config["loc_ranges"]["min"]
         max_loc = config["loc_ranges"]["max"]
-        total_tasks = config["task_distribution"]["total_tasks"]
-        
+
+        # V2.4: Adjust total tasks based on language
+        if language == "unibasic":
+            total_tasks = 50  # UniBasic: 50 tasks
+        else:
+            total_tasks = config["task_distribution"]["total_tasks"]  # COBOL: 200 tasks
+
         # Generate all candidates (documentation only)
-        logger.info(f"Analyzing COBOL files (LOC range: {min_loc}-{max_loc})...")
-        all_candidates = generator.generate_all_candidates(min_loc, max_loc)
-        
+        logger.info(f"Analyzing {lang_upper} files (LOC range: {min_loc}-{max_loc})...")
+        all_candidates = generator.generate_all_candidates(min_loc, max_loc, language=language)
+
         if not all_candidates:
-            logger.warning("No suitable candidates found, falling back to simple selection")
-            return self.create_tasks_simple(datasets_dir)
-        
+            logger.warning(f"No suitable {lang_upper} candidates found, falling back to simple selection")
+            return self.create_tasks_simple(datasets_dir, language=language)
+
         # Select best tasks by tier distribution (v2.0)
-        logger.info(f"Selecting {total_tasks} documentation tasks by tier...")
+        logger.info(f"Selecting {total_tasks} {lang_upper} documentation tasks by tier...")
         selected_candidates = generator.select_best_tasks(all_candidates, total_tasks)
-        
+
         # Convert candidates to tasks
         tasks = []
-        
+
         # Group by tier for sequential numbering
         by_tier = {"T1": [], "T2": [], "T3": [], "T4": []}
         for candidate in selected_candidates:
             by_tier[candidate.tier].append(candidate)
-        
-        # Create tasks with tier-based IDs: LCB-T1-001, LCB-T2-001, etc.
+
+        # V2.4: Create tasks with language-aware IDs
+        # COBOL: LCB-T1-001, LCB-T2-001, etc.
+        # UniBasic: LCB-UB-T1-001, LCB-UB-T2-001, etc.
+        id_prefix = "LCB-UB" if language == "unibasic" else "LCB"
+
         for tier in ["T1", "T2", "T3", "T4"]:
             tier_candidates = by_tier[tier]
             for i, candidate in enumerate(tier_candidates, 1):
-                task_id = f"LCB-{tier}-{i:03d}"
-                task = self._candidate_to_task(candidate, task_id, datasets_dir)
+                task_id = f"{id_prefix}-{tier}-{i:03d}"
+                task = self._candidate_to_task(candidate, task_id, datasets_dir, language=language)
                 tasks.append(task)
-                logger.info(f"  Created {task.task_id}: {task.difficulty} - {task.domain} - {candidate.analysis['loc']} LOC")
-        
-        logger.info(f"Created {len(tasks)} documentation tasks using v2.0 selection")
+                loc = candidate.analysis.get('loc', 0) if candidate.analysis else 0
+                logger.info(f"  Created {task.task_id}: {task.difficulty} - {task.domain} - {loc} LOC")
+
+        logger.info(f"Created {len(tasks)} {lang_upper} documentation tasks using v2.0 selection")
         logger.info(f"  Tier distribution: T1={len(by_tier['T1'])}, T2={len(by_tier['T2'])}, T3={len(by_tier['T3'])}, T4={len(by_tier['T4'])}")
-        
+
         return tasks
     
-    def _candidate_to_task(self, candidate, task_id: str, datasets_dir: Path) -> Task:
-        """Convert TaskCandidate to Task (v2.0: all tasks are documentation)"""
+    def _candidate_to_task(self, candidate, task_id: str, datasets_dir: Path,
+                           language: str = "cobol") -> Task:
+        """Convert TaskCandidate to Task (v2.0: all tasks are documentation)
+
+        V2.4: Added language parameter for multi-language support
+        """
+        # V2.4: Set display language
+        lang_display = "UniBasic" if language == "unibasic" else "COBOL"
+        
         # Get relative path from dataset root
         dataset_dir = datasets_dir / candidate.dataset_name
         rel_path = candidate.main_file.relative_to(dataset_dir)
@@ -158,6 +254,7 @@ class TaskManager:
                 input_files.append(str(rel_related))
             except ValueError:
                 # File not in same dataset, skip
+                pass
                 pass
         
         # v2.0: All tasks are documentation tasks
@@ -233,7 +330,7 @@ class TaskManager:
             task_id=task_id,
             category="documentation",  # v2.0: All tasks are documentation
             difficulty=candidate.difficulty_level,
-            language="COBOL",
+            language=lang_display,  # V2.4: Use correct language (COBOL or UniBasic)
             domain=candidate.domain,
             source_dataset=candidate.dataset_name,
             input_files=input_files,
@@ -243,78 +340,79 @@ class TaskManager:
             complexity_scoring=complexity_scoring,  # v2.1: Multi-factor scoring breakdown
         )
     
-    def create_tasks_simple(self, datasets_dir: Path = DATASETS_DIR) -> List[Task]:
-        """Simple sequential task selection (legacy method)"""
-        logger.info("Using simple task selection (legacy)")
+    def create_tasks_simple(self, datasets_dir: Path = DATASETS_DIR,
+                            language: str = "cobol") -> List[Task]:
+        """Simple sequential task selection (V2.4 format)
         
+        V2.4 ID Patterns:
+        - COBOL: LCB-T{tier}-{sequence} (e.g., LCB-T1-001)
+        - UniBasic: LCB-UB-T{tier}-{sequence} (e.g., LCB-UB-T1-001)
+        
+        All tasks are documentation tasks (no DOC/UND split).
+        """
+        lang_upper = language.upper()
+        lang_lower = language.lower()
+        logger.info(f"Using V2.4 task selection for {lang_upper}")
+
         loader = DatasetLoader(datasets_dir)
         tasks = []
-        
+
         # Find all datasets
         datasets = {}
         for dataset_dir in datasets_dir.iterdir():
             if dataset_dir.is_dir():
-                cobol_files = loader.find_cobol_files(dataset_dir)
-                if cobol_files:
-                    datasets[dataset_dir.name] = cobol_files
+                # V2.4: Find source files based on language
+                if lang_lower == "unibasic":
+                    source_files = loader.find_unibasic_files(dataset_dir)
+                else:
+                    source_files = loader.find_cobol_files(dataset_dir)
+                if source_files:
+                    datasets[dataset_dir.name] = source_files
         
-        # Create 10 tasks (5 documentation + 5 understanding)
-        task_counter = {"doc": 1, "und": 1}
+        # V2.4: Task ID prefix based on language
+        if lang_lower == "unibasic":
+            id_prefix = "LCB-UB-T1"
+            lang_display = "UniBasic"
+        else:
+            id_prefix = "LCB-T1"
+            lang_display = "COBOL"
         
-        for dataset_id, cobol_files in list(datasets.items())[:3]:  # Use first 3 datasets
+        # Create tasks (V2.4: all documentation, tier-based)
+        task_counter = 1
+        
+        for dataset_id, source_files in list(datasets.items())[:5]:  # Use first 5 datasets
             dataset_path = datasets_dir / dataset_id
             
-            # Create documentation tasks (5)
-            for i in range(min(2, len(cobol_files))):  # 2 per dataset
-                if task_counter["doc"] > 5:
+            for i in range(min(4, len(source_files))):  # 4 per dataset max
+                if task_counter > 20:  # Max 20 tasks in simple mode
                     break
                 
-                file_path = cobol_files[i]
+                file_path = source_files[i]
                 rel_path = file_path.relative_to(dataset_path)
                 
+                # V2.4: Create task with tier-based ID
+                task_id = f"{id_prefix}-{task_counter:03d}"
+                
                 task = Task(
-                    task_id=f"LCB-DOC-{task_counter['doc']:03d}",
-                    category="documentation",
-                    difficulty="medium" if task_counter["doc"] % 2 == 0 else "easy",
-                    language="COBOL",
-                    domain="banking" if "bank" in dataset_id.lower() else "finance",
+                    task_id=task_id,
+                    category="documentation",  # V2.4: All tasks are documentation
+                    difficulty="easy" if task_counter <= 5 else "medium",
+                    language=lang_display,  # V2.4: Correct language
+                    domain="enterprise" if lang_lower == "unibasic" else ("banking" if "bank" in dataset_id.lower() else "finance"),
                     source_dataset=dataset_id,
                     input_files=[str(rel_path)],
-                    task_description=f"Generate comprehensive documentation for {rel_path.name} explaining business purpose, business rules, edge cases, and data structures.",
+                    task_description=f"Generate comprehensive documentation for {rel_path.name} explaining business purpose, business rules, data structures, and key functionality.",
                     evaluation_criteria={
-                        "required_sections": ["business_purpose", "business_rules", "edge_cases", "data_structures"],
-                        "min_length_pages": 3,
+                        "version": "2.4",
+                        "required_sections": ["business_purpose", "business_rules", "data_structures"],
                         "format": "markdown",
-                    }
+                    },
+                    tier="T1",  # Simple mode defaults to T1
                 )
                 tasks.append(task)
-                task_counter["doc"] += 1
-            
-            # Create understanding tasks (5)
-            for i in range(min(2, len(cobol_files))):  # 2 per dataset
-                if task_counter["und"] > 5:
-                    break
-                
-                file_path = cobol_files[min(i+2, len(cobol_files)-1)]  # Different files
-                rel_path = file_path.relative_to(dataset_path)
-                
-                task = Task(
-                    task_id=f"LCB-UND-{task_counter['und']:03d}",
-                    category="understanding",
-                    difficulty="medium" if task_counter["und"] % 2 == 0 else "easy",
-                    language="COBOL",
-                    domain="banking" if "bank" in dataset_id.lower() else "finance",
-                    source_dataset=dataset_id,
-                    input_files=[str(rel_path)],
-                    task_description=f"Extract dependency graph, business rules, and data flow from {rel_path.name}.",
-                    evaluation_criteria={
-                        "output_format": "json",
-                        "required_fields": ["dependencies", "business_rules", "data_flow"],
-                    }
-                )
-                tasks.append(task)
-                task_counter["und"] += 1
+                task_counter += 1
         
+        logger.info(f"Created {len(tasks)} {lang_display} tasks with V2.4 ID format")
         return tasks
     
     def list_tasks(self) -> List[str]:

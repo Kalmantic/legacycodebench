@@ -20,6 +20,54 @@ from legacycodebench.dataset_loader import DatasetLoader
 import re
 
 
+def get_executor_for_language(task_id: str, source_files: List[Path], enable_execution: bool):
+    """
+    Get the appropriate executor (COBOL or UniBasic) based on task language.
+
+    V2.4: Multi-language support.
+
+    Args:
+        task_id: Task identifier (used to detect language from prefix)
+        source_files: List of source file paths (used to detect language from extension)
+        enable_execution: Whether execution is enabled
+
+    Returns:
+        Executor instance or None if execution disabled or unavailable
+    """
+    if not enable_execution:
+        return None
+
+    # Detect if this is a UniBasic task
+    is_unibasic = "-UB-" in task_id
+    if source_files and not is_unibasic:
+        main_file = source_files[0]
+        is_unibasic = main_file.suffix.lower() in ('.bp', '.b', '.bas')
+        # Also check for extensionless files in .BP directories (Pick convention)
+        if not is_unibasic and '.BP' in str(main_file):
+            is_unibasic = True
+
+    if is_unibasic:
+        try:
+            from legacycodebench.execution.unibasic_executor import UniBasicExecutor
+            executor = UniBasicExecutor()
+            if executor.is_available():
+                logger.info(f"Using UniBasic executor for {task_id}")
+                return executor
+            else:
+                logger.warning(f"UniBasic executor not available for {task_id}")
+                return None
+        except Exception as e:
+            logger.warning(f"UniBasic executor init failed for {task_id}: {e}")
+            return None
+    else:
+        try:
+            from legacycodebench.execution.cobol_executor import COBOLExecutor
+            return COBOLExecutor()
+        except Exception as e:
+            logger.warning(f"COBOL executor init failed for {task_id}: {e}")
+            return None
+
+
 def extract_documentation_content(raw_content: str) -> str:
     """
     Extract actual documentation from potentially JSON-wrapped content.
@@ -99,29 +147,58 @@ def main():
 
 
 @main.command()
-def load_datasets():
-    """Load COBOL datasets from GitHub repositories"""
-    click.echo("Loading datasets from GitHub repositories...")
+@click.option("--language", type=click.Choice(["cobol", "unibasic", "all"]), default="cobol",
+              help="Language to load datasets for (v2.4)")
+def load_datasets(language: str):
+    """Load datasets from GitHub repositories (V2.4: multi-language)"""
+    click.echo(f"Loading {language.upper()} datasets from GitHub repositories...")
     loader = DatasetLoader()
-    loaded = loader.load_all_datasets()
+    
+    if language == "all":
+        loaded = loader.load_all_datasets_v24(language="all")
+    elif language == "unibasic":
+        loaded = loader.load_unibasic_datasets()
+    else:
+        loaded = loader.load_all_datasets()
     
     click.echo(f"\n[OK] Loaded {len(loaded)} datasets:")
-    for source_id, path in loaded.items():
-        stats = loader.get_dataset_stats(path)
-        click.echo(f"  {source_id}: {stats['total_files']} files, {stats['total_lines']} lines")
+    for source_id, info in loaded.items():
+        if isinstance(info, dict):
+            path = info.get("path", info)
+            lang = info.get("language", "cobol").upper()
+        else:
+            path = info
+            lang = "COBOL"
+        try:
+            stats = loader.get_dataset_stats(path)
+            click.echo(f"  [{lang}] {source_id}: {stats['total_programs']} files")
+        except Exception:
+            click.echo(f"  [{lang}] {source_id}: loaded")
 
 
 @main.command()
-def create_tasks():
-    """Create tasks from loaded datasets"""
-    click.echo("Creating tasks from datasets...")
+@click.option("--language", type=click.Choice(["cobol", "unibasic", "all"]), default="cobol",
+              help="Language to create tasks for (v2.4)")
+def create_tasks(language: str):
+    """Create tasks from loaded datasets (V2.4: multi-language)"""
+    click.echo(f"Creating {language.upper()} tasks from datasets...")
     manager = TaskManager()
-    tasks = manager.create_tasks_from_datasets()
+    
+    if language == "all":
+        # Create both COBOL and UniBasic tasks
+        cobol_tasks = manager.create_tasks_from_datasets(language="cobol")
+        unibasic_tasks = manager.create_tasks_from_datasets(language="unibasic")
+        tasks = cobol_tasks + unibasic_tasks
+    else:
+        tasks = manager.create_tasks_from_datasets(language=language)
+    
     manager.save_all(tasks)
     
     click.echo(f"\n[OK] Created {len(tasks)} tasks:")
-    for task in tasks:
-        click.echo(f"  {task.task_id}: {task.category} - {task.difficulty}")
+    for task in tasks[:10]:  # Show first 10
+        click.echo(f"  {task.task_id}: {task.language} - {task.tier or 'N/A'}")
+    if len(tasks) > 10:
+        click.echo(f"  ... and {len(tasks) - 10} more")
 
 
 @main.command()
@@ -131,8 +208,8 @@ def create_tasks():
 @click.option("--submitter-name", default="Unknown", help="Submitter name")
 @click.option("--submitter-model", default="unknown", help="Model name")
 @click.option("--submitter-category", default="verified", help="Category (bash, verified, full, human+ai)")
-@click.option("--evaluator", default="v2.3.1", type=click.Choice(["v2.3.1"]),
-              help="Evaluator version (default: v2.3.1 - deterministic)")
+@click.option("--evaluator", default="v2.3.1", type=click.Choice(["v2.3.1", "v2.4", "v3"]),
+              help="Evaluator version: v2.3.1 (default), v2.4 (multi-language), v3 (compile-first BF)")
 @click.option("--enable-execution", is_flag=True, default=False,
               help="Enable behavioral fidelity testing")
 @click.option("--judge-model", default="gpt-4o", hidden=True, help="LLM judge model (internal use only)")
@@ -156,7 +233,120 @@ def evaluate(task_id: str, submission: Path, output: Optional[Path],
     submission_path = Path(submission)
 
     # Select evaluator based on version and category
-    if evaluator == "v2.3.1":
+    if evaluator == "v3":
+        # V3.0 evaluator (BF compile-first classification)
+        click.echo(f"  Using V3.0 Evaluator (BF Compile-First)")
+        
+        try:
+            from legacycodebench.evaluators_v3 import EvaluatorV3
+            from legacycodebench.static_analysis.ground_truth_generator import GroundTruthGenerator
+            
+            # Load ground truth
+            gt_gen = GroundTruthGenerator()
+            input_files = task.get_input_files_absolute()
+            gt = gt_gen.generate(input_files, cache_dir=GROUND_TRUTH_CACHE_DIR)
+            
+            # Read documentation (handle JSON-wrapped DocMolt format)
+            with open(submission_path, 'r', encoding='utf-8') as f:
+                raw_documentation = f.read()
+            documentation = extract_documentation_content(raw_documentation)
+            
+            # Read source code
+            source_code = ""
+            for f in input_files:
+                with open(f, 'r', encoding='utf-8', errors='ignore') as fp:
+                    source_code += fp.read() + "\n"
+            
+            # V2.4: Create language-appropriate executor if execution mode enabled
+            executor = get_executor_for_language(task_id, input_files, enable_execution)
+            if executor:
+                click.echo(f"  Execution Mode: ENABLED (Docker-based)")
+            else:
+                click.echo(f"  Execution Mode: DISABLED (static BF)")
+
+            # Evaluate with V3
+            evaluator_instance = EvaluatorV3(executor=executor)
+            eval_result = evaluator_instance.evaluate(
+                task_id=task_id,
+                model=submitter_model,
+                documentation=documentation,
+                source_code=source_code,
+                ground_truth=gt,
+                task_metadata=task.to_dict() if hasattr(task, 'to_dict') else {}
+            )
+            
+            result = eval_result.to_dict()
+            overall_score = eval_result.lcb_score / 100  # Convert to 0-1
+            
+            # Get BF verification mode from V3 provenance
+            v3_provenance = eval_result.bf_breakdown.get("v3_provenance", {}) if eval_result.bf_breakdown else {}
+            bf_mode = v3_provenance.get("verification_mode", "unknown")
+            click.echo(f"  BF Verification Mode: {bf_mode.upper()}")
+            
+        except ImportError as e:
+            click.echo(f"[ERROR] V3.0 evaluators not available: {e}")
+            return
+    
+    elif evaluator == "v2.4":
+        # V2.4 evaluator (multi-language support)
+        click.echo(f"  Using V2.4 Evaluator (Multi-Language)")
+        
+        try:
+            from legacycodebench.evaluators_v24 import EvaluatorV24
+            from legacycodebench.static_analysis.ground_truth_generator import GroundTruthGenerator
+            from legacycodebench.adapters import detect_language
+            
+            # Detect language from task_id
+            language = detect_language(task_id)
+            click.echo(f"  Language: {language.value.upper()}")
+            
+            # Load ground truth
+            gt_gen = GroundTruthGenerator()
+            input_files = task.get_input_files_absolute()
+            gt = gt_gen.generate(input_files, cache_dir=GROUND_TRUTH_CACHE_DIR)
+            
+            # Read documentation (handle JSON-wrapped DocMolt format)
+            with open(submission_path, 'r', encoding='utf-8') as f:
+                raw_documentation = f.read()
+            documentation = extract_documentation_content(raw_documentation)
+            
+            # Read source code
+            source_code = ""
+            for f in input_files:
+                with open(f, 'r', encoding='utf-8', errors='ignore') as fp:
+                    source_code += fp.read() + "\n"
+            
+            # Determine execution mode
+            if enable_execution:
+                click.echo(f"  Execution Mode: ENABLED")
+            else:
+                click.echo(f"  Execution Mode: DISABLED (static BF)")
+            
+            # Evaluate with V2.4
+            evaluator_instance = EvaluatorV24(
+                dataset_path=DATASETS_DIR,
+                enable_execution=enable_execution
+            )
+            eval_result = evaluator_instance.evaluate(
+                task_id=task_id,
+                documentation=documentation,
+                source_code=source_code,
+                ground_truth=gt,
+                task_metadata=task.to_dict() if hasattr(task, 'to_dict') else {}
+            )
+            
+            result = eval_result.to_dict()
+            overall_score = eval_result.lcb_score
+            
+            # Show verification mode
+            bf_mode = eval_result.behavioral_fidelity.verification_mode.value
+            click.echo(f"  BF Verification Mode: {bf_mode.upper()}")
+            
+        except ImportError as e:
+            click.echo(f"[ERROR] V2.4 evaluators not available: {e}")
+            return
+    
+    elif evaluator == "v2.3.1":
         # Evaluator (deterministic, no LLM-as-judge)
         click.echo(f"  Using Evaluator (Deterministic)")
         
@@ -180,20 +370,13 @@ def evaluate(task_id: str, submission: Path, output: Optional[Path],
                 with open(f, 'r', encoding='utf-8', errors='ignore') as fp:
                     source_code += fp.read() + "\n"
             
-            # Create executor if execution mode enabled
-            executor = None
-            if enable_execution:
-                try:
-                    from legacycodebench.execution.cobol_executor import COBOLExecutor
-                    executor = COBOLExecutor()
-                    click.echo(f"  Execution Mode: ENABLED (Docker-based)")
-                except ImportError:
-                    click.echo(f"  [WARNING] COBOLExecutor not available, using heuristic BF")
-                except Exception as e:
-                    click.echo(f"  [WARNING] Executor init failed: {e}, using heuristic BF")
+            # V2.4: Create language-appropriate executor if execution mode enabled
+            executor = get_executor_for_language(task_id, input_files, enable_execution)
+            if executor:
+                click.echo(f"  Execution Mode: ENABLED (Docker-based)")
             else:
                 click.echo(f"  Execution Mode: DISABLED (heuristic BF)")
-            
+
             # Evaluate
             evaluator_instance = EvaluatorV231(executor=executor)
             eval_result = evaluator_instance.evaluate(
@@ -466,13 +649,25 @@ def run_ai(model: str, task_id: Optional[str], submitter_name: Optional[str], mo
 @click.option("--detailed", is_flag=True, help="Show detailed component scores")
 @click.option("--export-md", type=click.Path(), help="Export as Markdown file")
 @click.option("--export-csv", type=click.Path(), help="Export as CSV file")
+@click.option("--language", type=click.Choice(["cobol", "unibasic", "all"]), default="all",
+              help="Filter by language (v2.4)")
 def leaderboard(output: Optional[Path], print_flag: bool, detailed: bool, 
-                export_md: Optional[Path], export_csv: Optional[Path]):
+                export_md: Optional[Path], export_csv: Optional[Path], language: str):
     """Generate leaderboard from all results"""
-    click.echo("Generating leaderboard...")
+    if language != "all":
+        click.echo(f"Generating leaderboard (language: {language.upper()})...")
+    else:
+        click.echo("Generating leaderboard...")
     
     lb = Leaderboard()
-    leaderboard_data = lb.generate(output)
+    
+    # Auto-generate distinct filename if language filter is active
+    if output is None and language != "all":
+        output = RESULTS_DIR / f"leaderboard_{language}.json"
+        
+    leaderboard_data = lb.generate(output, language=language)
+    
+    # Filter by language handled in generate()
     
     if print_flag:
         if detailed:
@@ -499,7 +694,8 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
                    judge_model: str = "gpt-4o", task_limit: int = 3, task_offset: int = 0,
                    skip_datasets: bool = False, skip_task_creation: bool = False,
                    mock_mode: bool = False, clean_results: bool = False,
-                   multi_doctype: bool = False):
+                   multi_doctype: bool = False, language: str = "cobol",
+                   skip_existing_results: bool = False, exclude_tasks: Optional[List[str]] = None):
     """Shared routine that runs the full benchmark pipeline
 
     Args:
@@ -515,6 +711,9 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
         mock_mode: Use mock responses for testing (no API keys required)
         clean_results: Clear old results before running (prevents stale data)
         multi_doctype: For DocMolt, call all 5 doc types and combine results
+        language: "cobol", "unibasic", or "all" (V2.4 multi-language support)
+        skip_existing_results: Skip tasks that already have result files (for resuming)
+        exclude_tasks: List of task IDs to exclude
     """
     if not models_to_test:
         click.echo("[ERROR] No models selected. Aborting.")
@@ -537,69 +736,193 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
     click.echo("=" * 80)
     click.echo(header_label)
     click.echo("=" * 80)
-    if evaluator_version == "v2.3.1":
+    if evaluator_version == "v3":
+        click.echo(f"Evaluator: V3.0 (BF Compile-First) | Execution: {'Enabled' if enable_execution else 'Disabled'}")
+    elif evaluator_version == "v2.3.1":
         click.echo(f"Evaluator: V2.3.1 (Deterministic) | Execution: {'Enabled' if enable_execution else 'Disabled'}")
     else:
         click.echo(f"Evaluator: {evaluator_version.upper()} | Execution: {'Enabled' if enable_execution else 'Disabled'} | Judge: {judge_model}")
     click.echo("=" * 80)
     
-    # Step 1: Load datasets
+    # Step 1: Load datasets (V2.4: language-aware)
     if not skip_datasets:
-        click.echo("\n[1/7] Loading datasets from GitHub repositories...")
+        lang_desc = f"[{language.upper()}]" if language != "all" else "[COBOL+UniBasic]"
+        click.echo(f"\n[1/7] Loading {lang_desc} datasets from GitHub repositories...")
         loader = DatasetLoader()
-        loaded = loader.load_all_datasets()
+        # V2.4: Use language-aware dataset loading
+        if language in ["unibasic", "all"]:
+            loaded = loader.load_all_datasets_v24(language=language)
+        else:
+            loaded = loader.load_all_datasets()
         click.echo(f"[OK] Loaded {len(loaded)} datasets")
     else:
         click.echo("\n[1/7] Skipping dataset loading (using existing datasets)...")
         loader = DatasetLoader()
-        loaded = loader.load_all_datasets()  # Still need to get loaded dict
+        # V2.4: Still respect language filter for existing datasets
+        if language in ["unibasic", "all"]:
+            loaded = loader.load_all_datasets_v24(language=language)
+        else:
+            loaded = loader.load_all_datasets()
         click.echo(f"[OK] Using {len(loaded)} existing datasets")
     
     # Step 2: Create tasks (uses v2.0 intelligent selection - documentation only, tier-based)
-    # REPRODUCIBILITY FIX: Auto-skip task creation if 200 tasks already exist
-    # This ensures all users evaluate on the same canonical task set
+    # V2.4: Language-aware task creation and filtering
     manager = TaskManager()
     existing_task_ids = manager.list_tasks()
-    
-    if not skip_task_creation and len(existing_task_ids) >= 200:
-        click.echo("\n[2/7] Using existing canonical tasks (200 tasks found)...")
+
+    # V2.4: Filter existing tasks by language
+    def _filter_tasks_by_language(task_ids: List[str], lang: str) -> List[str]:
+        """Filter task IDs by language prefix."""
+        if lang == "all":
+            return task_ids
+        elif lang == "unibasic":
+            return [tid for tid in task_ids if tid.startswith("LCB-UB-")]
+        else:  # cobol
+            return [tid for tid in task_ids if not tid.startswith("LCB-UB-")]
+
+    filtered_existing = _filter_tasks_by_language(existing_task_ids, language)
+
+    # Determine canonical task count based on language
+    canonical_count = 200 if language == "cobol" else (50 if language == "unibasic" else 250)
+
+    if not skip_task_creation and len(filtered_existing) >= canonical_count:
+        lang_label = language.upper() if language != "all" else "COBOL+UniBasic"
+        click.echo(f"\n[2/7] Using existing canonical {lang_label} tasks ({len(filtered_existing)} found)...")
         click.echo("      [INFO] To regenerate tasks, delete tasks/*.json first")
-        tasks = [manager.get_task(tid) for tid in existing_task_ids]
+        tasks = [manager.get_task(tid) for tid in filtered_existing if manager.get_task(tid)]
         click.echo(f"[OK] Using {len(tasks)} existing tasks (reproducible)")
     elif not skip_task_creation:
-        click.echo("\n[2/7] Selecting tasks (v2.0 tier-based intelligent selection)...")
-        tasks = manager.create_tasks_from_datasets(use_intelligent_selection=True)
+        lang_label = language.upper() if language != "all" else "COBOL+UniBasic"
+        click.echo(f"\n[2/7] Creating {lang_label} tasks (tier-based intelligent selection)...")
+        # V2.4: Pass language to task creation
+        tasks = manager.create_tasks_from_datasets(
+            use_intelligent_selection=True,
+            language=language if language != "all" else None
+        )
         manager.save_all(tasks)
         click.echo(f"[OK] Created {len(tasks)} documentation tasks")
+
+        # V2.4: If language is "all", also create UniBasic tasks
+        if language == "all":
+            click.echo("      Creating UniBasic tasks...")
+            ub_tasks = manager.create_tasks_from_datasets(
+                use_intelligent_selection=True,
+                language="unibasic"
+            )
+            manager.save_all(ub_tasks)
+            tasks.extend(ub_tasks)
+            click.echo(f"      [OK] Created {len(ub_tasks)} UniBasic tasks (total: {len(tasks)})")
     else:
         click.echo("\n[2/7] Skipping task creation (using existing tasks)...")
-        tasks = [manager.get_task(tid) for tid in existing_task_ids]
+        tasks = [manager.get_task(tid) for tid in filtered_existing if manager.get_task(tid)]
         click.echo(f"[OK] Using {len(tasks)} existing tasks")
+    
+    # Filter excluded tasks
+    if exclude_tasks:
+        initial_count = len(tasks)
+        tasks = [t for t in tasks if t.task_id not in exclude_tasks]
+        excluded_count = initial_count - len(tasks)
+        if excluded_count > 0:
+             click.echo(f"      [INFO] Excluded {excluded_count} tasks specified by user")
     
     # Step 3: Generate ground truth (pre-generate for all tasks to show progress)
     click.echo("\n[3/7] Generating ground truth (automated static analysis)...")
     from legacycodebench.static_analysis.ground_truth_generator import GroundTruthGenerator
-    gt_generator = GroundTruthGenerator()
+    gt_generator_cobol = GroundTruthGenerator()
+
+    # V2.4: UniBasic ground truth generator
+    gt_generator_unibasic = None
+    if language in ("unibasic", "all"):
+        try:
+            from legacycodebench.static_analysis.unibasic_ground_truth import UniBasicGroundTruthGenerator
+            gt_generator_unibasic = UniBasicGroundTruthGenerator(cache_dir=GROUND_TRUTH_CACHE_DIR)
+        except ImportError:
+            click.echo("    [WARN] UniBasic ground truth generator not available")
+
     # Use centralized cache directory from config
     GROUND_TRUTH_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    
+
     gt_generated = 0
     gt_cached = 0
     for task in tasks:
         source_files = task.get_input_files_absolute()
         if source_files:
             main_file = source_files[0]
-            # Check if cached
-            cached = gt_generator.load_cached_ground_truth(main_file, GROUND_TRUTH_CACHE_DIR)
-            if cached:
-                gt_cached += 1
-            else:
-                # Generate (will be cached)
-                gt_generator.generate(source_files, cache_dir=GROUND_TRUTH_CACHE_DIR)
+
+            # V2.4: Detect if this is a UniBasic task (LCB-UB-* task ID or .bp/.b/.bas extension)
+            is_unibasic_task = "-UB-" in task.task_id or main_file.suffix.lower() in ('.bp', '.b', '.bas')
+
+            if is_unibasic_task and gt_generator_unibasic:
+                # Use UniBasic ground truth generator
+                gt = gt_generator_unibasic.generate(source_files, task_id=task.task_id)
                 gt_generated += 1
+            else:
+                # Use COBOL ground truth generator
+                # Check if cached
+                cached = gt_generator_cobol.load_cached_ground_truth(main_file, GROUND_TRUTH_CACHE_DIR)
+                if cached:
+                    gt_cached += 1
+                else:
+                    # Generate (will be cached)
+                    gt_generator_cobol.generate(source_files, cache_dir=GROUND_TRUTH_CACHE_DIR)
+                    gt_generated += 1
     
     click.echo(f"[OK] Ground truth: {gt_generated} generated, {gt_cached} cached (95%+ automation)")
-    
+
+    # V2.4: Helper function to generate ground truth based on task language
+    def _generate_ground_truth_for_task(task, source_files):
+        """Generate ground truth using appropriate generator based on task language.
+
+        Returns a dict for compatibility with existing evaluators.
+        """
+        if not source_files:
+            return {}
+        main_file = source_files[0]
+        is_unibasic = "-UB-" in task.task_id or main_file.suffix.lower() in ('.bp', '.b', '.bas')
+        if is_unibasic and gt_generator_unibasic:
+            gt_obj = gt_generator_unibasic.generate(source_files, task_id=task.task_id)
+            # Convert GroundTruth object to dict for evaluator compatibility
+            return gt_obj.to_dict() if hasattr(gt_obj, 'to_dict') else gt_obj
+        else:
+            return gt_generator_cobol.generate(source_files, cache_dir=GROUND_TRUTH_CACHE_DIR)
+
+    # V2.4: Helper function to get appropriate executor based on task language
+    def _get_executor_for_task(task, enable_execution: bool):
+        """Get the appropriate executor (COBOL or UniBasic) based on task language.
+
+        Returns None if execution is disabled or executor is unavailable.
+        """
+        if not enable_execution:
+            return None
+
+        # Detect if this is a UniBasic task
+        source_files = task.get_input_files_absolute()
+        is_unibasic = "-UB-" in task.task_id
+        if source_files and not is_unibasic:
+            main_file = source_files[0]
+            is_unibasic = main_file.suffix.lower() in ('.bp', '.b', '.bas')
+
+        if is_unibasic:
+            try:
+                from legacycodebench.execution.unibasic_executor import UniBasicExecutor
+                executor = UniBasicExecutor()
+                if executor.is_available():
+                    logger.info(f"Using UniBasic executor for {task.task_id}")
+                    return executor
+                else:
+                    logger.warning(f"UniBasic executor not available for {task.task_id}, using static BF")
+                    return None
+            except Exception as e:
+                logger.warning(f"UniBasic executor init failed for {task.task_id}: {e}")
+                return None
+        else:
+            try:
+                from legacycodebench.execution.cobol_executor import COBOLExecutor
+                return COBOLExecutor()
+            except Exception as e:
+                logger.warning(f"COBOL executor init failed for {task.task_id}: {e}")
+                return None
+
     # v2.0: Select representative tasks by TIER (not by doc/understanding split)
     def _select_representative_tasks(all_tasks: List[Task], limit: int = 3) -> List[Task]:
         """Select tasks with balanced tier representation (v2.0)"""
@@ -680,8 +1003,8 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
                 return default_judge
         return default_judge
     
-    # Only process judge model for non-v2.3.1 (v2.3.1 is deterministic, no LLM-as-judge)
-    if evaluator_version != "v2.3.1":
+    # Only process judge model for non-v2.3.1/v3 (these are deterministic, no LLM-as-judge)
+    if evaluator_version not in ("v2.3.1", "v3"):
         actual_judge = _ensure_different_judge(models_to_test, judge_model)
         if actual_judge != judge_model:
             click.echo(f"  ⚠ Judge model changed from '{judge_model}' to '{actual_judge}' "
@@ -691,19 +1014,25 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
     for model_id in models_to_test:
         click.echo(f"\n  Running {model_id}...")
         # Only show judge info for V2.1.3 which uses LLM-as-judge
-        if evaluator_version != "v2.3.1":
+        if evaluator_version not in ("v2.3.1", "v3"):
             click.echo(f"    Judge for SQ evaluation: {judge_model} (different from {model_id})")
         try:
             ai_model = get_ai_model(model_id, mock_mode=mock_mode)
             
             for task in balanced_tasks:
                 click.echo(f"    Task: {task.task_id}")
-                
+
+                # V2.4: Skip if result file already exists (for resuming interrupted runs)
+                result_file_check = RESULTS_DIR / f"{task.task_id}_{model_id}_{evaluator_version}.json"
+                if skip_existing_results and result_file_check.exists():
+                    click.echo(f"    [SKIP] Result already exists: {result_file_check.name}")
+                    continue
+
                 input_files = task.get_input_files_absolute()
                 if not input_files:
                     click.echo(f"    ⚠ No input files found, skipping")
                     continue
-                
+
                 output_file = SUBMISSIONS_DIR / f"{task.task_id}_{model_id}.md"
                 
                 # FIXED: Check if submission exists to prevent overwriting (crucial for resuming)
@@ -725,6 +1054,56 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
                     click.echo(f"    [OK] Generated submission")
                 
                 # Evaluate using selected evaluator version
+                if evaluator_version == "v3":
+                    # V3.0 evaluator (BF compile-first classification)
+                    try:
+                        from legacycodebench.evaluators_v3 import BehavioralEvaluatorV3
+                        from legacycodebench.evaluators_v3.evaluator_v3 import EvaluatorV3
+
+                        # Load ground truth
+                        source_files = task.get_input_files_absolute()
+                        gt = _generate_ground_truth_for_task(task, source_files) if source_files else {}
+
+                        # Read documentation and source (handle non-UTF-8 encoding)
+                        doc_content = output_file.read_text(encoding='utf-8')
+                        source_content = source_files[0].read_text(encoding='utf-8', errors='replace') if source_files else ""
+
+                        # V2.4: Create language-appropriate executor if execution enabled
+                        executor = _get_executor_for_task(task, enable_execution)
+
+                        # Run V3.0 evaluation
+                        evaluator_instance = EvaluatorV3(executor=executor)
+                        eval_result = evaluator_instance.evaluate(
+                            task_id=task.task_id,
+                            model=model_id,
+                            documentation=doc_content,
+                            source_code=source_content,
+                            ground_truth=gt,
+                            task_metadata=task.to_dict() if hasattr(task, 'to_dict') else {}
+                        )
+                        
+                        result = eval_result.to_dict()
+                        overall_score = eval_result.lcb_score / 100  # Convert to 0-1
+                        
+                        # Get BF verification mode from result dict (v3 doesn't have metadata attribute)
+                        bf_mode = result.get("bf_verification_mode", "unknown")
+                        
+                        # Display V3.0 format
+                        status = "[PASSED]" if eval_result.passed else "[FAILED]"
+                        click.echo(f"    [OK] V3.0 Score: {eval_result.lcb_score:.1f}% {status}")
+                        click.echo(f"         (SC:{eval_result.sc_score*100:.0f}% "
+                                  f"DQ:{eval_result.dq_score*100:.0f}% "
+                                  f"BF:{eval_result.bf_score*100:.0f}% [{bf_mode}])")
+                        
+                        if eval_result.critical_failures:
+                            cf_ids = [cf.cf_id for cf in eval_result.critical_failures]
+                            click.echo(f"    [WARNING] Critical failures: {', '.join(cf_ids)}")
+                    
+                    except ImportError as e:
+                        click.echo(f"    [ERROR] V3.0 evaluators not available: {e}")
+                        click.echo(f"    Falling back to V2.3.1...")
+                        evaluator_version = "v2.3.1"  # Fallback
+                
                 if evaluator_version == "v2.3.1":
                     # V2.3.1 evaluator (deterministic, 4 patches)
                     try:
@@ -732,20 +1111,14 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
 
                         # Load ground truth
                         source_files = task.get_input_files_absolute()
-                        gt = gt_generator.generate(source_files, cache_dir=GROUND_TRUTH_CACHE_DIR) if source_files else {}
+                        gt = _generate_ground_truth_for_task(task, source_files) if source_files else {}
 
                         # Read documentation and source
                         doc_content = output_file.read_text(encoding='utf-8')
                         source_content = source_files[0].read_text(encoding='utf-8') if source_files else ""
 
-                        # Create executor if execution enabled
-                        executor = None
-                        if enable_execution:
-                            try:
-                                from legacycodebench.execution.cobol_executor import COBOLExecutor
-                                executor = COBOLExecutor()
-                            except Exception as e:
-                                logger.warning(f"Executor init failed: {e}, using heuristic BF")
+                        # V2.4: Create language-appropriate executor if execution enabled
+                        executor = _get_executor_for_task(task, enable_execution)
 
                         # Run V2.3.1 evaluation
                         evaluator_instance = EvaluatorV231(executor=executor)
@@ -783,7 +1156,7 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
                         
                         # Load ground truth
                         source_files = task.get_input_files_absolute()
-                        gt = gt_generator.generate(source_files, cache_dir=GROUND_TRUTH_CACHE_DIR) if source_files else {}
+                        gt = _generate_ground_truth_for_task(task, source_files) if source_files else {}
                         
                         # Read documentation and source
                         doc_content = output_file.read_text(encoding='utf-8')
@@ -861,6 +1234,9 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
                 if model_id == "docmolt-enterprise":
                     submitter_name = "Hexaview"
                     display_model = "Legacy Insights"
+                elif model_id == "uniview":
+                    submitter_name = "Uniview"
+                    display_model = "Uniview Platform"
                 else:
                     submitter_name = model_id.split("-")[0].title() if "-" in model_id else model_id
                     display_model = model_id
@@ -888,7 +1264,9 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
     click.echo("\n[OK] Completed AI model runs")
     
     # Step 5: Evaluation (already done during AI run, but summarize here)
-    if evaluator_version == "v2.3.1":
+    if evaluator_version == "v3":
+        click.echo("\n[5/7] Evaluation complete (SC/DQ/BF calculated - V3.0 Compile-First)")
+    elif evaluator_version == "v2.3.1":
         click.echo("\n[5/7] Evaluation complete (SC/DQ/BF calculated - V2.3.1)")
     elif evaluator_version == "v2.3":
         click.echo("\n[5/7] Evaluation complete (C/D/B calculated - V2.3)")
@@ -896,7 +1274,7 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
         click.echo("\n[5/7] Evaluation complete (SC, BF, SQ, TR calculated)")
     
     # Step 6: Scoring (already done, but summarize)
-    if evaluator_version == "v2.3.1":
+    if evaluator_version in ("v2.3.1", "v3"):
         click.echo("\n[6/7] Scoring complete (LCB = 0.30xSC + 0.20xDQ + 0.50xBF)")
     else:
         click.echo("\n[6/7] Scoring complete (LCB Score calculated with pass/fail status)")
@@ -921,8 +1299,8 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
 
 
 @main.command(name="run-full-benchmark")
-@click.option("--evaluation-version", default="v2.3.1", type=click.Choice(["v2.3.1"]),
-              help="Evaluation version: v2.3.1 (default, deterministic)")
+@click.option("--evaluation-version", default="v2.3.1", type=click.Choice(["v2.3.1", "v3", "v2.4"]),
+              help="Evaluation version: v2.3.1 (default), v3 (compile-first BF), v2.4 (multi-language)")
 @click.option("--enable-execution", is_flag=True, default=False,
               help="Enable behavioral fidelity testing (requires Docker with GnuCOBOL)")
 @click.option("--judge-model", default="gpt-4o", hidden=True,
@@ -941,37 +1319,62 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
               help="Use mock responses for testing (no API keys required)")
 @click.option("--clean", is_flag=True, default=False,
               help="Clear old results before running (prevents stale data in leaderboard)")
+@click.option("--language", type=click.Choice(["cobol", "unibasic", "all"]), default="cobol",
+              help="Language to benchmark: cobol (default), unibasic, or all (V2.4)")
+@click.option("--skip-existing-results", is_flag=True, default=False,
+              help="Skip tasks that already have result files (for resuming interrupted runs)")
+@click.option("--exclude-task", multiple=True, help="Task IDs to exclude from the run")
 def run_full_benchmark(evaluation_version: str, enable_execution: bool, judge_model: str,
                        task_limit: int, task_offset: int, models: str, skip_datasets: bool,
-                       skip_task_creation: bool, mock: bool, clean: bool):
+                       skip_task_creation: bool, mock: bool, clean: bool, language: str,
+                       skip_existing_results: bool, exclude_task: tuple):
     """Run complete benchmark pipeline (SWE-bench aligned)
-    
+
     Single command that orchestrates the full pipeline:
-    
+
     [1] LOAD DATASETS -> [2] SELECT TASKS -> [3] GROUND TRUTH GENERATION
           |                    |                       |
           V                    V                       V
     GitHub Repos        Intelligent             Static Analysis
-    (COBOL Files)        Selection               (Automated 95%)
-    
+    (COBOL/UniBasic)     Selection               (Automated 95%)
+
     [4] AI GENERATES DOC -> [5] EVALUATION -> [6] SCORING -> [7] LEADERBOARD
-    
+
     V2.3.1 (default): LCB = 0.30xSC + 0.20xDQ + 0.50xBF (deterministic, no LLM-as-judge)
-    
+    V2.4: Multi-language support (COBOL + UniBasic)
+
     Examples:
-        # Quick test (1 task, default)
+        # Quick test (1 task, default COBOL)
         legacycodebench run-full-benchmark --task-limit 1
 
-        # Full benchmark
+        # Full COBOL benchmark
         legacycodebench run-full-benchmark --task-limit 200 --enable-execution
+
+        # UniBasic benchmark (V2.4)
+        legacycodebench run-full-benchmark --language unibasic --task-limit 50
+
+        # Full multi-language benchmark (COBOL + UniBasic)
+        legacycodebench run-full-benchmark --language all --evaluation-version v2.4
 
         # Test specific models
         legacycodebench run-full-benchmark --models "gpt-4o,claude-sonnet-via-bedrock"
     """
     model_list = [m.strip() for m in models.split(",") if m.strip()]
-    
+
+    # V2.4: Auto-upgrade to v2.4 evaluator if UniBasic is selected
+    if language in ["unibasic", "all"] and evaluation_version not in ["v2.4", "v3"]:
+        click.echo(f"[INFO] UniBasic selected - auto-upgrading to V2.4 evaluator")
+        evaluation_version = "v2.4"
+
     # Map evaluation version to internal evaluator
-    if evaluation_version == "v2.3.1":
+    if evaluation_version == "v2.4":
+        evaluator = "v2.4"
+        lang_label = f"[{language.upper()}]" if language != "all" else "[COBOL+UniBasic]"
+        header_label = f"LegacyCodeBench V2.4 Evaluation {lang_label}"
+    elif evaluation_version == "v3":
+        evaluator = "v3"
+        header_label = f"LegacyCodeBench Evaluation (BF V3 Compile-First)"
+    elif evaluation_version == "v2.3.1":
         evaluator = "v2.3.1"
         header_label = f"LegacyCodeBench Evaluation (Deterministic, 4 Patches)"
     elif evaluation_version == "v2.3":
@@ -980,7 +1383,7 @@ def run_full_benchmark(evaluation_version: str, enable_execution: bool, judge_mo
     else:
         evaluator = "v2"
         header_label = f"LegacyCodeBench Evaluation (IUE+BSM)"
-    
+
     _run_benchmark(
         models_to_test=model_list,
         header_label=header_label,
@@ -992,7 +1395,10 @@ def run_full_benchmark(evaluation_version: str, enable_execution: bool, judge_mo
         skip_datasets=skip_datasets,
         skip_task_creation=skip_task_creation,
         mock_mode=mock,
-        clean_results=clean
+        clean_results=clean,
+        language=language,  # V2.4: Pass language to _run_benchmark
+        skip_existing_results=skip_existing_results,  # V2.4: Resume interrupted runs
+        exclude_tasks=list(exclude_task) if exclude_task else None
     )
 
 

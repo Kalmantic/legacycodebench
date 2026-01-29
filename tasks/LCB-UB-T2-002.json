@@ -1,0 +1,43 @@
+{
+  "task_id": "LCB-UB-T2-002",
+  "category": "documentation",
+  "difficulty": "medium",
+  "language": "unibasic",
+  "domain": "enterprise",
+  "source_dataset": "full-stack-with-pick-tutorial",
+  "input_files": [
+    "back-end\\jbase\\setting-up-get-endpoint\\GET-API-DEMO.b"
+  ],
+  "task_description": "Generate comprehensive documentation for GET-API-DEMO.b including business purpose, data structures, control flow, file operations, and business rules.",
+  "evaluation_criteria": {
+    "version": "2.4",
+    "tier": "T2",
+    "required_sections": [
+      "business_purpose",
+      "business_rules",
+      "data_structures",
+      "control_flow",
+      "file_operations"
+    ],
+    "format": "markdown",
+    "evaluation_method": "llm_based",
+    "scoring_weights": {
+      "structural_completeness": 0.3,
+      "behavioral_fidelity": 0.35,
+      "semantic_quality": 0.25,
+      "traceability": 0.1
+    }
+  },
+  "tier": "T2",
+  "complexity_scoring": {
+    "method": "multi-factor-v2.1",
+    "breakdown": {
+      "loc": 66,
+      "file_size": 4721,
+      "has_enterprise": false,
+      "has_network": false,
+      "has_c_interop": false,
+      "original_filename": "GET-API-DEMO.b"
+    }
+  }
+}

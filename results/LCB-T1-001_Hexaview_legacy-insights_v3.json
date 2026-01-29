@@ -1,0 +1,73 @@
+{
+  "task_id": "LCB-T1-001",
+  "task_category": "documentation",
+  "evaluator_version": "v3",
+  "submitter": {
+    "name": "Hexaview",
+    "model": "legacy-insights",
+    "category": "verified"
+  },
+  "result": {
+    "version": "3.0",
+    "lcb_score": 92.6,
+    "passed": true,
+    "pass_status": {
+      "passed": true,
+      "reason": "All thresholds met",
+      "sc_met": true,
+      "dq_met": true,
+      "bf_met": true,
+      "has_critical_failure": false
+    },
+    "scores": {
+      "sc": 80.0,
+      "dq": 93.0,
+      "bf": 100.0,
+      "overall": 92.6
+    },
+    "critical_failures": [],
+    "breakdown": {
+      "sc": {
+        "business_rules": 1.0,
+        "data_structures": 1.0,
+        "control_flow": 0.0,
+        "external_calls": 1.0
+      },
+      "dq": {
+        "structure": 1.0,
+        "traceability": 0.9550561797752809,
+        "readability": 1.0,
+        "abstraction": 0.7161125319693094
+      },
+      "bf": {
+        "claim_score": 1.0,
+        "bsm_score": 1.0,
+        "verification_mode": "static",
+        "mode_reason": "ibm_construct:EXEC",
+        "compile_error": "Compilation failed: CBPAUP0C.cbl:136: error: executable program requested but PROCEDURE/ENTRY has USING clause\nCBPAUP0C.cbl: in paragraph '2000-FIND-NEXT-AUTH-SUMMARY':\nCBPAUP0C.cbl:223: error: syntax error, unexpected Identifier\nCBPAUP0C.cbl:228: error: 'DIBSTAT' is not defined\nCBPAUP0C.cbl: in paragraph '3000-FIND-NEXT-AUTH-DTL':\nCBPAUP0C.cbl:255: error: syntax error, unexpected Identifier\nCBPAUP0C.cbl:259: error: invalid expression\nCBPAUP0C.cbl: in paragraph '5000-DELETE-AUTH-DTL':\nCBPAUP0C.cbl:310: error: syntax error, unexpected Identifier\nCBPAUP0C.cbl: in paragraph '6000-DELETE-AUTH-SUMMARY':\nCBPAUP0C.cbl:335: error: syntax error, unexpected Identifier\nCBPAUP0C.cbl: in paragraph '9000-TAKE-CHECKPOINT':\nCBPAUP0C.cbl:355: error: unknown statement 'EXEC'\n\nCBPAUP0C.cbl:136: error: executable program requested but PROCEDURE/ENTRY has USING clause\nCBPAUP0C.cbl: in paragraph '2000-FIND-NEXT-AUTH-SUMMARY':\nCBPAUP0C.cbl:223: error: syntax error, unexpected Identifier\nCBPAUP0C.cbl:228: error: 'DIBSTAT' is not defined\nCBPAUP0C.cbl: in paragraph '3000-FIND-NEXT-AUTH-DTL':\nCBPAUP0C.cbl:255: error: syntax error, unexpected Identifier\nCBPAUP0C.cbl:259: error: invalid expression\nCBPAUP0C.cbl: in paragraph '5000-DELETE-AUTH-DTL':\nCBPAUP0C.cbl:310: error: syntax error, unexpected Identifier\nCBPAUP0C.cbl: in paragraph '6000-DELETE-AUTH-SUMMARY':\nCBPAUP0C.cbl:335: error: syntax error, unexpected Identifier\nCBPAUP0C.cbl: in paragraph '9000-TAKE-CHECKPOINT':\nCBPAUP0C.cbl:355: error: unknown statement 'EXEC'",
+        "fixable": false,
+        "v3_provenance": {
+          "evaluator_version": "v3.0",
+          "verification_mode": "static",
+          "mode_reason": "ibm_construct:EXEC",
+          "execution_attempted": true,
+          "execution_succeeded": false,
+          "compile_error": "Compilation failed: CBPAUP0C.cbl:136: error: executable program requested but PROCEDURE/ENTRY has USING clause\nCBPAUP0C.cbl: in paragraph '2000-FIND-NEXT-AUTH-SUMMARY':\nCBPAUP0C.cbl:223: error: syntax",
+          "claims_verified": 16,
+          "claims_total": 99
+        },
+        "claim_score_formula": "hybrid_v2.4.2",
+        "hybrid_components": {
+          "effective_claims": 40.0,
+          "effective_target": 6,
+          "verified": 16,
+          "partial": 48,
+          "total": 99,
+          "scoring_mode": "hybrid"
+        }
+      }
+    },
+    "bf_verification_mode": "static"
+  },
+  "overall_score": 0.926
+}

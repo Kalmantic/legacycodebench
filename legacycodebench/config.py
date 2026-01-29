@@ -101,6 +101,100 @@ DATASET_SOURCES = {
 }
 
 # ===========================================
+# UniBasic Dataset Sources (V2.4)
+# ===========================================
+# Pick/MultiValue BASIC repositories for 50-task benchmark
+# Task IDs: LCB-UB-T1-*, LCB-UB-T2-*, etc.
+# Target: 50 tasks (T1:15, T2:20, T3:10, T4:5)
+#
+# EXECUTION NOTE: UniBasic uses StubExecutor (static analysis only)
+# ScarletDME execution is deferred (Phase 5). BF score uses heuristic matching.
+
+UNIBASIC_DATASET_SOURCES = {
+    # ===========================================
+    # EXISTING DATASETS (Retained)
+    # ===========================================
+    "scarletdme-samples": {
+        "url": "https://github.com/geneb/ScarletDME",
+        "description": "ScarletDME Pick BASIC samples and utilities",
+        "tier": "T1",  # Base tier, multi-factor scoring adjusts per file
+        "language": "unibasic",
+        "estimated_files": 350,
+        "executable": True, # Verified via StubExecutor check
+    },
+    "mvbasic": {
+        "url": "https://github.com/mvextensions/mvbasic",
+        "description": "MultiValue BASIC sample programs",
+        "tier": "T2",
+        "language": "unibasic",
+        "estimated_files": 12,
+        "executable": True,
+    },
+    "full-stack-with-pick-tutorial": {
+        "url": "https://github.com/pickmultivalue/full-stack-with-pick-tutorial",
+        "description": "jBASE/Pick BASIC API demos",
+        "tier": "T2",
+        "language": "unibasic",
+        "estimated_files": 2,
+        "executable": True,
+    },
+
+    # ===========================================
+    # NEW ENTERPRISE & DIVERSE DATASETS (V2.4)
+    # ===========================================
+    
+    # T4: Enterprise / Banking / System
+    "multivalue-lab": {
+        "url": "https://github.com/RocketSoftware/multivalue-lab",
+        "description": "Rocket Software official MultiValue demos",
+        "tier": "T4",
+        "language": "unibasic",
+        "estimated_files": 40,
+        "executable": False, # Vendor specific
+    },
+
+    # T3: Complex / Games / OS / Tools
+    "adventure-game": {
+        "url": "https://github.com/MVDBMS-Solutions/Adventure",
+        "description": "Colossal Cave Adventure (Complex Logic)",
+        "tier": "T3",
+        "language": "unibasic",
+        "estimated_files": 15,
+        "executable": True, # Standard I/O
+    },
+    "sish-shell": {
+        "url": "https://github.com/simount/SISH",
+        "description": "Unix-like Shell in Pick Basic",
+        "tier": "T3",
+        "language": "unibasic",
+        "estimated_files": 20,
+        "executable": True,
+    },
+
+    # T2: Moderate / Libraries / OOP
+    "uopy-demo": {
+        "url": "https://github.com/RocketSoftware/uopy-demo",
+        "description": "Python interoperability examples",
+        "tier": "T2",
+        "language": "unibasic",
+        "estimated_files": 25,
+        "executable": True, # Basic side is executable
+    },
+    "wobj-lib": {
+        "url": "https://github.com/patrickp/wobj",
+        "description": "Generic Object/JSON Library",
+        "tier": "T2",
+        "language": "unibasic",
+        "estimated_files": 15,
+        "executable": True,
+    },
+
+    # T1: Basic / Utilities
+    # Removed stuboydl-utils (VS Code extension only)
+    # Removed mvextensions (VS Code extension only)
+}
+
+# ===========================================
 # LegacyCodeBench v2.3.1 Scoring Weights
 # ===========================================
 # LCB_Score = (0.30 x SC) + (0.20 x DQ) + (0.50 x BF)
@@ -576,6 +670,14 @@ AI_MODELS = {
         "max_tokens": 8192,
         "url": "https://us-south.ml.cloud.ibm.com",  # Default, can be overridden by env var
     },
+    # Uniview (Hexaview for UniBasic) - Pre-generated documentation
+    "uniview": {
+        "provider": "uniview",
+        "model": "uniview-doc-fetch",
+        "temperature": 0,
+        "max_tokens": 16384,
+        "description": "Uniview Platform (Pre-generated Documentation)",
+    },
 }
 
 # DocMolt Enterprise API configuration
@@ -583,7 +685,7 @@ DOCMOLT_CONFIG = {
     "base_url": "https://legacyip.hexaview.ai",
     "timeout_seconds": 600,  # 10 minutes for large projects
     "poll_interval_seconds": 30,  # Poll status every 30 seconds
-    "max_poll_attempts": 60,  # Max 30 minutes wait
+    "max_poll_attempts": 360,  # Max 3 hours wait (increased from 60 min)
     "max_retries": 3,
     "retry_delay_seconds": 5,
     "api_key_env_var": "DOCMOLT_API_KEY",
@@ -595,6 +697,13 @@ DOCMOLT_CONFIG = {
         "user_manual",           # User Manual
         "api_documentation",     # API Documentation
     ],
+}
+
+# Uniview API configuration (Hexaview for UniBasic)
+UNIVIEW_CONFIG = {
+    "base_url": "https://unifastapi-116067221688.us-central1.run.app",
+    "project_id": "e08daccc-8791-4051-a611-0c917e247ddb",
+    "api_key": "unv_MId8zPb6_jsyDdKUnhvp5-3pU4pOaJYbTgWNdXE9v4A",
 }
 
 def get_datasets_by_tier(tier: str = None) -> Dict[str, Dict]:
