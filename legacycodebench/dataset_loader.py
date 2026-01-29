@@ -17,7 +17,8 @@ import json
 
 from legacycodebench.config import (
     DATASETS_DIR, 
-    DATASET_SOURCES, 
+    DATASET_SOURCES,
+    UNIBASIC_DATASET_SOURCES,  # V2.4: UniBasic datasets
     get_datasets_by_tier,
     get_total_estimated_files,
     TASK_SELECTION_CONFIG,
@@ -87,23 +88,52 @@ class DatasetLoader:
         # Determine the actual path to use (root or subpath)
         actual_path = target_dir / subpath if subpath else target_dir
         
-        # Skip if already exists with COBOL files
+        # Skip if already exists with COBOL or UniBasic files
         if actual_path.exists():
             cobol_files = list(actual_path.rglob("*.cbl")) + list(actual_path.rglob("*.cob"))
-            if cobol_files:
-                logger.info(f"Dataset {source_id} already exists ({len(cobol_files)} files), skipping")
+            # V2.4: Also check for UniBasic files
+            unibasic_files = []
+            for ext in ["*.bp", "*.bas", "*.b", "*.BP", "*.BAS", "*.B"]:
+                unibasic_files.extend(actual_path.rglob(ext))
+            
+            # Also check for "BP" directories (Pick convention)
+            for path in actual_path.rglob("*"):
+                 if path.is_dir() and (path.name == "BP" or path.name.endswith(".BP")):
+                     if any(f.is_file() for f in path.iterdir()):
+                         unibasic_files.append(path)
+
+            if cobol_files or unibasic_files:
+                logger.info(f"Dataset {source_id} already exists ({len(cobol_files) + len(unibasic_files)} files), skipping")
                 return actual_path
         
         # FIXED: Clean up corrupted/partial downloads before retrying
         if target_dir.exists():
-            # Check if directory exists but has no COBOL files (corrupted/partial download)
+            # Check if directory exists but has no source files (corrupted/partial download)
             cobol_files = list(target_dir.rglob("*.cbl")) + list(target_dir.rglob("*.cob"))
-            if not cobol_files:
+            
+            unibasic_files = []
+            for ext in ["*.bp", "*.bas", "*.b", "*.BP", "*.BAS", "*.B"]:
+                unibasic_files.extend(target_dir.rglob(ext))
+            
+            # Also check for "BP" directories
+            for path in target_dir.rglob("*"):
+                 if path.is_dir() and (path.name == "BP" or path.name.endswith(".BP")):
+                     if any(f.is_file() for f in path.iterdir()):
+                         unibasic_files.append(path)
+
+            if not cobol_files and not unibasic_files:
                 logger.info(f"Removing incomplete dataset {source_id} and retrying...")
                 try:
                     shutil.rmtree(target_dir)
                 except Exception as e:
                     logger.warning(f"Could not remove {target_dir}: {e}")
+            else:
+                # If files exist but we are here, it means we passed the first check? 
+                # Actually, the first check returns early. So if we are here, something is wrong or I logic is slightly off.
+                # The first check verified 'actual_path', this check verifies 'target_dir'.
+                # In most cases they are same. If they differ, we might be here.
+                # Let's just return if we find files to be safe.
+                return target_dir
         
         # Try cloning with git
         try:
@@ -139,7 +169,10 @@ class DatasetLoader:
                         # Move extracted folder contents to target
                         temp_dirs = list((self.datasets_dir / "_temp").iterdir())
                         if temp_dirs:
-                            shutil.move(str(temp_dirs[0]), str(target_dir))
+                            source_dir = temp_dirs[0]
+                            # Move all items from the extracted folder to the target directory
+                            for item in source_dir.iterdir():
+                                shutil.move(str(item), str(target_dir))
                         shutil.rmtree(self.datasets_dir / "_temp", ignore_errors=True)
                         
                         logger.info(f"✓ Downloaded {source_id} as zip")
@@ -175,6 +208,62 @@ class DatasetLoader:
         for ext in ["*.cpy", "*.CPY"]:
             copybooks.extend(dataset_path.rglob(ext))
         return sorted(copybooks)
+    
+    def find_unibasic_files(self, dataset_path: Path) -> List[Path]:
+        """Find all UniBasic files in a dataset (V2.4)"""
+        unibasic_files = []
+        for ext in ["*.bp", "*.bas", "*.b", "*.BP", "*.BAS", "*.B"]:
+            unibasic_files.extend(dataset_path.rglob(ext))
+        return sorted(unibasic_files, key=str)
+    
+    def load_unibasic_datasets(self) -> Dict[str, Path]:
+        """Load UniBasic datasets from configured sources (V2.4)
+        
+        Returns:
+            Dictionary mapping source_id to dataset path
+        """
+        loaded = {}
+        
+        logger.info(f"Loading {len(UNIBASIC_DATASET_SOURCES)} UniBasic dataset(s)")
+        
+        for source_id, source_info in UNIBASIC_DATASET_SOURCES.items():
+            try:
+                dataset_path = self.load_dataset(source_id, source_info["url"], source_info)
+                if dataset_path:
+                    loaded[source_id] = {
+                        "path": dataset_path,
+                        "tier": source_info.get("tier", "T1"),
+                        "language": "unibasic",
+                        "description": source_info.get("description", ""),
+                    }
+                    logger.info(f"✓ Loaded UniBasic: {source_id} [{source_info.get('tier', 'T1')}]")
+            except Exception as e:
+                logger.error(f"✗ Failed to load UniBasic {source_id}: {e}")
+        return loaded
+    
+    def load_all_datasets_v24(self, language: str = "all") -> Dict[str, Path]:
+        """Load datasets for V2.4 with language filter
+        
+        Args:
+            language: "cobol", "unibasic", or "all"
+            
+        Returns:
+            Dictionary mapping source_id to dataset info
+        """
+        loaded = {}
+        
+        if language in ["cobol", "all"]:
+            cobol_datasets = self.load_all_datasets()
+            for k, v in cobol_datasets.items():
+                if isinstance(v, dict):
+                    v["language"] = "cobol"
+                loaded[k] = v
+        
+        if language in ["unibasic", "all"]:
+            unibasic_datasets = self.load_unibasic_datasets()
+            loaded.update(unibasic_datasets)
+        
+        return loaded
     
     def get_dataset_stats(self, dataset_path: Path) -> Dict:
         """Get detailed statistics about a dataset"""
@@ -301,6 +390,8 @@ Examples:
                         help="Export manifest of all COBOL files")
     parser.add_argument("--summary", action="store_true",
                         help="Show configuration summary")
+    parser.add_argument("--language", choices=["cobol", "unibasic", "all"], default="cobol",
+                        help="Language to load datasets for (default: cobol)")
     
     args = parser.parse_args()
     
@@ -343,13 +434,22 @@ Examples:
         return
     
     # Load datasets
-    loaded = loader.load_all_datasets(tier=args.tier)
+    if args.language == "cobol" and args.tier:
+        # Legacy tier filtering only supported for COBOL currently
+        loaded = loader.load_all_datasets(tier=args.tier)
+    else:
+        # Use V2.4 loader
+        loaded = loader.load_all_datasets_v24(language=args.language)
     
     print(f"\n" + "=" * 60)
     print(f"Loaded {len(loaded)} dataset(s)")
     print("=" * 60)
     
     tier_counts = {"T1": 0, "T2": 0, "T3": 0, "T4": 0}
+    
+    # Handle encoding for output
+    import sys
+    sys.stdout.reconfigure(encoding='utf-8')
     
     for source_id, info in loaded.items():
         if isinstance(info, dict):
@@ -359,9 +459,17 @@ Examples:
             path = info
             tier = DATASET_SOURCES.get(source_id, {}).get("tier", "T1")
         
-        stats = loader.get_dataset_stats(path)
-        tier_counts[tier] += stats["total_programs"]
-        print(f"  [{tier}] {source_id}: {stats['total_programs']} programs, {stats['total_loc']} LOC")
+        if args.language == "unibasic":
+            cobol_files = loader.find_unibasic_files(path)
+            total_loc = 0 # Simple count for preview
+            count = len(cobol_files)
+        else:
+            stats = loader.get_dataset_stats(path)
+            total_loc = stats['total_loc']
+            count = stats['total_programs']
+            
+        tier_counts[tier] += count
+        print(f"  [{tier}] {source_id}: {count} programs")
     
     print("\n" + "-" * 40)
     print("Summary by Tier:")
@@ -370,7 +478,7 @@ Examples:
             target = TASK_SELECTION_CONFIG["task_distribution"]["tier_distribution"].get(
                 f"{tier}_{'basic' if tier == 'T1' else 'moderate' if tier == 'T2' else 'complex' if tier == 'T3' else 'enterprise'}", 0
             )
-            status = "✓" if count >= target else "⚠"
+            status = "✓" if count >= target else " "
             print(f"  {tier}: {count} programs (target: {target}) {status}")
     
     print("=" * 60)

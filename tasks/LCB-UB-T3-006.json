@@ -1,0 +1,45 @@
+{
+  "task_id": "LCB-UB-T3-006",
+  "category": "documentation",
+  "difficulty": "hard",
+  "language": "unibasic",
+  "domain": "enterprise",
+  "source_dataset": "scarletdme-samples",
+  "input_files": [
+    "contrib\\GAMES.BP\\TANK2"
+  ],
+  "task_description": "Generate detailed technical documentation for TANK2 covering business purpose, all data structures, control flow, external dependencies, business rules, and error handling.",
+  "evaluation_criteria": {
+    "version": "2.4",
+    "tier": "T3",
+    "required_sections": [
+      "business_purpose",
+      "business_rules",
+      "data_structures",
+      "control_flow",
+      "file_operations",
+      "dependencies",
+      "error_handling"
+    ],
+    "format": "markdown",
+    "evaluation_method": "llm_based",
+    "scoring_weights": {
+      "structural_completeness": 0.3,
+      "behavioral_fidelity": 0.35,
+      "semantic_quality": 0.25,
+      "traceability": 0.1
+    }
+  },
+  "tier": "T3",
+  "complexity_scoring": {
+    "method": "multi-factor-v2.1",
+    "breakdown": {
+      "loc": 258,
+      "file_size": 9289,
+      "has_enterprise": false,
+      "has_network": false,
+      "has_c_interop": false,
+      "original_filename": "TANK2"
+    }
+  }
+}

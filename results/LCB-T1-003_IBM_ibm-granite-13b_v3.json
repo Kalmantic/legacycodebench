@@ -1,0 +1,72 @@
+{
+  "task_id": "LCB-T1-003",
+  "task_category": "documentation",
+  "evaluator_version": "v3",
+  "submitter": {
+    "name": "IBM",
+    "model": "ibm-granite-13b",
+    "category": "verified"
+  },
+  "result": {
+    "version": "3.0",
+    "lcb_score": 83.64,
+    "passed": true,
+    "pass_status": {
+      "passed": true,
+      "reason": "All thresholds met",
+      "sc_met": true,
+      "dq_met": true,
+      "bf_met": true,
+      "has_critical_failure": false
+    },
+    "scores": {
+      "sc": 90.0,
+      "dq": 70.7,
+      "bf": 85.0,
+      "overall": 83.6
+    },
+    "critical_failures": [],
+    "breakdown": {
+      "sc": {
+        "business_rules": 1.0,
+        "data_structures": 1.0,
+        "control_flow": 0.5,
+        "external_calls": 1.0
+      },
+      "dq": {
+        "structure": 1.0,
+        "traceability": 0.5,
+        "readability": 1.0,
+        "abstraction": 0.28688524590163933
+      },
+      "bf": {
+        "claim_score": 0.75,
+        "bsm_score": 1.0,
+        "verification_mode": "static",
+        "mode_reason": "compile_error",
+        "compile_error": "Compilation failed: CSUTLDTC.cbl:90: error: executable program requested but PROCEDURE/ENTRY has USING clause\n\nCSUTLDTC.cbl:90: error: executable program requested but PROCEDURE/ENTRY has USING clause",
+        "fixable": null,
+        "v3_provenance": {
+          "evaluator_version": "v3.0",
+          "verification_mode": "static",
+          "mode_reason": "compile_error",
+          "execution_attempted": true,
+          "execution_succeeded": false,
+          "compile_error": "Compilation failed: CSUTLDTC.cbl:90: error: executable program requested but PROCEDURE/ENTRY has USING clause\n\nCSUTLDTC.cbl:90: error: executable program requested but PROCEDURE/ENTRY has USING clause",
+          "claims_verified": 2,
+          "claims_total": 7
+        },
+        "claim_score_formula": "hybrid_v2.4.2",
+        "hybrid_components": {
+          "effective_claims": 4.5,
+          "effective_target": 6,
+          "verified": 2,
+          "partial": 5,
+          "total": 7,
+          "scoring_mode": "hybrid"
+        }
+      }
+    }
+  },
+  "overall_score": 0.8364
+}

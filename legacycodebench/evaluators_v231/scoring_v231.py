@@ -86,6 +86,8 @@ class EvaluationResultV231:
                 "dq": self.dq_breakdown,
                 "bf": self.bf_breakdown,
             },
+            # V3: Add BF verification mode for display
+            "bf_verification_mode": self.bf_breakdown.get("verification_mode", "unknown") if self.bf_breakdown else "unknown",
         }
 
 

@@ -1,0 +1,64 @@
+{
+  "task_id": "LCB-UB-T4-013",
+  "task_category": "documentation",
+  "evaluator_version": "v3",
+  "submitter": {
+    "name": "Gpt",
+    "model": "gpt-4o",
+    "category": "verified"
+  },
+  "result": {
+    "version": "3.0",
+    "lcb_score": 71.62,
+    "passed": true,
+    "pass_status": {
+      "passed": true,
+      "reason": "All thresholds met",
+      "sc_met": true,
+      "dq_met": true,
+      "bf_met": true,
+      "has_critical_failure": false
+    },
+    "scores": {
+      "sc": 82.1,
+      "dq": 85.0,
+      "bf": 60.0,
+      "overall": 71.6
+    },
+    "critical_failures": [],
+    "breakdown": {
+      "sc": {
+        "business_rules": 0.5517241379310345,
+        "data_structures": 1.0,
+        "control_flow": 1.0,
+        "external_calls": 1.0
+      },
+      "dq": {
+        "structure": 1.0,
+        "traceability": 0.5,
+        "readability": 1.0,
+        "abstraction": 1.0
+      },
+      "bf": {
+        "claim_score": 1.0,
+        "bsm_score": 0.0,
+        "verification_mode": "executed",
+        "mode_reason": "Compiled and executed successfully",
+        "compile_error": null,
+        "fixable": null,
+        "v3_provenance": {
+          "evaluator_version": "v3.0",
+          "verification_mode": "executed",
+          "mode_reason": "Compiled and executed successfully",
+          "execution_attempted": true,
+          "execution_succeeded": true,
+          "compile_error": null,
+          "claims_verified": 2,
+          "claims_total": 2
+        }
+      }
+    },
+    "bf_verification_mode": "executed"
+  },
+  "overall_score": 0.7162068965517241
+}

@@ -77,49 +77,136 @@ class TaskCandidateGenerator:
         self.tier_targets = self.tier_config["tier_distribution"]
         self.tier_loc_ranges = self.tier_config["tier_loc_ranges"]
     
-    def generate_all_candidates(self, min_loc: int = 100, max_loc: int = 5000) -> List[TaskCandidate]:
-        """Generate all possible task candidates from datasets (v2.0: documentation only)"""
+    def generate_all_candidates(self, min_loc: int = 100, max_loc: int = 5000,
+                                 language: str = "cobol") -> List[TaskCandidate]:
+        """Generate all possible task candidates from datasets (v2.0: documentation only)
+
+        V2.4: Added language parameter for multi-language support
+        """
         all_candidates = []
-        
+        lang_upper = language.upper()
+
         # Process each dataset
         for dataset_dir in self.datasets_dir.iterdir():
             if not dataset_dir.is_dir():
                 continue
-            
+
             dataset_name = dataset_dir.name
             logger.info(f"Analyzing dataset: {dataset_name}")
-            
-            # Find all COBOL files
-            cobol_files = self._find_cobol_files(dataset_dir)
-            logger.info(f"Found {len(cobol_files)} COBOL files in {dataset_name}")
-            
+
+            # V2.4: Find source files based on language
+            source_files = self._find_source_files(dataset_dir, language=language)
+            logger.info(f"Found {len(source_files)} {lang_upper} files in {dataset_name}")
+
             # Analyze each file
-            for cobol_file in cobol_files:
-                analyzer = self._get_analyzer(cobol_file)
-                analysis = analyzer.analyze()
-                loc = analysis["loc"]
-                
-                # Filter by overall LOC range
-                if not (min_loc <= loc <= max_loc):
+            for source_file in source_files:
+                try:
+                    # V2.4: Use language-appropriate analyzer
+                    if language == "unibasic":
+                        analysis = self._analyze_unibasic_file(source_file)
+                    else:
+                        analyzer = self._get_analyzer(source_file)
+                        analysis = analyzer.analyze()
+
+                    loc = analysis.get("loc", 0)
+
+                    # Filter by overall LOC range
+                    if not (min_loc <= loc <= max_loc):
+                        continue
+
+                    # Determine tier based on LOC
+                    tier = self._determine_tier(loc, analysis)
+
+                    # Create documentation candidate with tier (V2.4: pass language)
+                    candidate = self._create_candidate(source_file, analysis, dataset_name, tier, language=language)
+                    if candidate:
+                        all_candidates.append(candidate)
+                except Exception as e:
+                    logger.warning(f"Failed to analyze {source_file}: {e}")
                     continue
-                
-                # Determine tier based on LOC
-                tier = self._determine_tier(loc, analysis)
-                
-                # Create documentation candidate with tier
-                candidate = self._create_candidate(cobol_file, analysis, dataset_name, tier)
-                if candidate:
-                    all_candidates.append(candidate)
-        
-        logger.info(f"Generated {len(all_candidates)} total candidates (documentation only)")
-        
+
+        logger.info(f"Generated {len(all_candidates)} total {lang_upper} candidates (documentation only)")
+
         # Log tier distribution
         tier_counts = {"T1": 0, "T2": 0, "T3": 0, "T4": 0}
         for c in all_candidates:
             tier_counts[c.tier] += 1
         logger.info(f"Tier distribution: {tier_counts}")
-        
+
         return all_candidates
+
+    def _analyze_unibasic_file(self, file_path: Path) -> Dict:
+        """Analyze a UniBasic file for task generation (V2.4)
+
+        Simple analysis for UniBasic files since we don't have a full parser yet.
+        """
+        content = file_path.read_text(encoding='utf-8', errors='replace')
+        lines = content.splitlines()
+
+        # Count lines of code (excluding blank lines and comments)
+        loc = 0
+        comment_lines = 0
+        content_upper = content.upper()
+        
+        for line in lines:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            # UniBasic comments start with * or REM
+            if stripped.startswith('*') or stripped.upper().startswith('REM '):
+                comment_lines += 1
+            else:
+                loc += 1
+
+        # Count subroutines (GOSUB targets, labels)
+        subroutine_count = 0
+        for line in lines:
+            stripped = line.strip()
+            # Labels are typically numeric or alphanumeric at start of line
+            if stripped and (stripped[0].isdigit() or ':' in stripped[:20]):
+                subroutine_count += 1
+
+        # Complexity Features Detection
+        # File I/O
+        has_file_io = any(x in content_upper for x in ['OPEN ', 'READ ', 'WRITE ', 'DELETE ', 'MATREAD ', 'MATWRITE '])
+        
+        # System / C Interop
+        has_c_interop = 'CALLC ' in content_upper or 'CALL_PYTHON' in content_upper
+        
+        # Networking / Advanced
+        has_network = 'SOCKET' in content_upper
+        
+        # Enterprise Logic (Transactions, Phantoms)
+        has_enterprise = 'TRANSACTION' in content_upper or 'PHANTOM' in content_upper
+
+        # Detect external calls
+        external_calls = []
+        for pattern in ['READ ', 'WRITE ', 'MATREAD ', 'MATWRITE ', 'EXECUTE ', 'CALL ']:
+            if pattern in content_upper:
+                external_calls.append(pattern.strip())
+
+        # Count external calls for dependencies
+        call_count = content_upper.count('CALL ')
+        execute_count = content_upper.count('EXECUTE ')
+
+        return {
+            "loc": loc,
+            "file_size": file_path.stat().st_size,
+            "paragraphs": subroutine_count,  # Treat labels as "paragraphs"
+            "external_calls": external_calls,
+            "comment_lines": comment_lines,
+            "has_cics": False,  # UniBasic doesn't have CICS
+            "has_sql": False,   # Different SQL syntax
+            "goto_count": content_upper.count('GO TO') + content_upper.count('GOTO'),
+            "exec_cics_count": 0,  # UniBasic doesn't have CICS
+            "exec_sql_count": 0,   # Different SQL handling
+            "dependencies": {"total": call_count + execute_count},
+            # UniBasic Specific Features
+            "has_file_io": has_file_io,
+            "has_c_interop": has_c_interop,
+            "has_network": has_network,
+            "has_enterprise": has_enterprise,
+        }
     
     def _determine_tier(self, loc: int, analysis: Dict) -> str:
         """
@@ -169,6 +256,15 @@ class TaskCandidateGenerator:
             boosts.append(('cics', 2))
         if exec_sql > 0:
             boosts.append(('db2', 1))
+        
+        # UniBasic Specific Boosts
+        if analysis.get("has_enterprise") or analysis.get("has_network"):
+             boosts.append(('enterprise', 2))
+        elif analysis.get("has_c_interop"):
+             boosts.append(('interop', 1.5))
+        elif analysis.get("has_file_io"):
+             boosts.append(('io', 1))
+
         if goto_count > 10:
             boosts.append(('goto_heavy', 1))
         elif goto_count > 5:
@@ -186,22 +282,22 @@ class TaskCandidateGenerator:
     
     def select_best_tasks(self, candidates: List[TaskCandidate], 
                          total_tasks: int = 200) -> List[TaskCandidate]:
-        """Select best tasks with balanced tier distribution (v2.0)
+        """Select best tasks with balanced tier distribution and DATASET DIVERSITY (v2.4)
         
         Args:
             candidates: All candidate tasks
             total_tasks: Total number of tasks to select (default: 200)
         
         Returns:
-            List of selected TaskCandidate objects (documentation only)
+            List of selected TaskCandidate objects
         """
         # Calculate targets per tier based on v2.1 distribution
         # Multi-factor scoring naturally produces more T4 tasks (CICS/SQL/GOTO)
         tier_targets = {
-            "T1": int(total_tasks * 0.25),   # 25% basic (50 tasks)
-            "T2": int(total_tasks * 0.205),  # 20.5% moderate (41 tasks)
-            "T3": int(total_tasks * 0.205),  # 20.5% complex (41 tasks)
-            "T4": int(total_tasks * 0.34),   # 34% enterprise (68 tasks)
+            "T1": int(total_tasks * 0.25),   # 25% basic
+            "T2": int(total_tasks * 0.205) + 1,  # 20.5% moderate (adjusted for rounding)
+            "T3": int(total_tasks * 0.205),  # 20.5% complex
+            "T4": int(total_tasks * 0.34),   # 34% enterprise
         }
         
         # Group candidates by tier
@@ -209,76 +305,101 @@ class TaskCandidateGenerator:
         for candidate in candidates:
             by_tier[candidate.tier].append(candidate)
         
-        # REPRODUCIBILITY FIX: Sort deterministically by tier priority -> dataset -> file_hash
-        # This matches regenerate_tasks_v2.1.py for 100% reproducibility
-        tier_priority = {'T4': 0, 'T3': 1, 'T2': 2, 'T1': 3}
+        # Sort candidates within each tier by score (Descending) then file hash
         for tier in by_tier:
-            by_tier[tier].sort(key=lambda c: (c.dataset_name, c.file_hash))
+            by_tier[tier].sort(key=lambda c: (-c.interestingness_score, c.file_hash))
         
-        # Select from each tier
+        # Select from each tier with Round-Robin Diversity
         selected = []
         used_files = set()
         
         for tier in ["T1", "T2", "T3", "T4"]:
             target = tier_targets[tier]
             available = by_tier[tier]
-            count = 0
             
-            for candidate in available:
-                if count >= target:
-                    break
+            # Group available by dataset
+            by_dataset = {}
+            for c in available:
+                if c.dataset_name not in by_dataset:
+                    by_dataset[c.dataset_name] = []
+                by_dataset[c.dataset_name].append(c)
                 
-                # Avoid duplicate files
-                if str(candidate.main_file) in used_files:
-                    continue
-                
-                # Avoid overlapping file sets
-                if any(str(f) in used_files for f in candidate.related_files):
-                    continue
-                
-                selected.append(candidate)
-                used_files.add(str(candidate.main_file))
-                used_files.update(str(f) for f in candidate.related_files)
-                count += 1
+            datasets_list = sorted(list(by_dataset.keys())) # Verified deterministic order
             
-            logger.info(f"  {tier}: Selected {count}/{target} tasks (available: {len(available)})")
-        
-        # Fill remaining slots from any tier if we're short
-        total_selected = len(selected)
-        if total_selected < total_tasks:
-            remaining = [c for c in candidates if str(c.main_file) not in used_files]
-            remaining.sort(key=lambda c: c.interestingness_score, reverse=True)
+            selected_for_tier = []
             
-            for candidate in remaining:
-                if len(selected) >= total_tasks:
-                    break
-                selected.append(candidate)
-                used_files.add(str(candidate.main_file))
-        
-        logger.info(f"Selected {len(selected)} documentation tasks (target: {total_tasks})")
+            # Round Robin selection
+            added_any = True
+            while len(selected_for_tier) < target and added_any:
+                added_any = False
+                for dataset in datasets_list:
+                    if len(selected_for_tier) >= target:
+                        break
+                    
+                    dataset_candidates = by_dataset[dataset]
+                    
+                    # Find first valid candidate from this dataset
+                    for cand in list(dataset_candidates): # Iterate copy to modify original if needed
+                        if str(cand.main_file) in used_files:
+                            dataset_candidates.remove(cand)
+                            continue
+                        
+                        # Add it
+                        selected_for_tier.append(cand)
+                        used_files.add(str(cand.main_file))
+                        dataset_candidates.remove(cand) # Remove so we don't pick it again
+                        added_any = True
+                        break # Move to next dataset
+            
+            # If we ran out of diverse candidates but still need more (unlikely with deep pools),
+            # we just pick best remaining regardless of dataset
+            if len(selected_for_tier) < target:
+                 remaining = [c for c in available if str(c.main_file) not in used_files]
+                 remaining.sort(key=lambda c: -c.interestingness_score)
+                 for cand in remaining:
+                     if len(selected_for_tier) >= target: break
+                     selected_for_tier.append(cand)
+                     used_files.add(str(cand.main_file))
+            
+            logger.info(f"  {tier}: Selected {len(selected_for_tier)}/{target} tasks")
+            selected.extend(selected_for_tier)
         
         return selected
     
     def _create_candidate(self, main_file: Path, analysis: Dict, 
-                         dataset_name: str, tier: str) -> TaskCandidate:
-        """Create documentation task candidate (v2.0: all tasks are documentation)"""
+                         dataset_name: str, tier: str, language: str = "cobol") -> TaskCandidate:
+        """Create documentation task candidate (v2.0: all tasks are documentation)
+        
+        V2.4: Added language parameter to skip COBOL-specific operations for UniBasic
+        """
         candidate = TaskCandidate(main_file, dataset_name, tier)
         candidate.analysis = analysis
         
-        # Find related copybooks
-        candidate.related_files = self._find_related_copybooks(main_file, analysis)
+        # V2.4: COBOL-specific operations (skip for UniBasic)
+        if language == "cobol":
+            # Find related copybooks
+            candidate.related_files = self._find_related_copybooks(main_file, analysis)
+            
+            # Calculate scores using COBOL analyzer
+            analyzer = self._get_analyzer(main_file)
+            candidate.interestingness_score = analyzer.calculate_interestingness_score()
+            candidate.difficulty_score = self.calibrator.calculate_difficulty_score(
+                analysis, "documentation"
+            )
+        else:
+            # UniBasic: No copybooks, simpler scoring
+            candidate.related_files = []
+            candidate.interestingness_score = 5.0  # Default score
+            candidate.difficulty_score = 5.0  # Will be normalized by tier
         
-        # Calculate scores
-        analyzer = self._get_analyzer(main_file)
-        candidate.interestingness_score = analyzer.calculate_interestingness_score()
-        candidate.difficulty_score = self.calibrator.calculate_difficulty_score(
-            analysis, "documentation"
-        )
+        # Domain detection works for all languages
         candidate.domain = self.domain_detector.detect_domain(analysis, dataset_name)
         
-        # Must have some business logic for documentation
-        if analysis.get("business_rules", 0) < 1:
-            return None
+        # V2.4: UniBasic doesn't track business_rules the same way
+        # Skip business logic check for non-COBOL
+        if language == "cobol":
+            if analysis.get("business_rules", 0) < 1:
+                return None
         
         return candidate
     
@@ -358,6 +479,54 @@ class TaskCandidateGenerator:
         for ext in ["*.cbl", "*.cob", "*.COB", "*.CBL"]:
             cobol_files.extend(dataset_dir.rglob(ext))
         return sorted(cobol_files, key=str)
+    
+    def _find_unibasic_files(self, dataset_dir: Path) -> List[Path]:
+        """Find all UniBasic files in dataset (V2.4)
+
+        Handles both:
+        1. Standard extensions: .bp, .bas, .b
+        2. Pick/MultiValue convention: files inside *.BP or BP directories (no extension)
+        """
+        unibasic_files = []
+
+        # Standard extensions (e.g., mvbasic, full-stack-with-pick-tutorial)
+        for ext in ["*.bp", "*.bas", "*.b", "*.BP", "*.BAS", "*.B"]:
+            # Filter out directories - only include actual files
+            unibasic_files.extend(f for f in dataset_dir.rglob(ext) if f.is_file())
+
+        # Pick/MultiValue convention: files inside *.BP or BP directories
+        # These directories are "files" in Pick parlance containing programs as "items"
+        
+        # Find all directories that are "BP" (exact) or end in ".BP"
+        potential_bp_dirs = []
+        for path in dataset_dir.rglob("*"):
+            if path.is_dir():
+                if path.name.upper() == "BP" or path.name.upper().endswith(".BP"):
+                     potential_bp_dirs.append(path)
+
+        for bp_dir in potential_bp_dirs:
+            # Each file inside is a UniBasic program (often no extension)
+            for prog_file in bp_dir.iterdir():
+                if prog_file.is_file():
+                    # Check for binary files or hidden files to exclude
+                    if prog_file.name.startswith('.'):
+                        continue
+                    # Skip common non-source files
+                    if prog_file.suffix.lower() in ['.xml', '.json', '.md', '.txt', '.py']:
+                        continue
+                    
+                    # Avoid duplicates if already found by extension
+                    if prog_file not in unibasic_files:
+                        unibasic_files.append(prog_file)
+
+        return sorted(unibasic_files, key=str)
+    
+    def _find_source_files(self, dataset_dir: Path, language: str = "cobol") -> List[Path]:
+        """Find all source files for a given language (V2.4)"""
+        if language == "unibasic":
+            return self._find_unibasic_files(dataset_dir)
+        else:
+            return self._find_cobol_files(dataset_dir)
     
     def _get_analyzer(self, file_path: Path) -> COBOLFileAnalyzer:
         """Get cached analyzer or create new one"""

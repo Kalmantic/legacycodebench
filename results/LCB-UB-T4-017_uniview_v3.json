@@ -1,0 +1,64 @@
+{
+  "task_id": "LCB-UB-T4-017",
+  "task_category": "documentation",
+  "evaluator_version": "v3",
+  "submitter": {
+    "name": "Uniview",
+    "model": "Uniview Platform",
+    "category": "verified"
+  },
+  "result": {
+    "version": "3.0",
+    "lcb_score": 82.96,
+    "passed": true,
+    "pass_status": {
+      "passed": true,
+      "reason": "All thresholds met",
+      "sc_met": true,
+      "dq_met": true,
+      "bf_met": true,
+      "has_critical_failure": false
+    },
+    "scores": {
+      "sc": 99.9,
+      "dq": 81.7,
+      "bf": 73.3,
+      "overall": 83.0
+    },
+    "critical_failures": [],
+    "breakdown": {
+      "sc": {
+        "business_rules": 0.9966216216216216,
+        "data_structures": 1.0,
+        "control_flow": 1.0,
+        "external_calls": 1.0
+      },
+      "dq": {
+        "structure": 1.0,
+        "traceability": 0.5,
+        "readability": 1.0,
+        "abstraction": 0.8333333333333333
+      },
+      "bf": {
+        "claim_score": 1.0,
+        "bsm_score": 0.3333333333333333,
+        "verification_mode": "executed",
+        "mode_reason": "Compiled and executed successfully",
+        "compile_error": null,
+        "fixable": null,
+        "v3_provenance": {
+          "evaluator_version": "v3.0",
+          "verification_mode": "executed",
+          "mode_reason": "Compiled and executed successfully",
+          "execution_attempted": true,
+          "execution_succeeded": true,
+          "compile_error": null,
+          "claims_verified": 15,
+          "claims_total": 15
+        }
+      }
+    },
+    "bf_verification_mode": "executed"
+  },
+  "overall_score": 0.8295945945945946
+}

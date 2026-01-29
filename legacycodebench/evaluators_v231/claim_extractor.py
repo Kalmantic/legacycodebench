@@ -159,15 +159,35 @@ class ClaimExtractor:
         
         elif claim_type == ClaimType.CONDITIONAL:
             if len(groups) >= 2:
-                input_vars = [groups[0]] if groups[0] else []
+                # Extract variables from condition
+                if groups[0] and self._is_variable(groups[0]):
+                    input_vars = [groups[0]]
+                elif groups[0]:
+                    # Try to extract variables from condition text
+                    input_vars = self._extract_variables_from_text(groups[0])
+                else:
+                    input_vars = []
+                
+                # Also extract variables from the action (last group)
+                action = groups[-1] if groups[-1] else None
+                if action:
+                    action_vars = self._extract_variables_from_text(action)
+                    # First action var is likely the output
+                    if action_vars:
+                        output_var = action_vars[0]
+                        input_vars.extend(action_vars[1:])
+                
                 components = {
                     "condition_var": groups[0] if groups[0] else None,
-                    "action": groups[-1] if groups[-1] else None,
+                    "action": action,
                 }
         
         elif claim_type == ClaimType.ASSIGNMENT:
             if groups:
                 output_var = groups[0] if groups[0] else None
+                # Extract input variables from the value being assigned (group 1)
+                if len(groups) > 1 and groups[1]:
+                    input_vars = self._extract_variables_from_text(groups[1])
                 components = {"operation": "assignment"}
         
         elif claim_type == ClaimType.RANGE:
@@ -180,10 +200,46 @@ class ClaimExtractor:
         
         elif claim_type == ClaimType.ERROR:
             if groups:
+                # Extract variables from both trigger and action text
+                trigger = groups[0] if groups[0] else None
+                action = groups[1] if len(groups) > 1 else None
+                
+                # Try to find variables in trigger (e.g., "if FILE-STATUS fails")
+                if trigger:
+                    trigger_vars = self._extract_variables_from_text(trigger)
+                    input_vars.extend(trigger_vars)
+                
+                # Extract variables from action text (e.g., "increments WS-NO-CHKP")
+                if action:
+                    action_vars = self._extract_variables_from_text(action)
+                    # First var could be output, rest are inputs
+                    if action_vars:
+                        output_var = action_vars[0]
+                        input_vars.extend(action_vars[1:])
+                
                 components = {
-                    "trigger": groups[0] if groups[0] else None,
-                    "action": groups[1] if len(groups) > 1 else None,
+                    "trigger": trigger,
+                    "action": action,
                 }
+        
+        # Validate extracted variables - reject if they're not valid COBOL names
+        if output_var and not self._is_variable(output_var):
+            output_var = None  # Clear invalid output variable
+        
+        # Filter input_vars to only include valid COBOL variables
+        input_vars = [v for v in input_vars if self._is_variable(v)]
+        
+        # V3.2 FALLBACK: If no variables found, scan the entire claim text
+        # This catches cases where regex groups don't capture the full variable
+        # e.g., "CBL-authorization-panel validates user input" -> captures full hyphenated var
+        if not output_var and not input_vars:
+            all_vars = self._extract_variables_from_text(text)
+            if all_vars:
+                # First variable is likely the subject/output
+                output_var = all_vars[0]
+                # Rest are inputs
+                input_vars = all_vars[1:] if len(all_vars) > 1 else []
+                logger.debug(f"Fallback extracted vars from full text: {all_vars}")
         
         return Claim(
             claim_id="",  # Will be assigned later
@@ -196,23 +252,140 @@ class ClaimExtractor:
             confidence=0.9,
         )
     
+    # Common English words that should NOT be extracted as COBOL variables
+    ENGLISH_STOPWORDS = {
+        # Articles, prepositions, conjunctions
+        'a', 'an', 'the', 'to', 'of', 'in', 'on', 'at', 'by', 'for', 'from', 'with',
+        'as', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had',
+        'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might',
+        'must', 'shall', 'can', 'and', 'or', 'but', 'if', 'then', 'else', 'when',
+        'where', 'which', 'that', 'this', 'these', 'those', 'it', 'its', 'they',
+        
+        # Common verbs and words in documentation
+        'there', 'here', 'all', 'each', 'every', 'some', 'any', 'no', 'not',
+        'more', 'most', 'other', 'such', 'only', 'same', 'so', 'than', 'too',
+        'very', 'just', 'also', 'now', 'new', 'first', 'last', 'long', 'little',
+        'own', 'old', 'right', 'big', 'high', 'different', 'small', 'large',
+        'next', 'early', 'young', 'important', 'few', 'public', 'bad', 'good',
+        'set', 'used', 'get', 'put', 'made', 'found', 'given', 'shown',
+        'additional', 'displayed', 'initialized', 'incremented', 'decremented',
+        'several', 'crucial', 'specific', 'various', 'certain', 'particular',
+        'calculated', 'computed', 'determined', 'expired', 'processed', 'handled',
+        'based', 'stored', 'saved', 'loaded', 'retrieved', 'checked', 'validated',
+        'compared', 'matched', 'equals', 'exceeds', 'contains', 'includes',
+        'trigger', 'triggers', 'handles', 'counter', 'handling', 'triggered',
+        
+        # Programming/documentation terms
+        'file', 'files', 'data', 'code', 'program', 'programs', 'function',
+        'value', 'values', 'result', 'results', 'output', 'input', 'type',
+        'structure', 'structures', 'section', 'sections', 'record', 'records',
+        'field', 'fields', 'variable', 'variables', 'operation', 'operations',
+        'process', 'processing', 'calculation', 'calculations', 'total', 'count',
+        'number', 'name', 'status', 'flag', 'error', 'message', 'information',
+        'description', 'example', 'note', 'see', 'using', 'following',
+        'authorization', 'authorizations', 'transaction', 'transactions',
+        'checkpoint', 'checkpoints', 'determine', 'determines', 'increments',
+        
+        # COBOL keywords (should not be variable names)
+        'perform', 'move', 'add', 'subtract', 'multiply', 'divide', 'compute',
+        'display', 'accept', 'read', 'write', 'open', 'close', 'call', 'stop',
+        'working', 'storage', 'linkage', 'procedure', 'division',
+
+        # Common verbs used in calculation descriptions
+        'multiplying', 'dividing', 'adding', 'subtracting', 'calculating',
+        'computing', 'determining', 'storing', 'retrieving', 'processing',
+
+        # File extensions and common fragments
+        'cbl', 'cpy', 'txt', 'md', 'json', 'xml', 'sql', 'jcl',
+
+        # V2.4 FIX: Common uppercase words that look like COBOL vars but aren't
+        # These appear frequently in documentation and get misidentified
+        'final', 'stock', 'terminate', 'details', 'runtime', 'issues',
+        'undefined', 'invalid', 'complete', 'success', 'failure', 'active',
+        'pending', 'current', 'previous', 'default', 'primary', 'secondary',
+        'normal', 'special', 'standard', 'custom', 'system', 'user',
+        'main', 'temp', 'test', 'debug', 'trace', 'level', 'mode',
+        'start', 'begin', 'ending', 'finish', 'done', 'ready', 'wait',
+        'true', 'false', 'null', 'none', 'empty', 'blank', 'zero',
+        'positive', 'negative', 'numeric', 'alpha', 'string', 'text',
+        'length', 'size', 'width', 'height', 'index', 'offset', 'position',
+        'source', 'target', 'destination', 'origin', 'path', 'location',
+    }
+    
     def _is_variable(self, text: str) -> bool:
         """
         Check if text looks like a COBOL variable name.
+        
+        COBOL variables typically:
+        - Start with a letter
+        - Contain letters, digits, and hyphens
+        - Often contain HYPHENS (WS-AMOUNT, CUST-ID, P-DEBUG-FLAG)
+        - Often have 2-letter prefixes (WS-, WK-, PA-, SW-)
+        - Are usually UPPERCASE (or extracted from backticks)
+        - Are NOT common English words
         """
         if not text:
             return False
-        # COBOL variables: letters, digits, hyphens, start with letter
-        return bool(re.match(r'^[A-Za-z][-A-Za-z0-9]*$', text.strip()))
+        
+        text = text.strip()
+        
+        # Must match basic COBOL variable pattern
+        if not re.match(r'^[A-Za-z][-A-Za-z0-9]*$', text):
+            return False
+        
+        # Reject if it's a common English word (case-insensitive)
+        if text.lower() in self.ENGLISH_STOPWORDS:
+            return False
+        
+        # Reject single character
+        if len(text) < 2:
+            return False
+        
+        # COBOL variables have STRONG indicators:
+        # 1. Contains hyphen (most common: WS-VAR, P-DEBUG-FLAG, CUST-ID)
+        # 2. Is ALL CAPS (AMOUNT, CUSTID, WS)
+        # 3. Contains digit (CUST1, VAR99)
+        # 4. Has common COBOL prefix
+        has_hyphen = '-' in text
+        is_upper = text.isupper()
+        has_digit = any(c.isdigit() for c in text)
+        
+        # Common COBOL prefixes (2-3 chars followed by hyphen)
+        cobol_prefixes = ('WS-', 'WK-', 'SW-', 'PA-', 'PV-', 'LS-', 'LK-', 'FD-', 
+                         'SD-', 'WA-', 'WB-', 'WC-', 'WD-', 'WE-', 'WF-', 'W0-', 
+                         'W1-', 'W2-', 'W3-', 'WI-', 'WO-', 'WR-', 'WP-', 'CI-',
+                         'EI-', 'DF-', 'CP-', 'DI-', 'CB-', 'P-', 'H-', 'I-', 'O-')
+        has_cobol_prefix = text.upper().startswith(cobol_prefixes)
+        
+        # If it has COBOL-like characteristics, accept it
+        if has_hyphen or has_cobol_prefix or has_digit:
+            return True
+        
+        # For ALL CAPS words, accept if they're at least 4 chars
+        # (to avoid false positives like "SQL", "IMS", etc.)
+        if is_upper and len(text) >= 4:
+            return True
+
+        # V2.4 FIX: Accept any identifier >= 4 chars that passed stopword check
+        # This handles mixed-case variables from markdown (StockValue, QtyInStock)
+        # COBOL is case-insensitive, so these are valid when normalized to uppercase
+        if len(text) >= 4:
+            return True
+
+        # Otherwise, reject - it's probably an English word
+        return False
 
     def _extract_variables_from_text(self, text: str) -> List[str]:
         """
         Extract COBOL variable names from formula text.
+        
+        V3.2 Enhanced: Better extraction of hyphenated variables like CBL-authorization-panel.
 
         Examples:
             "multiplying RATE by AMOUNT" → ["RATE", "AMOUNT"]
             "adding TAX to SUBTOTAL" → ["TAX", "SUBTOTAL"]
             "PRICE * QUANTITY" → ["PRICE", "QUANTITY"]
+            "CBL-authorization-panel validates" → ["CBL-AUTHORIZATION-PANEL"]
 
         Args:
             text: Formula description text
@@ -223,31 +396,43 @@ class ClaimExtractor:
         if not text:
             return []
 
-        # Find all potential variable names (word characters with hyphens)
-        # Match: START-WITH-LETTER, followed by letters/digits/hyphens
-        potential_vars = re.findall(r'\b([A-Z][A-Z0-9\-]*)\b', text, re.IGNORECASE)
-
-        # Filter out common English words and keywords
-        keywords_to_skip = {
-            'by', 'from', 'to', 'the', 'of', 'and', 'or', 'is', 'are', 'was', 'were',
-            'in', 'on', 'at', 'for', 'with', 'as', 'if', 'then', 'else', 'when',
-            'multiplying', 'adding', 'subtracting', 'dividing', 'calculating',
-            'multiply', 'add', 'subtract', 'divide', 'calculate', 'computed',
-            'determined', 'equals', 'equal', 'result', 'value', 'percent', 'percentage'
-        }
-
         variables = []
-        for var in potential_vars:
-            var_clean = var.strip()
-            # Skip if it's a keyword or too short
-            if var_clean.lower() in keywords_to_skip or len(var_clean) < 2:
-                continue
-            # Skip if it's all digits
-            if var_clean.isdigit():
-                continue
-            # Accept if it looks like a COBOL variable
-            if self._is_variable(var_clean):
-                variables.append(var_clean)
+        
+        # Strategy 1: Extract hyphenated identifiers (highest priority - most COBOL-like)
+        # Pattern: word-word-word (handles mixed case like CBL-authorization-panel)
+        hyphenated_pattern = r'\b([A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)+)\b'
+        hyphenated_vars = re.findall(hyphenated_pattern, text)
+        for var in hyphenated_vars:
+            var_upper = var.upper()
+            if self._is_variable(var_upper) and var_upper not in variables:
+                variables.append(var_upper)
+        
+        # Strategy 2: Extract ALL_CAPS words (common COBOL style)
+        caps_pattern = r'\b([A-Z][A-Z0-9]{2,})\b'  # At least 3 chars total
+        caps_vars = re.findall(caps_pattern, text)
+        for var in caps_vars:
+            if self._is_variable(var) and var not in variables:
+                variables.append(var)
+        
+        # Strategy 3: Extract backtick-quoted identifiers (common in markdown docs)
+        # e.g., `WS-AMOUNT` or `CUSTOMER-ID`
+        backtick_pattern = r'`([A-Za-z][A-Za-z0-9\-]+)`'
+        backtick_vars = re.findall(backtick_pattern, text)
+        for var in backtick_vars:
+            var_upper = var.upper()
+            if self._is_variable(var_upper) and var_upper not in variables:
+                variables.append(var_upper)
+        
+        # Strategy 4: Legacy fallback - any COBOL-like word
+        # Only if we haven't found anything yet
+        if not variables:
+            potential_vars = re.findall(r'\b([A-Z][A-Z0-9\-]*)\b', text, re.IGNORECASE)
+            for var in potential_vars:
+                var_clean = var.strip().upper()
+                if var_clean.isdigit():
+                    continue
+                if self._is_variable(var_clean) and var_clean not in variables:
+                    variables.append(var_clean)
 
         return variables
     

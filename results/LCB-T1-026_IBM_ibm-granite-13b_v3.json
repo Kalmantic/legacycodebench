@@ -1,0 +1,64 @@
+{
+  "task_id": "LCB-T1-026",
+  "task_category": "documentation",
+  "evaluator_version": "v3",
+  "submitter": {
+    "name": "IBM",
+    "model": "ibm-granite-13b",
+    "category": "verified"
+  },
+  "result": {
+    "version": "3.0",
+    "lcb_score": 63.68,
+    "passed": false,
+    "pass_status": {
+      "passed": false,
+      "reason": "Failed thresholds: BF (40% < 55%)",
+      "sc_met": true,
+      "dq_met": true,
+      "bf_met": false,
+      "has_critical_failure": false
+    },
+    "scores": {
+      "sc": 100.0,
+      "dq": 68.4,
+      "bf": 40.0,
+      "overall": 63.7
+    },
+    "critical_failures": [],
+    "breakdown": {
+      "sc": {
+        "business_rules": 1.0,
+        "data_structures": 1.0,
+        "control_flow": 1.0,
+        "external_calls": 1.0
+      },
+      "dq": {
+        "structure": 1.0,
+        "traceability": 0.5,
+        "readability": 0.9434524778470627,
+        "abstraction": 0.22727272727272727
+      },
+      "bf": {
+        "claim_score": 0.0,
+        "bsm_score": 1.0,
+        "verification_mode": "executed",
+        "mode_reason": "Compiled and executed successfully",
+        "compile_error": null,
+        "fixable": null,
+        "v3_provenance": {
+          "evaluator_version": "v3.0",
+          "verification_mode": "executed",
+          "mode_reason": "Compiled and executed successfully",
+          "execution_attempted": true,
+          "execution_succeeded": true,
+          "compile_error": null,
+          "claims_verified": 0,
+          "claims_total": 15
+        }
+      }
+    },
+    "bf_verification_mode": "executed"
+  },
+  "overall_score": 0.6368290082047916
+}

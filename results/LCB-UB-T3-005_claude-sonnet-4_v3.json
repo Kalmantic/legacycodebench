@@ -1,0 +1,64 @@
+{
+  "task_id": "LCB-UB-T3-005",
+  "task_category": "documentation",
+  "evaluator_version": "v3",
+  "submitter": {
+    "name": "Claude",
+    "model": "claude-sonnet-4",
+    "category": "verified"
+  },
+  "result": {
+    "version": "3.0",
+    "lcb_score": 72.53,
+    "passed": true,
+    "pass_status": {
+      "passed": true,
+      "reason": "All thresholds met",
+      "sc_met": true,
+      "dq_met": true,
+      "bf_met": true,
+      "has_critical_failure": false
+    },
+    "scores": {
+      "sc": 94.2,
+      "dq": 83.0,
+      "bf": 55.3,
+      "overall": 72.5
+    },
+    "critical_failures": [],
+    "breakdown": {
+      "sc": {
+        "business_rules": 0.8544303797468354,
+        "data_structures": 1.0,
+        "control_flow": 1.0,
+        "external_calls": 1.0
+      },
+      "dq": {
+        "structure": 1.0,
+        "traceability": 0.5,
+        "readability": 0.9021384104100354,
+        "abstraction": 1.0
+      },
+      "bf": {
+        "claim_score": 0.5333333333333333,
+        "bsm_score": 0.5833333333333334,
+        "verification_mode": "executed",
+        "mode_reason": "Compiled and executed successfully",
+        "compile_error": null,
+        "fixable": null,
+        "v3_provenance": {
+          "evaluator_version": "v3.0",
+          "verification_mode": "executed",
+          "mode_reason": "Compiled and executed successfully",
+          "execution_attempted": true,
+          "execution_succeeded": true,
+          "compile_error": null,
+          "claims_verified": 8,
+          "claims_total": 15
+        }
+      }
+    },
+    "bf_verification_mode": "executed"
+  },
+  "overall_score": 0.7252838486526884
+}
