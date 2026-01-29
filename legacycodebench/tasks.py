@@ -142,13 +142,14 @@ class TaskManager:
     
     def create_tasks_from_datasets(self, datasets_dir: Path = DATASETS_DIR,
                                    use_intelligent_selection: bool = True,
-                                   language: str = None) -> List[Task]:
+                                   language: str = None, start_id: int = 1) -> List[Task]:
         """Create tasks from datasets with intelligent or simple selection
 
         Args:
             datasets_dir: Path to datasets directory
             use_intelligent_selection: Use intelligent tier-based selection
             language: "cobol", "unibasic", or None (default: cobol)
+            start_id: Starting ID for task generation (safe additive mode)
 
         Returns:
             List of created Task objects
@@ -158,12 +159,12 @@ class TaskManager:
             language = "cobol"
 
         if use_intelligent_selection:
-            return self.create_tasks_intelligent(datasets_dir, language=language)
+            return self.create_tasks_intelligent(datasets_dir, language=language, start_id=start_id)
         else:
             return self.create_tasks_simple(datasets_dir, language=language)
     
     def create_tasks_intelligent(self, datasets_dir: Path = DATASETS_DIR,
-                                  language: str = "cobol") -> List[Task]:
+                                  language: str = "cobol", start_id: int = 1) -> List[Task]:
         """Create tasks using intelligent PRD v2.0 aligned selection
 
         v2.0 Approach:
@@ -219,14 +220,29 @@ class TaskManager:
         # UniBasic: LCB-UB-T1-001, LCB-UB-T2-001, etc.
         id_prefix = "LCB-UB" if language == "unibasic" else "LCB"
 
+        # SAFETY: Check for existing tasks to avoid overwrite
+        existing_tasks = self.list_tasks()
+
         for tier in ["T1", "T2", "T3", "T4"]:
             tier_candidates = by_tier[tier]
-            for i, candidate in enumerate(tier_candidates, 1):
-                task_id = f"{id_prefix}-{tier}-{i:03d}"
+
+            # Determine starting index provided or auto-detect
+            current_index = start_id
+
+            for candidate in tier_candidates:
+                # Find next safe ID
+                while True:
+                    task_id = f"{id_prefix}-{tier}-{current_index:03d}"
+                    if task_id not in existing_tasks:
+                        break
+                    current_index += 1
+
                 task = self._candidate_to_task(candidate, task_id, datasets_dir, language=language)
                 tasks.append(task)
                 loc = candidate.analysis.get('loc', 0) if candidate.analysis else 0
                 logger.info(f"  Created {task.task_id}: {task.difficulty} - {task.domain} - {loc} LOC")
+                
+                current_index += 1  # Increment for next task
 
         logger.info(f"Created {len(tasks)} {lang_upper} documentation tasks using v2.0 selection")
         logger.info(f"  Tier distribution: T1={len(by_tier['T1'])}, T2={len(by_tier['T2'])}, T3={len(by_tier['T3'])}, T4={len(by_tier['T4'])}")

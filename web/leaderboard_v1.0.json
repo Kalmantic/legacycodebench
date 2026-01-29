@@ -1,13 +1,13 @@
 {
-  "version": "2.3.1",
-  "generated_at": "2026-01-20T19:59:17.823255",
+  "version": "v1.0",
+  "generated_at": "2026-01-12T11:40:42.050031",
   "scoring_formula": "LCB Score = (0.30 x SC) + (0.20 x DQ) + (0.50 x BF)",
   "scoring_weights": {
     "structural_completeness": 0.3,
     "semantic_quality": 0.2,
     "behavioral_fidelity": 0.5
   },
-  "total_models": 6,
+  "total_models": 5,
   "leaderboard": [
     {
       "submitter": "Hexaview",
@@ -15,7 +15,6 @@
       "rank": 1,
       "is_v231": true,
       "is_v23": true,
-      "is_v3": false,
       "avg_lcb_score": 0.9236,
       "avg_sc": 0.9437,
       "avg_bf": 0.8973,
@@ -45,12 +44,9 @@
           "avg_score": 0.8977881355932202
         }
       },
-      "bf_method": {
-        "executed": 0,
-        "static": 0,
-        "error": 0,
-        "reasons": {}
-      }
+      "languages": [
+        "COBOL"
+      ]
     },
     {
       "submitter": "Claude",
@@ -58,7 +54,6 @@
       "rank": 2,
       "is_v231": true,
       "is_v23": true,
-      "is_v3": false,
       "avg_lcb_score": 0.8977,
       "avg_sc": 0.9552,
       "avg_bf": 0.9117,
@@ -88,12 +83,9 @@
           "avg_score": 0.9185610169491525
         }
       },
-      "bf_method": {
-        "executed": 0,
-        "static": 0,
-        "error": 0,
-        "reasons": {}
-      }
+      "languages": [
+        "COBOL"
+      ]
     },
     {
       "submitter": "AWS",
@@ -101,7 +93,6 @@
       "rank": 3,
       "is_v231": true,
       "is_v23": true,
-      "is_v3": false,
       "avg_lcb_score": 0.8827,
       "avg_sc": 0.9772,
       "avg_bf": 0.909,
@@ -131,12 +122,9 @@
           "avg_score": 0.8730525423728813
         }
       },
-      "bf_method": {
-        "executed": 0,
-        "static": 0,
-        "error": 0,
-        "reasons": {}
-      }
+      "languages": [
+        "COBOL"
+      ]
     },
     {
       "submitter": "Ibm",
@@ -144,23 +132,22 @@
       "rank": 4,
       "is_v231": true,
       "is_v23": true,
-      "is_v3": true,
-      "avg_lcb_score": 0.8631,
-      "avg_sc": 0.9308,
-      "avg_bf": 0.8803,
-      "avg_sq": 0.7187,
+      "avg_lcb_score": 0.8719,
+      "avg_sc": 0.9309,
+      "avg_bf": 0.8966,
+      "avg_sq": 0.7216,
       "avg_tr": 0.0,
-      "tasks_total": 214,
-      "critical_failures": 6,
+      "tasks_total": 200,
+      "critical_failures": 5,
       "critical_failure_types": {
-        "CF-03": 2,
         "CF-02": 1,
+        "CF-03": 1,
         "CF-04": 3
       },
       "by_tier": {
         "T1": {
-          "total": 64,
-          "avg_score": 0.843209375
+          "total": 50,
+          "avg_score": 0.888738
         },
         "T2": {
           "total": 41,
@@ -175,20 +162,9 @@
           "avg_score": 0.8400745762711864
         }
       },
-      "bf_method": {
-        "executed": 1,
-        "static": 9,
-        "error": 0,
-        "reasons": {
-          "ibm_construct:EXEC": 2,
-          "compile_error": 2,
-          "copybook_missing:CVCUS01Y": 1,
-          "copybook_missing:CVACT01Y,CODATECN": 1,
-          "copybook_missing:CVACT03Y": 1,
-          "copybook_missing:CVACT02Y": 1,
-          "copybook_missing:CVTRA06Y,CVCUS01Y,CVACT03Y": 1
-        }
-      }
+      "languages": [
+        "COBOL"
+      ]
     },
     {
       "submitter": "Gpt",
@@ -196,13 +172,12 @@
       "rank": 5,
       "is_v231": true,
       "is_v23": true,
-      "is_v3": false,
-      "avg_lcb_score": 0.8589,
-      "avg_sc": 0.9192,
-      "avg_bf": 0.8827,
-      "avg_sq": 0.7091,
+      "avg_lcb_score": 0.861,
+      "avg_sc": 0.9188,
+      "avg_bf": 0.8856,
+      "avg_sq": 0.7127,
       "avg_tr": 0.0,
-      "tasks_total": 201,
+      "tasks_total": 200,
       "critical_failures": 6,
       "critical_failure_types": {
         "CF-03": 1,
@@ -226,54 +201,9 @@
           "avg_score": 0.8151661016949152
         }
       },
-      "bf_method": {
-        "executed": 0,
-        "static": 0,
-        "error": 0,
-        "reasons": {}
-      }
-    },
-    {
-      "submitter": "Gemini",
-      "model": "gemini-2.5-flash",
-      "rank": 6,
-      "is_v231": true,
-      "is_v23": true,
-      "is_v3": false,
-      "avg_lcb_score": 0.4894,
-      "avg_sc": 0.8911,
-      "avg_bf": 0.2309,
-      "avg_sq": 0.5331,
-      "avg_tr": 0.0,
-      "tasks_total": 14,
-      "critical_failures": 1,
-      "critical_failure_types": {
-        "CF-04": 1
-      },
-      "by_tier": {
-        "T1": {
-          "total": 14,
-          "avg_score": 0.46938571428571424
-        },
-        "T2": {
-          "total": 0,
-          "avg_score": 0.0
-        },
-        "T3": {
-          "total": 0,
-          "avg_score": 0.0
-        },
-        "T4": {
-          "total": 0,
-          "avg_score": 0.0
-        }
-      },
-      "bf_method": {
-        "executed": 0,
-        "static": 0,
-        "error": 0,
-        "reasons": {}
-      }
+      "languages": [
+        "COBOL"
+      ]
     }
   ]
 }

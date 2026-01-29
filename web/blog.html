@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>LegacyCodeBench | Blog</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Latest updates, research findings, and insights from the LegacyCodeBench team.">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+
+<body>
+  <!-- Header -->
+  <header>
+    <div class="header-inner">
+      <a href="index.html" class="logo">
+        LegacyCodeBench
+      </a>
+      <nav>
+        <a href="index.html">Leaderboard</a>
+        <a href="index.html#methodology">Methodology</a>
+        <a href="index.html#get-started">Get Started</a>
+        <a href="blog.html" class="active">Blog</a>
+        <a href="https://github.com/Kalmantic/legacycodebench" target="_blank" rel="noopener">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- Page Header -->
+    <div class="page-header">
+      <h1 class="page-title">Blog</h1>
+      <p class="page-description">
+        Research updates, benchmark insights, and announcements from the LegacyCodeBench team.
+      </p>
+    </div>
+
+    <!-- Blog Posts -->
+    <section id="posts">
+
+      <!-- Post 1: Methodology -->
+      <article class="blog-post">
+        <div class="post-meta">
+          <span class="post-date">January 2026</span>
+          <span class="post-tag">Methodology</span>
+        </div>
+        <h2 class="post-title">Honest Verification: How We Fixed Behavioral Fidelity Testing</h2>
+        <p class="post-excerpt">
+          When we analyzed our evaluation logs, we found something uncomfortable: programs that failed to compile
+          were sometimes receiving 100% Behavioral Fidelity scores. We've redesigned how BF verification works.
+          Here's what changed and why.
+        </p>
+
+        <button class="read-more-btn">Read More</button>
+        <div class="post-content">
+          <h3>The Problem We Found</h3>
+          <p>
+            Our original approach classified programs before trying to run them. We scanned source code
+            for patterns like <code>EXEC CICS</code> or <code>EXEC SQL</code> and decided in advance
+            whether a program could be executed. If it couldn't, we'd fall back to heuristic scoring.
+          </p>
+          <p>
+            This seemed reasonable. But pattern detection guesses; compilers know. When we examined
+            actual evaluation runs, we found programs failing for reasons our patterns didn't anticipate&mdash;missing
+            copybooks, cascading syntax errors, environment issues. The fallback kicked in silently,
+            and documentation that couldn't be verified still received scores.
+          </p>
+          <p>
+            In one case, a program with 15 test cases failed compilation entirely. All 15 tests were skipped.
+            The heuristic fallback scored the documentation at 100% BF. That's not measurement; that's noise.
+          </p>
+
+          <h3>What We Changed</h3>
+          <p>
+            We moved to <strong>compile-first classification</strong>. Instead of guessing what will compile,
+            we attempt compilation and let the compiler tell us what's actually possible.
+          </p>
+          <p>
+            The flow is now:
+          </p>
+          <ol>
+            <li><strong>Try to compile the program.</strong> Resolve copybooks, set up the Docker environment, run the
+              compiler.</li>
+            <li><strong>If compilation succeeds:</strong> Execute tests and verify behavioral claims against actual
+              program output.</li>
+            <li><strong>If compilation fails:</strong> Classify the reason (missing copybook, IBM middleware, syntax
+              error) and route to static verification.</li>
+          </ol>
+          <p>
+            Crucially, there are now only two verification methods, and both are explicitly labeled:
+          </p>
+          <ul>
+            <li><strong>Executed:</strong> The program compiled and ran. Claims were verified against actual output.
+            </li>
+            <li><strong>Static:</strong> The program couldn't compile. Claims were verified against source code
+              patterns.</li>
+          </ul>
+          <p>
+            No silent fallbacks. Every result records which method was used and why.
+          </p>
+
+          <h3>Why Static Verification Instead of Zero?</h3>
+          <p>
+            A reasonable question: if a program can't compile, why not just score it zero?
+          </p>
+          <p>
+            The answer is that these are real production programs extracted from real mainframe systems.
+            They work&mdash;they just require IBM CICS, or DB2 precompilers, or proprietary middleware we
+            can't replicate in a Docker container. Assigning zero would penalize AI models for infrastructure
+            constraints entirely outside their control.
+          </p>
+          <p>
+            Static verification checks that documentation claims match what's actually in the source code.
+            If the documentation says "TOTAL is calculated by multiplying PRICE by QUANTITY," we verify
+            that a COMPUTE statement with those variables exists. It's not as strong as execution,
+            but it's a meaningful signal&mdash;and we label it clearly so you know what you're looking at.
+          </p>
+
+          <h3>What This Means for Results</h3>
+          <p>
+            The leaderboard now shows verification method breakdowns for every model. You can see exactly
+            how many tasks were verified through execution versus static analysis. You can click into any
+            model to see task-by-task details: which programs compiled, which didn't, and why.
+          </p>
+          <p>
+            Scores may look different than they would have under the old system. That's expected.
+            The goal isn't high numbers; it's accurate measurement.
+          </p>
+
+          <h3>Realistic Expectations</h3>
+          <p>
+            Based on our analysis of the 200 COBOL benchmark tasks:
+          </p>
+          <ul>
+            <li>Many require IBM CICS (can't be executed)</li>
+            <li>Some require DB2 SQL precompilation (can't be executed)</li>
+            <li>The remainder are pure batch programs (can be executed with GnuCOBOL)</li>
+          </ul>
+          <p>
+            A subset of COBOL tasks will use executed verification where the environment allows. The remainder use
+            static verification with documented reasons. This is a limitation of open-source tooling,
+            not a flaw in the benchmark.
+          </p>
+
+          <h3>Refining the Score: Hybrid Evaluation</h3>
+          <p>
+            In v2.0, we also improved how we calculate the Behavioral Fidelity score.
+          </p>
+          <p>
+            Previously, writing detailed documentation could ironically hurt a model's score. If a model made 20 claims
+            and verified 15, it might score lower than a model that made 5 claims and verified 5. This penalized
+            comprehensiveness.
+          </p>
+          <p>
+            We introduced <strong>Hybrid Scoring</strong>. We now reward verified claims up to a target threshold.
+            This ensures that models providing rich, detailed documentation are recognized for their depth,
+            while still punishing hallucinations.
+          </p>
+
+          <h3>Looking Ahead</h3>
+          <p>
+            Benchmarks earn trust through transparency. When something doesn't work the way we expected,
+            we'd rather fix it than hide it. The methodology details are documented in our GitHub repository
+            for anyone who wants to review them.
+          </p>
+        </div>
+      </article>
+
+      <!-- Post 2: UniBasic -->
+      <article class="blog-post">
+        <div class="post-meta">
+          <span class="post-date">January 2026</span>
+          <span class="post-tag">Announcement</span>
+        </div>
+        <h2 class="post-title">Beyond COBOL: UniBasic Support in LegacyCodeBench</h2>
+        <p class="post-excerpt">
+          COBOL gets the headlines, but it's not the only legacy language running critical systems.
+          We've added 50 UniBasic tasks to the benchmark, using ScarletDME for execution verification.
+        </p>
+
+        <button class="read-more-btn">Read More</button>
+        <div class="post-content">
+          <h3>Why UniBasic</h3>
+          <p>
+            UniBasic (and its variants: UniVerse BASIC, Pick BASIC, QMBasic) powers a significant
+            portion of enterprise software you've never heard of&mdash;distribution systems,
+            healthcare records, manufacturing control. These systems share COBOL's characteristics:
+            decades old, business-critical, poorly documented.
+          </p>
+          <p>
+            If AI can understand legacy code, it should work across languages. Testing only COBOL
+            would leave a gap.
+          </p>
+
+          <h3>Execution Environment</h3>
+          <p>
+            UniVerse and UniData are proprietary, licensed runtimes. We can't distribute them.
+            Instead, we use <strong>ScarletDME</strong>, a GPL-licensed fork of OpenQM that provides
+            ~95% syntax compatibility with UniVerse BASIC.
+          </p>
+          <p>
+            Trade-off: Programs using UniVerse-specific APIs (UDO, CallHTTP) can't execute in ScarletDME
+            and require static verification. A significant portion of UniBasic tasks can be executed,
+            providing high-confidence verification.
+          </p>
+
+          <h3>Task Structure</h3>
+          <p>
+            UniBasic tasks follow the same tier structure as COBOL:
+          </p>
+          <ul>
+            <li><strong>T1 (12 tasks):</strong> Simple utilities, 50-150 lines</li>
+            <li><strong>T2 (11 tasks):</strong> Moderate complexity, single external system</li>
+            <li><strong>T3 (10 tasks):</strong> Multi-system integration, 400-800 lines</li>
+            <li><strong>T4 (17 tasks):</strong> Large programs, complex control flow</li>
+          </ul>
+          <p>
+            Task IDs use the format <code>LCB-UB-T1-001</code> to distinguish them from COBOL tasks
+            (<code>LCB-T1-001</code>).
+          </p>
+
+          <h3>Interpreting Results</h3>
+          <p>
+            The leaderboard shows a language filter. You can view COBOL-only results, UniBasic-only results,
+            or aggregate scores.
+          </p>
+          <p>
+            <strong>Important:</strong> Cross-language comparison is statistically unsound. Execution rates
+            differ, task distributions differ, and the languages have different documentation conventions.
+            We show aggregate scores for convenience, but comparing "Model X scores 75% on COBOL" to
+            "Model X scores 72% on UniBasic" doesn't mean COBOL documentation is better. It means the
+            tasks are different.
+          </p>
+
+          <h3>Running UniBasic Evaluations</h3>
+          <p>
+            To evaluate UniBasic tasks locally:
+          </p>
+          <pre
+            style="background: var(--bg-tertiary); padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 13px;">
+# Build the Docker image
+docker build -t legacycodebench-unibasic:latest docker/unibasic-sandbox/
+
+# Run benchmark
+legacycodebench run-full-benchmark --language unibasic --enable-execution</pre>
+          <p>
+            Without Docker, evaluation falls back to static verification for all tasks.
+          </p>
+        </div>
+      </article>
+
+      <!-- Post 3: Getting Started (condensed, practical) -->
+      <article class="blog-post">
+        <div class="post-meta">
+          <span class="post-date">December 2025</span>
+          <span class="post-tag">Getting Started</span>
+        </div>
+        <h2 class="post-title">Running the Benchmark</h2>
+        <p class="post-excerpt">
+          A practical guide to evaluating your model's ability to document legacy code.
+        </p>
+
+        <button class="read-more-btn">Read More</button>
+        <div class="post-content">
+          <h3>Installation</h3>
+          <pre
+            style="background: var(--bg-tertiary); padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 13px;">
+# Clone and install
+git clone https://github.com/Kalmantic/legacycodebench.git
+cd legacycodebench
+pip install -e .
+
+# Set API keys for the model you want to evaluate
+export OPENAI_API_KEY="sk-..."
+export ANTHROPIC_API_KEY="sk-ant-..."</pre>
+
+          <h3>Quick Test</h3>
+          <pre
+            style="background: var(--bg-tertiary); padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 13px;">
+# Run 3 tasks (fast, no Docker required)
+legacycodebench run-full-benchmark --task-limit 3</pre>
+          <p>
+            This runs without execution verification. Useful for checking your setup.
+          </p>
+
+          <h3>Full Benchmark with Execution</h3>
+          <pre
+            style="background: var(--bg-tertiary); padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 13px;">
+# Build Docker images
+docker build -t legacycodebench-cobol:latest docker/cobol-sandbox/
+docker build -t legacycodebench-unibasic:latest docker/unibasic-sandbox/
+
+# Run full benchmark
+legacycodebench run-full-benchmark --enable-execution</pre>
+          <p>
+            With Docker enabled, programs that can compile will be executed, and behavioral claims
+            will be verified against actual output.
+          </p>
+
+          <h3>Submitting Results</h3>
+          <p>
+            Results are saved to the <code>results/</code> directory as JSON files. To submit your
+            results to the public leaderboard, open a pull request on GitHub with your result files.
+          </p>
+          <p>
+            We review submissions for validity (correct task IDs, reasonable scores, no tampering)
+            before adding them to the leaderboard.
+          </p>
+        </div>
+      </article>
+
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <span>LegacyCodeBench &middot; Kalmantic AI Labs</span>
+      <div class="footer-links">
+        <a href="https://github.com/Kalmantic/legacycodebench" target="_blank" rel="noopener">GitHub</a>
+        <a href="#">Paper</a>
+        <a href="mailto:nikita@kalmantic.com">Contact</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const buttons = document.querySelectorAll('.read-more-btn');
+
+      buttons.forEach(button => {
+        button.addEventListener('click', () => {
+          const content = button.nextElementSibling;
+          const isHidden = getComputedStyle(content).display === 'none';
+
+          if (isHidden) {
+            content.style.display = 'block';
+            button.textContent = 'Read Less';
+          } else {
+            content.style.display = 'none';
+            button.textContent = 'Read More';
+          }
+        });
+      });
+    });
+  </script>
+
+  <style>
+    /* Blog-specific styles */
+    .blog-post {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .post-meta {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 12px;
+      font-size: 13px;
+    }
+
+    .post-date {
+      color: var(--text-secondary);
+    }
+
+    .post-tag {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+
+    .post-title {
+      font-size: 1.5rem;
+      margin-bottom: 12px;
+      color: var(--text);
+    }
+
+    .post-excerpt {
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-bottom: 1rem;
+    }
+
+    .post-content {
+      border-top: 1px solid var(--border);
+      padding-top: 1.5rem;
+      margin-top: 1rem;
+      display: none;
+      /* Hide by default */
+    }
+
+    .read-more-btn {
+      background: var(--bg-tertiary);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      margin-top: 0.5rem;
+    }
+
+    .read-more-btn:hover {
+      background: var(--border);
+      border-color: var(--text-secondary);
+    }
+
+    .post-content h3 {
+      font-size: 1.1rem;
+      margin-top: 1.5rem;
+      margin-bottom: 0.75rem;
+      color: var(--text);
+    }
+
+    .post-content h3:first-child {
+      margin-top: 0;
+    }
+
+    .post-content p {
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-bottom: 1rem;
+    }
+
+    .post-content ul,
+    .post-content ol {
+      color: var(--text-secondary);
+      line-height: 1.8;
+      padding-left: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .post-content li {
+      margin-bottom: 0.5rem;
+    }
+
+    .post-content code {
+      background: var(--bg-tertiary);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+  </style>
+</body>
+
+</html>

@@ -10,6 +10,7 @@
   --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
   --font-display: "Playfair Display", Georgia, serif;
 
+  /* Brand Colors (Preserved) */
   --text: #1a1a2e;
   --text-secondary: #4a4a68;
   --text-link: #2563eb;
@@ -30,6 +31,7 @@
   --success: #059669;
   --warning: #d97706;
 
+  /* Existing Gradient */
   --gradient-start: #2563eb;
   --gradient-end: #7c3aed;
 }
@@ -499,4 +501,35 @@ footer {
   nav {
     display: none;
   }
+}/* Language Toggle Group (Segmented Control) */
+.lang-toggle-group {
+    display: flex;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px;
+}
+
+.lang-btn {
+    background: transparent;
+    border: none;
+    padding: 4px 12px;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.lang-btn:hover {
+    color: var(--text);
+}
+
+.lang-btn.active {
+    background: #ffffff;
+    color: var(--accent);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    font-weight: 600;
 }
