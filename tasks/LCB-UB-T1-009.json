@@ -1,0 +1,41 @@
+{
+  "task_id": "LCB-UB-T1-009",
+  "category": "documentation",
+  "difficulty": "easy",
+  "language": "unibasic",
+  "domain": "enterprise",
+  "source_dataset": "scarletdme-samples",
+  "input_files": [
+    "contrib\\PICKWIKI.BP\\HEAPSORT"
+  ],
+  "task_description": "Generate clear documentation for HEAPSORT explaining its business purpose, main data structures, and key business rules.",
+  "evaluation_criteria": {
+    "version": "2.4",
+    "tier": "T1",
+    "required_sections": [
+      "business_purpose",
+      "business_rules",
+      "data_structures"
+    ],
+    "format": "markdown",
+    "evaluation_method": "llm_based",
+    "scoring_weights": {
+      "structural_completeness": 0.3,
+      "behavioral_fidelity": 0.35,
+      "semantic_quality": 0.25,
+      "traceability": 0.1
+    }
+  },
+  "tier": "T1",
+  "complexity_scoring": {
+    "method": "multi-factor-v2.1",
+    "breakdown": {
+      "loc": 76,
+      "file_size": 5802,
+      "has_enterprise": false,
+      "has_network": false,
+      "has_c_interop": false,
+      "original_filename": "HEAPSORT"
+    }
+  }
+}

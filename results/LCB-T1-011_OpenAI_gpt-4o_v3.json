@@ -1,0 +1,73 @@
+{
+  "task_id": "LCB-T1-011",
+  "task_category": "documentation",
+  "evaluator_version": "v3",
+  "submitter": {
+    "name": "OpenAI",
+    "model": "gpt-4o",
+    "category": "verified"
+  },
+  "result": {
+    "version": "3.0",
+    "lcb_score": 85.38,
+    "passed": true,
+    "pass_status": {
+      "passed": true,
+      "reason": "All thresholds met",
+      "sc_met": true,
+      "dq_met": true,
+      "bf_met": true,
+      "has_critical_failure": false
+    },
+    "scores": {
+      "sc": 100.0,
+      "dq": 64.4,
+      "bf": 85.0,
+      "overall": 85.4
+    },
+    "critical_failures": [],
+    "breakdown": {
+      "sc": {
+        "business_rules": 1.0,
+        "data_structures": 1.0,
+        "control_flow": 1.0,
+        "external_calls": 1.0
+      },
+      "dq": {
+        "structure": 0.75,
+        "traceability": 0.5,
+        "readability": 1.0,
+        "abstraction": 0.3448275862068965
+      },
+      "bf": {
+        "claim_score": 0.75,
+        "bsm_score": 1.0,
+        "verification_mode": "static",
+        "mode_reason": "compile_error",
+        "compile_error": "libcob: error: file does not exist (status = 35) for file GADGETFILE ('DA-S-GADGETS')",
+        "fixable": null,
+        "v3_provenance": {
+          "evaluator_version": "v3.0",
+          "verification_mode": "static",
+          "mode_reason": "compile_error",
+          "execution_attempted": true,
+          "execution_succeeded": false,
+          "compile_error": "libcob: error: file does not exist (status = 35) for file GADGETFILE ('DA-S-GADGETS')",
+          "claims_verified": 1,
+          "claims_total": 9
+        },
+        "claim_score_formula": "hybrid_v2.4.2",
+        "hybrid_components": {
+          "effective_claims": 4.5,
+          "effective_target": 6,
+          "verified": 1,
+          "partial": 7,
+          "total": 9,
+          "scoring_mode": "hybrid"
+        }
+      }
+    },
+    "bf_verification_mode": "static"
+  },
+  "overall_score": 0.8538
+}

@@ -42,7 +42,7 @@ class Leaderboard:
         self.results_dir = results_dir
         self.results_dir.mkdir(parents=True, exist_ok=True)
 
-    def generate(self, output_path: Path = None) -> Dict:
+    def generate(self, output_path: Path = None, language: str = "all") -> Dict:
         """
         Generate leaderboard with LCB Score-based evaluation.
 
@@ -55,6 +55,7 @@ class Leaderboard:
 
         Args:
             output_path: Path to save leaderboard JSON
+            language: Filter by language ("all", "cobol", "unibasic")
 
         Returns:
             dict: Leaderboard data with LCB Score-based metrics
@@ -96,9 +97,25 @@ class Leaderboard:
                 "T3": {"total": 0, "scores": []},
                 "T4": {"total": 0, "scores": []},
             },
+            # V3 BF verification mode tracking
+            "bf_executed_count": 0,
+            "bf_static_count": 0,
+            "bf_error_count": 0,
+            "bf_mode_reasons": defaultdict(int),  # Track reasons (CICS, DB2, etc.)
+            # Per-task details for drill-down (V3)
+            "task_details": [],
+            # Languages supported
+            "languages": set(),
         })
         
         for result in all_results:
+            task_id = result.get("task_id", "")
+            
+            # Detect language early for filtering
+            task_language = "UniBasic" if task_id.startswith("LCB-UB-") else "COBOL"
+            if language != "all" and task_language.lower() != language.lower():
+                continue
+
             submitter = result.get("submitter", {}).get("name", "Unknown")
             model = result.get("submitter", {}).get("model", "unknown")
             
@@ -112,13 +129,37 @@ class Leaderboard:
             sub["tasks_total"] += 1
             
             task_result = result.get("result", {})
-            task_id = result.get("task_id", "")
+            # task_id already retrieved above
+
             overall_score = result.get("overall_score", 0.0)
             
             # Detect V2.3.1 format (has version: "2.3.1" or scores.sc/dq/bf)
             is_v231 = False
             is_v23 = False
             scores_data = task_result.get("scores", {}) if isinstance(task_result, dict) else {}
+            
+            # Detect V3 format (has breakdown.bf.v3_provenance or breakdowns.bf.v3_provenance)
+            is_v3 = False
+            # Try both paths - V3 uses "breakdown", some might use "breakdowns"
+            bf_breakdown = task_result.get("breakdown", {}).get("bf", {})
+            if not bf_breakdown:
+                bf_breakdown = task_result.get("breakdowns", {}).get("bf", {})
+            v3_provenance = bf_breakdown.get("v3_provenance", {})
+            if v3_provenance:
+                is_v3 = True
+                sub["is_v3"] = True
+                # Track BF verification mode
+                bf_mode = v3_provenance.get("verification_mode", "unknown")
+                bf_reason = v3_provenance.get("mode_reason", "")
+                if bf_mode == "executed":
+                    sub["bf_executed_count"] += 1
+                elif bf_mode == "static":
+                    sub["bf_static_count"] += 1
+                    # Track the specific reason (CICS, DB2, etc.)
+                    if bf_reason:
+                        sub["bf_mode_reasons"][bf_reason] += 1
+                elif bf_mode == "error":
+                    sub["bf_error_count"] += 1
             
             if task_result.get("version") == "2.3.1" or ("sc" in scores_data and "dq" in scores_data):
                 is_v231 = True
@@ -206,12 +247,36 @@ class Leaderboard:
                     cf_type = cf_str.split(":")[0] if ":" in cf_str else cf_str
                     sub["critical_failure_types"][cf_type] += 1
             
-            # Track by tier
+            # Track by tier and detect language
+            task_tier = "T1"  # Default
+            task_language = "COBOL"  # Default
             for tier in ["T1", "T2", "T3", "T4"]:
                 if f"-{tier}-" in task_id:
+                    task_tier = tier
                     sub["by_tier"][tier]["total"] += 1
                     sub["by_tier"][tier]["scores"].append(overall_score)
                     break
+
+            # Detect language from task_id prefix
+            if task_id.startswith("LCB-UB-"):
+                task_language = "UniBasic"
+            sub["languages"].add(task_language)
+
+            # Build per-task detail for drill-down (V3)
+            task_detail = {
+                "task_id": task_id,
+                "tier": task_tier,
+                "language": task_language,
+                "lcb_score": round(overall_score, 4),
+                "sc_score": round(sc, 4),
+                "dq_score": round(sq, 4),
+                "bf_score": round(bf, 4),
+                "verification_mode": v3_provenance.get("verification_mode", "unknown") if v3_provenance else "unknown",
+                "mode_reason": v3_provenance.get("mode_reason", "") if v3_provenance else "",
+                "critical_failures": critical_failures if critical_failures else [],
+                "details": v3_provenance.get("compile_error", "") if v3_provenance else "",
+            }
+            sub["task_details"].append(task_detail)
         
         # Build leaderboard entries
         leaderboard = []
@@ -251,12 +316,16 @@ class Leaderboard:
                 # V2.0 / V2.1.3: Average the individual task LCB scores
                 avg_lcb_score = avg(data["lcb_scores"])
 
+            # Sort task details by task_id for consistent ordering
+            sorted_task_details = sorted(data["task_details"], key=lambda x: x["task_id"])
+
             leaderboard.append({
                 "submitter": submitter,
                 "model": model,
                 "rank": 0,  # Will be set after sorting
                 "is_v231": data.get("is_v231", False),  # Track V2.3.1
                 "is_v23": data.get("is_v23", False),  # Track evaluation version
+                "is_v3": data.get("is_v3", False),  # Track V3.0 BF evaluation
                 # Primary metric: LCB Score
                 "avg_lcb_score": round(avg_lcb_score, 4),
                 # Component scores (as shown in UI)
@@ -271,6 +340,20 @@ class Leaderboard:
                 "critical_failure_types": dict(data["critical_failure_types"]),
                 # Tier breakdown (as shown in UI: T1 and T4)
                 "by_tier": tier_stats,
+                # V3 BF verification method breakdown (new in V3.0)
+                "bf_method": {
+                    "executed": data["bf_executed_count"],
+                    "static": data["bf_static_count"],
+                    "error": data["bf_error_count"],
+                    "reasons": dict(data["bf_mode_reasons"]),  # e.g., {"CICS": 5, "DB2": 2}
+                },
+                # V3: Root-level counts for easier JS access
+                "executed": data["bf_executed_count"],
+                "static": data["bf_static_count"],
+                # V3: Languages supported by this model
+                "languages": sorted(list(data["languages"])),
+                # V3: Per-task details for drill-down page
+                "tasks": sorted_task_details,
             })
         
         # Sort by LCB Score (primary metric) - matches web UI display
@@ -385,7 +468,10 @@ class Leaderboard:
         if leaderboard_data is None:
             leaderboard_data = self.generate()
 
-        # Detect if any results are V2.3.1, V2.3, or V2.1
+        # Detect if any results are V3, V2.3.1, V2.3, or V2.1
+        is_v3 = any(
+            entry.get("is_v3", False) for entry in leaderboard_data.get("leaderboard", [])
+        )
         is_v231 = leaderboard_data.get("version") == "2.3.1" or any(
             entry.get("version") == "2.3.1" or entry.get("is_v231", False)
             for entry in leaderboard_data.get("leaderboard", [])
@@ -395,7 +481,11 @@ class Leaderboard:
         ))
         
         
-        if is_v231:
+        if is_v3:
+            scoring_formula = "LCB Score = (0.30 x SC) + (0.20 x DQ) + (0.50 x BF)"
+            version_label = "V3.0"
+            col_headers = "SC=Structural (30%), DQ=Documentation (20%), BF=Behavioral (50%)"
+        elif is_v231:
             scoring_formula = "LCB Score = (0.30 x SC) + (0.20 x DQ) + (0.50 x BF)"
             version_label = "V2.3.1"
             col_headers = "SC=Structural Completeness (30%), DQ=Documentation Quality (20%), BF=Behavioral Fidelity (50%)"
@@ -409,21 +499,23 @@ class Leaderboard:
             col_headers = "SC=Structural Completeness, BF=Behavioral Fidelity, SQ=Semantic Quality, TR=Traceability"
 
         # Header
-        print("\n" + "=" * 110)
+        print("\n" + "=" * 130)
         print(f"                         LegacyCodeBench {version_label} Leaderboard")
-        print("=" * 110)
+        print("=" * 130)
         print(f"Scoring: {scoring_formula}")
-        print("=" * 110)
+        print("=" * 130)
         print()
 
-        # Main table header - V2.3.1 uses SC/DQ/BF, V2.3 uses C/D/B, V2.1.3 uses SC/BF/SQ/TR
-        if is_v231:
+        # Main table header - V3 adds BF Method column
+        if is_v3:
+            print(f"{'#':<4}{'Model':<22}{'LCB':<8}{'SC':<7}{'DQ':<7}{'BF':<7}{'BF Method':<20}{'T1':<6}{'T4':<6}")
+        elif is_v231:
             print(f"{'#':<4}{'Model':<25}{'LCB Score':<12}{'SC':<8}{'DQ':<8}{'BF':<8}{'T1':<8}{'T4':<8}")
         elif is_v23:
             print(f"{'#':<4}{'Model':<25}{'LCB Score':<12}{'C':<8}{'D':<8}{'B':<8}{'T1':<8}{'T4':<8}")
         else:
             print(f"{'#':<4}{'Model':<25}{'LCB Score':<12}{'SC':<8}{'BF':<8}{'SQ':<8}{'TR':<8}{'T1':<8}{'T4':<8}")
-        print("-" * 110)
+        print("-" * 130)
 
         # Main table
         for entry in leaderboard_data["leaderboard"]:
@@ -436,7 +528,7 @@ class Leaderboard:
                 model_normalized = entry['model'].lower().replace("-", "").replace("_", "")
                 if submitter_normalized != model_normalized and submitter not in ["Gpt", "Claude", "Anthropic", "Google", "Aws", "Gemini"]:
                     model_display = f"{submitter}/{entry['model']}"
-            model_display = model_display[:24]
+            model_display = model_display[:21] if is_v3 else model_display[:24]
 
             lcb = f"{entry['avg_lcb_score']*100:.0f}%"
             sc = f"{entry['avg_sc']*100:.0f}%"
@@ -450,7 +542,16 @@ class Leaderboard:
             t1_str = f"{t1*100:.0f}%" if entry["by_tier"]["T1"]["total"] > 0 else "-"
             t4_str = f"{t4*100:.0f}%" if entry["by_tier"]["T4"]["total"] > 0 else "-"
 
-            if is_v231:
+            # V3 BF Method breakdown
+            bf_method = entry.get("bf_method", {})
+            bf_exec = bf_method.get("executed", 0)
+            bf_static = bf_method.get("static", 0)
+            bf_method_str = f"{bf_exec} exec/{bf_static} static" if (bf_exec + bf_static > 0) else "-"
+
+            if is_v3:
+                # V3.0: Includes BF Method column
+                print(f"{rank:<4}{model_display:<22}{lcb:<8}{sc:<7}{sq:<7}{bf:<7}{bf_method_str:<20}{t1_str:<6}{t4_str:<6}")
+            elif is_v231:
                 # V2.3.1: SC=structural, DQ=documentation (using sq), BF=behavioral
                 print(f"{rank:<4}{model_display:<25}{lcb:<12}{sc:<8}{sq:<8}{bf:<8}{t1_str:<8}{t4_str:<8}")
             elif is_v23:
@@ -459,13 +560,15 @@ class Leaderboard:
             else:
                 print(f"{rank:<4}{model_display:<25}{lcb:<12}{sc:<8}{bf:<8}{sq:<8}{tr:<8}{t1_str:<8}{t4_str:<8}")
 
-        print("-" * 110)
+        print("-" * 130)
         print()
         print(f"Scoring: {scoring_formula}")
         print(col_headers)
         print("T1=Basic Tier Score, T4=Enterprise Tier Score")
+        if is_v3:
+            print("BF Method: 'X exec/Y static' = X tasks verified via Docker execution, Y via static analysis")
         print()
-        print("=" * 110 + "\n")
+        print("=" * 130 + "\n")
     
     def print_detailed(self, leaderboard_data: Dict = None):
         """Print detailed leaderboard with component scores and tier breakdown"""

@@ -67,7 +67,7 @@ class COBOLExecutor:
 
     def __init__(self,
                  docker_image: str = "legacycodebench-cobol:latest",
-                 timeout_seconds: int = 30,
+                 timeout_seconds: int = 10,
                  memory_limit: str = "512m"):
         """
         Initialize COBOL executor.
@@ -119,7 +119,8 @@ class COBOLExecutor:
     def execute(self, cobol_source: str,
                test_inputs: Dict[str, Any],
                input_files: Optional[Dict[str, str]] = None,
-               program_name: Optional[str] = None) -> ExecutionResult:
+               program_name: Optional[str] = None,
+               copybook_paths: Optional[List[Path]] = None) -> ExecutionResult:
         """
         Execute COBOL program with test inputs.
 
@@ -128,6 +129,7 @@ class COBOLExecutor:
             test_inputs: Dictionary of input values (variable → value)
             input_files: Optional input files (filename → content)
             program_name: Optional program name (extracted from source if not provided)
+            copybook_paths: Optional list of copybook file paths to stage for compilation
 
         Returns:
             ExecutionResult with outputs and status
@@ -160,9 +162,9 @@ class COBOLExecutor:
                 # Generate input data file for ACCEPT statements
                 self._generate_input_data(temp_path, test_inputs)
 
-                # Compile COBOL program
+                # Compile COBOL program (with copybooks if provided)
                 compile_success, compile_output = self._compile_cobol(
-                    temp_path, source_file, program_name
+                    temp_path, source_file, program_name, copybook_paths
                 )
 
                 if not compile_success:
@@ -204,7 +206,7 @@ class COBOLExecutor:
             )
 
     def _compile_cobol(self, work_dir: Path, source_file: Path,
-                       program_name: str) -> tuple:
+                       program_name: str, copybook_paths: List[Path] = None) -> tuple:
         """
         Compile COBOL source using GnuCOBOL in Docker.
 
@@ -212,6 +214,7 @@ class COBOLExecutor:
             work_dir: Working directory with source
             source_file: Path to COBOL source file
             program_name: Program name
+            copybook_paths: Optional list of copybook file paths to stage
 
         Returns:
             (success: bool, output: str)
@@ -226,6 +229,24 @@ class COBOLExecutor:
                 logger.warning(f"CICS program detected - cannot compile with GnuCOBOL")
                 return (False, "CICS programs require IBM CICS preprocessor (not available in GnuCOBOL)")
             
+            # Stage copybooks if provided
+            include_flags = []
+            if copybook_paths:
+                copybook_dir = work_dir / "copybooks"
+                copybook_dir.mkdir(exist_ok=True)
+                
+                staged_count = 0
+                for cpy_path in copybook_paths:
+                    if cpy_path.exists():
+                        import shutil
+                        dest = copybook_dir / cpy_path.name
+                        shutil.copy(cpy_path, dest)
+                        staged_count += 1
+                
+                if staged_count > 0:
+                    logger.info(f"Staged {staged_count} copybooks in {copybook_dir}")
+                    include_flags = ["-I", "/workspace/copybooks"]
+            
             # Detect source format and build compiler flags
             compile_flags = ["-x"]  # Executable
             
@@ -234,7 +255,7 @@ class COBOLExecutor:
                 logger.info("Detected free format, adding -free flag")
             
             # Docker command to compile COBOL
-            # cobc -x program.cbl -o program
+            # cobc -x -I /workspace/copybooks program.cbl -o program
             docker_cmd = [
                 self.docker_cmd, "run", "--rm",
                 "-v", f"{work_dir}:/workspace",
@@ -243,7 +264,7 @@ class COBOLExecutor:
                 "--network", "none",  # No network access
                 self.docker_image,
                 "cobc"
-            ] + compile_flags + [source_file.name, "-o", program_name]
+            ] + compile_flags + include_flags + [source_file.name, "-o", program_name]
 
             logger.info(f"Compiling COBOL: {' '.join(docker_cmd)}")
 

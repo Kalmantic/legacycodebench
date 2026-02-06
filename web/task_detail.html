@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Task Details - LegacyCodeBench</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <link rel="stylesheet" href="assets/styles.css">
+</head>
+
+<body>
+    <!-- Header -->
+    <header>
+        <div class="header-inner">
+            <a href="index.html" class="logo">
+                LegacyCodeBench
+            </a>
+            <nav>
+                <a href="index.html">Leaderboard</a>
+                <a href="index.html#methodology">Methodology</a>
+                <a href="blog.html">Blog</a>
+                <a href="https://github.com/Kalmantic/legacycodebench" target="_blank" rel="noopener">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="page-header">
+            <a href="index.html" class="back-link">&larr; Back to Leaderboard</a>
+            <h1 class="page-title" id="model-title">Model Details</h1>
+            <p class="page-description">
+                Per-task breakdown of Behavioral Fidelity (BF) verification.
+            </p>
+        </div>
+
+        <!-- Stats Summary -->
+        <div class="stats-bar" id="model-stats">
+            <!-- Populated by JS -->
+        </div>
+
+        <!-- Drill Down Table -->
+        <section>
+            <div class="section-header">
+                <h2 class="section-title">Per-Task Drill-Down</h2>
+            </div>
+
+            <div class="callout" style="margin-bottom: 24px;">
+                <strong>Method Key:</strong>
+                <span class="badge badge-exec">executed</span> = Verified by Docker execution.
+                <span class="badge badge-static">static</span> = Verified by claim extraction + BSM.
+                <span class="badge badge-error">error</span> = Execution failed unexpectedly.
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Task</th>
+                            <th>Tier</th>
+                            <th class="num">BF Score</th>
+                            <th>Method</th>
+                            <th>Reason</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tasks-body">
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-light);">
+                                Loading tasks...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script src="assets/task_detail.js"></script>
+</body>
+
+</html>

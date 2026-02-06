@@ -1,0 +1,73 @@
+{
+  "task_id": "LCB-T4-031",
+  "task_category": "documentation",
+  "evaluator_version": "v3",
+  "submitter": {
+    "name": "Hexaview",
+    "model": "legacy-insights",
+    "category": "verified"
+  },
+  "result": {
+    "version": "3.0",
+    "lcb_score": 94.46,
+    "passed": true,
+    "pass_status": {
+      "passed": true,
+      "reason": "All thresholds met",
+      "sc_met": true,
+      "dq_met": true,
+      "bf_met": true,
+      "has_critical_failure": false
+    },
+    "scores": {
+      "sc": 83.2,
+      "dq": 97.5,
+      "bf": 100.0,
+      "overall": 94.5
+    },
+    "critical_failures": [],
+    "breakdown": {
+      "sc": {
+        "business_rules": 1.0,
+        "data_structures": 1.0,
+        "control_flow": 0.15789473684210525,
+        "external_calls": 1.0
+      },
+      "dq": {
+        "structure": 1.0,
+        "traceability": 1.0,
+        "readability": 0.9930615497839073,
+        "abstraction": 0.8828996282527881
+      },
+      "bf": {
+        "claim_score": 1.0,
+        "bsm_score": 1.0,
+        "verification_mode": "static",
+        "mode_reason": "compile_error",
+        "compile_error": "Compilation failed: CICS programs require IBM CICS preprocessor (not available in GnuCOBOL)\nCICS programs require IBM CICS preprocessor (not available in GnuCOBOL)",
+        "fixable": null,
+        "v3_provenance": {
+          "evaluator_version": "v3.0",
+          "verification_mode": "static",
+          "mode_reason": "compile_error",
+          "execution_attempted": true,
+          "execution_succeeded": false,
+          "compile_error": "Compilation failed: CICS programs require IBM CICS preprocessor (not available in GnuCOBOL)\nCICS programs require IBM CICS preprocessor (not available in GnuCOBOL)",
+          "claims_verified": 6,
+          "claims_total": 39
+        },
+        "claim_score_formula": "hybrid_v2.4.2",
+        "hybrid_components": {
+          "effective_claims": 19.0,
+          "effective_target": 6,
+          "verified": 6,
+          "partial": 26,
+          "total": 39,
+          "scoring_mode": "hybrid"
+        }
+      }
+    },
+    "bf_verification_mode": "static"
+  },
+  "overall_score": 0.9445999999999999
+}

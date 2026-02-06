@@ -23,6 +23,7 @@
         <a href="#leaderboard" class="active">Leaderboard</a>
         <a href="#methodology">Methodology</a>
         <a href="#get-started">Get Started</a>
+        <a href="blog.html">Blog</a>
         <a href="https://github.com/Kalmantic/legacycodebench" target="_blank" rel="noopener">GitHub</a>
       </nav>
     </div>
@@ -46,7 +47,7 @@
         <div class="stat-label">Models Tested</div>
       </div>
       <div class="stat">
-        <div class="stat-value">200</div>
+        <div class="stat-value" id="total-tasks">200</div>
         <div class="stat-label">Tasks</div>
       </div>
       <div class="stat">
@@ -59,7 +60,25 @@
     <section id="leaderboard">
       <div class="section-header">
         <h2 class="section-title">Leaderboard</h2>
-        <span class="leaderboard-info" id="leaderboard-updated"></span>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <!-- Language Toggle Buttons -->
+          <div class="lang-toggle-group">
+            <button class="lang-btn active" data-lang="COBOL">COBOL</button>
+            <button class="lang-btn" data-lang="UniBasic">UniBasic</button>
+          </div>
+          <input type="hidden" id="language-filter" value="COBOL">
+          <select id="version-filter"
+            style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); font-family: var(--font-sans); font-size: 13px; color: var(--text);">
+            <option value="v2.0">v2.0 (Current)</option>
+            <option value="v1.0">v1.0 (Legacy)</option>
+          </select>
+          <span class="leaderboard-info" id="leaderboard-updated"></span>
+        </div>
+      </div>
+
+      <div id="lang-warning" class="callout"
+        style="display: none; background: #fffbeb; border-left-color: #d97706; color: #92400e; margin-top: 0; margin-bottom: 24px;">
+        <strong>Warning:</strong> Cross-language score comparison is statistically unsound. Scores shown are aggregate.
       </div>
 
       <div class="table-container">
@@ -68,12 +87,13 @@
             <tr>
               <th>#</th>
               <th>Model</th>
-              <th class="center">LCB Score<span class="th-sub">0-100</span></th>
-              <th class="num">SC<span class="th-sub">Structural</span></th>
-              <th class="num">DQ<span class="th-sub">Quality</span></th>
-              <th class="num">BF<span class="th-sub">Behavioral</span></th>
-              <th class="num">T1<span class="th-sub">Basic</span></th>
-              <th class="num">T4<span class="th-sub">Enterprise</span></th>
+              <th class="center">LCB SCORE<br><span class="th-sub" style="font-weight:normal">0-100</span></th>
+              <th class="num">STRUCTURAL<br>COMPLETENESS</th>
+              <th class="num">DOCUMENTATION<br>QUALITY</th>
+              <th class="num">BEHAVIORAL<br>FIDELITY</th>
+              <th class="num">T1<br><span class="th-sub" style="font-weight:normal">Basic</span></th>
+              <th class="num">T4<br><span class="th-sub" style="font-weight:normal">Enterprise</span></th>
+              <th class="center">LANG<br><span class="th-sub" style="font-weight:normal">Supported</span></th>
             </tr>
           </thead>
           <tbody id="leaderboard-body">
@@ -171,7 +191,7 @@
       <span>LegacyCodeBench &middot; Kalmantic AI Labs</span>
       <div class="footer-links">
         <a href="https://github.com/Kalmantic/legacycodebench" target="_blank" rel="noopener">GitHub</a>
-        <a href="#">Paper</a>
+        <a href="https://kalmantic.github.io/legacycodebench/" target="_blank" rel="noopener">Paper</a>
         <a href="mailto:nikita@kalmantic.com">Contact</a>
       </div>
     </div>

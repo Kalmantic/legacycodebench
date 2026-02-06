@@ -13,7 +13,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
     gnucobol \
     libcob4 \
-    libcob-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Verify GnuCOBOL installation

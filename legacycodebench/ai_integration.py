@@ -65,6 +65,7 @@ MODEL_CONTEXT_LIMITS = {
     "anthropic.claude-3-sonnet-20240229-v1:0": 200000,  # AWS Bedrock Claude 3 Sonnet
     "transform": 8000,  # Deprecated, kept for backward compatibility
     "ibm/granite-3-3-8b-instruct": 8192,  # IBM Granite model
+    "models/gemini-2.0-flash": 1000000,  # Gemini 2.0 Flash
 }
 
 # FIXED (Issue 4.4): Normalize context to smallest for fair comparison
@@ -794,8 +795,13 @@ class DocMoltInterface(AIModelInterface):
             with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
                 for input_file in input_files:
                     if input_file.exists():
-                        zf.write(input_file, input_file.name)
-                        logger.info(f"Added to ZIP: {input_file.name}")
+                        arcname = input_file.name
+                        # FIX: Append .bp extension for UniBasic detection if missing valid extension
+                        if hasattr(task, 'language') and task.language.lower() == 'unibasic':
+                            if not arcname.lower().endswith(('.bp', '.b', '.bas')):
+                                arcname += ".bp"
+                        zf.write(input_file, arcname)
+                        logger.info(f"Added to ZIP: {input_file.name} as {arcname}")
 
             # Step 2: Upload project
             project_id = self._upload_project(zip_path, api_key)
@@ -864,8 +870,12 @@ class DocMoltInterface(AIModelInterface):
             with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
                 for input_file in input_files:
                     if input_file.exists():
-                        zf.write(input_file, input_file.name)
-                        logger.info(f"Added to ZIP: {input_file.name}")
+                        arcname = input_file.name
+                        # FIX: Append .bp extension for UniBasic detection if missing
+                        if hasattr(task, 'language') and task.language.lower() == 'unibasic' and '.' not in arcname:
+                            arcname += ".bp"
+                        zf.write(input_file, arcname)
+                        logger.info(f"Added to ZIP: {input_file.name} as {arcname}")
 
             combined_documentation = []
             successful_types = []
@@ -1213,6 +1223,126 @@ def get_ai_model(model_id: str, mock_mode: bool = False) -> AIModelInterface:
     # Route to appropriate interface
     if provider == "docmolt":
         return DocMoltInterface(model_id, mock_mode=mock_mode)
+    elif provider == "uniview":
+        return UniviewInterface(model_id, mock_mode=mock_mode)
     else:
         return AIModelInterface(model_id, mock_mode=mock_mode)
+
+class UniviewInterface(AIModelInterface):
+    """
+    Interface for Uniview Platform API (Hexaview for UniBasic)
+    Fetches pre-existing documentation from the platform.
+    """
+    def __init__(self, model_id: str, mock_mode: bool = False):
+        super().__init__(model_id, mock_mode)
+        from legacycodebench.config import UNIVIEW_CONFIG
+        self.base_url = UNIVIEW_CONFIG["base_url"]
+        self.project_id = UNIVIEW_CONFIG["project_id"]
+        self.api_key = UNIVIEW_CONFIG["api_key"]
+        
+        # Cache for document list to avoid repeated API calls
+        self._doc_list_cache = None
+
+    def generate_documentation(self, task, input_files: List[Path]) -> str:
+        """Fetch documentation from Uniview API matching the task ID"""
+        import requests
+        
+        if self.mock_mode:
+            return self._generate_mock_documentation(task)
+
+        # Step 1: Get list of documents (cached)
+        if not self._doc_list_cache:
+            self._doc_list_cache = self._fetch_document_list()
+            
+        # Step 2: Find document matching task ID
+        # Task ID format: LCB-UB-T1-001
+        # Slug format: lcb-ub-t1-001-checksum
+        task_id = task.task_id.lower()
+        
+        target_doc = None
+        for doc in self._doc_list_cache:
+            slug = doc.get("slug", "").lower()
+            if task_id in slug:
+                target_doc = doc
+                break
+        
+        if not target_doc:
+            logger.warning(f"No matching Uniview document found for task {task.task_id}")
+            return f"# No Documentation Found\n\nUniview API did not return a document matching '{task.task_id}'."
+
+        # Step 3: Fetch full document content
+        doc_id = target_doc.get("id")
+        logger.info(f"Fetching Uniview document: {target_doc.get('title')} ({doc_id})")
+        
+        # CORRECTED (Step 829): Use include_version=true to get content
+        url = f"{self.base_url}/api/v1/documents/{doc_id}"
+        headers = {"X-API-Key": self.api_key}
+        params = {"include_version": "true"}
+        
+        try:
+            response = requests.get(url, headers=headers, params=params)
+            if response.status_code == 401:
+                 # Fallback: Try api-key header just in case
+                 headers = {"api-key": self.api_key}
+                 response = requests.get(url, headers=headers, params=params)
+            
+            response.raise_for_status()
+            data = response.json()
+            
+            if data.get("success"):
+                # Extract content from current_version object
+                current_version = data.get("current_version", {})
+                content = current_version.get("content", "")
+                
+                # Fallback to document root if not found (just in case)
+                if not content:
+                    content = data.get("document", {}).get("content", "")
+                
+                if not content:
+                    return "# Empty Content\n\nDocument found but content is empty (tried 'current_version.content')."
+                
+                # Add metadata header
+                doc_meta = data.get("document", {})
+                meta = f"<!-- Source: Uniview Platform ({doc_meta.get('title')}) -->\n"
+                meta += f"<!-- Version: {current_version.get('version_label', 'latest')} -->\n"
+                meta += f"<!-- Fetched: {doc_meta.get('updated_at')} -->\n\n"
+                return meta + content
+            else:
+                raise Exception(f"API success=false: {data}")
+                
+        except Exception as e:
+            logger.error(f"Failed to fetch document {doc_id}: {e}")
+            raise CredentialsError(f"Uniview API Error: {e}")
+
+    def _fetch_document_list(self) -> List[Dict]:
+        """Fetch all documents from project"""
+        import requests
+        
+        url = f"{self.base_url}/api/v1/projects/{self.project_id}/documents"
+        headers = {"X-API-Key": self.api_key}
+        params = {"group_by_module": "false", "page_size": 100}
+        
+        try:
+            logger.info(f"Fetching document list from Uniview...")
+            response = requests.get(url, headers=headers, params=params)
+             
+            if response.status_code == 401:
+                 headers = {"api-key": self.api_key}
+                 response = requests.get(url, headers=headers, params=params)
+
+            response.raise_for_status()
+            data = response.json()
+            
+            if data.get("success"):
+                docs = data.get("documents", [])
+                logger.info(f"Retrieved {len(docs)} documents from Uniview")
+                return docs
+            else:
+                raise Exception(f"API success=false: {data}")
+                
+        except Exception as e:
+            logger.error(f"Failed to list documents: {e}")
+            if self.mock_mode:
+                return []
+            raise CredentialsError(f"Uniview API Error: {e}")
 

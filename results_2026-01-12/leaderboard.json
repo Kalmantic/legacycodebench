@@ -1,0 +1,194 @@
+{
+  "version": "2.3.1",
+  "generated_at": "2026-01-12T18:07:24.324715",
+  "scoring_formula": "LCB Score = (0.30 x SC) + (0.20 x DQ) + (0.50 x BF)",
+  "scoring_weights": {
+    "structural_completeness": 0.3,
+    "semantic_quality": 0.2,
+    "behavioral_fidelity": 0.5
+  },
+  "total_models": 5,
+  "leaderboard": [
+    {
+      "submitter": "Hexaview",
+      "model": "Legacy Insights",
+      "rank": 1,
+      "is_v231": true,
+      "is_v23": true,
+      "avg_lcb_score": 0.9236,
+      "avg_sc": 0.9437,
+      "avg_bf": 0.8973,
+      "avg_sq": 0.9593,
+      "avg_tr": 0.0,
+      "tasks_total": 200,
+      "critical_failures": 4,
+      "critical_failure_types": {
+        "CF-02": 1,
+        "CF-04": 3
+      },
+      "by_tier": {
+        "T1": {
+          "total": 50,
+          "avg_score": 0.9596379999999999
+        },
+        "T2": {
+          "total": 41,
+          "avg_score": 0.9115853658536586
+        },
+        "T3": {
+          "total": 50,
+          "avg_score": 0.856108
+        },
+        "T4": {
+          "total": 59,
+          "avg_score": 0.8977881355932202
+        }
+      }
+    },
+    {
+      "submitter": "Claude",
+      "model": "claude-sonnet-4",
+      "rank": 2,
+      "is_v231": true,
+      "is_v23": true,
+      "avg_lcb_score": 0.8977,
+      "avg_sc": 0.9552,
+      "avg_bf": 0.9117,
+      "avg_sq": 0.7766,
+      "avg_tr": 0.0,
+      "tasks_total": 200,
+      "critical_failures": 2,
+      "critical_failure_types": {
+        "CF-03": 1,
+        "CF-02": 1
+      },
+      "by_tier": {
+        "T1": {
+          "total": 50,
+          "avg_score": 0.918208
+        },
+        "T2": {
+          "total": 41,
+          "avg_score": 0.8721073170731707
+        },
+        "T3": {
+          "total": 50,
+          "avg_score": 0.842644
+        },
+        "T4": {
+          "total": 59,
+          "avg_score": 0.9185610169491525
+        }
+      }
+    },
+    {
+      "submitter": "AWS",
+      "model": "aws-transform-mainframe",
+      "rank": 3,
+      "is_v231": true,
+      "is_v23": true,
+      "avg_lcb_score": 0.8827,
+      "avg_sc": 0.9772,
+      "avg_bf": 0.909,
+      "avg_sq": 0.6755,
+      "avg_tr": 0.0,
+      "tasks_total": 198,
+      "critical_failures": 9,
+      "critical_failure_types": {
+        "CF-02": 7,
+        "CF-03": 2
+      },
+      "by_tier": {
+        "T1": {
+          "total": 50,
+          "avg_score": 0.875364
+        },
+        "T2": {
+          "total": 40,
+          "avg_score": 0.8217025
+        },
+        "T3": {
+          "total": 49,
+          "avg_score": 0.8050061224489796
+        },
+        "T4": {
+          "total": 59,
+          "avg_score": 0.8730525423728813
+        }
+      }
+    },
+    {
+      "submitter": "Ibm",
+      "model": "ibm-granite-13b",
+      "rank": 4,
+      "is_v231": true,
+      "is_v23": true,
+      "avg_lcb_score": 0.8719,
+      "avg_sc": 0.9309,
+      "avg_bf": 0.8966,
+      "avg_sq": 0.7216,
+      "avg_tr": 0.0,
+      "tasks_total": 200,
+      "critical_failures": 5,
+      "critical_failure_types": {
+        "CF-02": 1,
+        "CF-03": 1,
+        "CF-04": 3
+      },
+      "by_tier": {
+        "T1": {
+          "total": 50,
+          "avg_score": 0.888738
+        },
+        "T2": {
+          "total": 41,
+          "avg_score": 0.8537585365853659
+        },
+        "T3": {
+          "total": 50,
+          "avg_score": 0.8355039999999999
+        },
+        "T4": {
+          "total": 59,
+          "avg_score": 0.8400745762711864
+        }
+      }
+    },
+    {
+      "submitter": "Gpt",
+      "model": "gpt-4o",
+      "rank": 5,
+      "is_v231": true,
+      "is_v23": true,
+      "avg_lcb_score": 0.861,
+      "avg_sc": 0.9188,
+      "avg_bf": 0.8856,
+      "avg_sq": 0.7127,
+      "avg_tr": 0.0,
+      "tasks_total": 200,
+      "critical_failures": 6,
+      "critical_failure_types": {
+        "CF-03": 1,
+        "CF-04": 5
+      },
+      "by_tier": {
+        "T1": {
+          "total": 50,
+          "avg_score": 0.9094580000000001
+        },
+        "T2": {
+          "total": 41,
+          "avg_score": 0.8295292682926829
+        },
+        "T3": {
+          "total": 50,
+          "avg_score": 0.795686
+        },
+        "T4": {
+          "total": 59,
+          "avg_score": 0.8151661016949152
+        }
+      }
+    }
+  ]
+}

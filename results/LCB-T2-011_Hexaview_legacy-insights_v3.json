@@ -1,0 +1,73 @@
+{
+  "task_id": "LCB-T2-011",
+  "task_category": "documentation",
+  "evaluator_version": "v3",
+  "submitter": {
+    "name": "Hexaview",
+    "model": "legacy-insights",
+    "category": "verified"
+  },
+  "result": {
+    "version": "3.0",
+    "lcb_score": 98.64,
+    "passed": true,
+    "pass_status": {
+      "passed": true,
+      "reason": "All thresholds met",
+      "sc_met": true,
+      "dq_met": true,
+      "bf_met": true,
+      "has_critical_failure": false
+    },
+    "scores": {
+      "sc": 98.0,
+      "dq": 96.2,
+      "bf": 100.0,
+      "overall": 98.6
+    },
+    "critical_failures": [],
+    "breakdown": {
+      "sc": {
+        "business_rules": 1.0,
+        "data_structures": 1.0,
+        "control_flow": 0.9,
+        "external_calls": 1.0
+      },
+      "dq": {
+        "structure": 1.0,
+        "traceability": 1.0,
+        "readability": 1.0,
+        "abstraction": 0.8113456464379948
+      },
+      "bf": {
+        "claim_score": 1.0,
+        "bsm_score": 1.0,
+        "verification_mode": "static",
+        "mode_reason": "compile_error",
+        "compile_error": "Compilation failed: Compilation timed out after 10s\nCompilation timed out after 10s",
+        "fixable": null,
+        "v3_provenance": {
+          "evaluator_version": "v3.0",
+          "verification_mode": "static",
+          "mode_reason": "compile_error",
+          "execution_attempted": true,
+          "execution_succeeded": false,
+          "compile_error": "Compilation failed: Compilation timed out after 10s\nCompilation timed out after 10s",
+          "claims_verified": 7,
+          "claims_total": 50
+        },
+        "claim_score_formula": "hybrid_v2.4.2",
+        "hybrid_components": {
+          "effective_claims": 18.5,
+          "effective_target": 6,
+          "verified": 7,
+          "partial": 23,
+          "total": 50,
+          "scoring_mode": "hybrid"
+        }
+      }
+    },
+    "bf_verification_mode": "static"
+  },
+  "overall_score": 0.9864
+}
