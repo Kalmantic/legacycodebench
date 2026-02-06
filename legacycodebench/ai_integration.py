@@ -65,6 +65,7 @@ MODEL_CONTEXT_LIMITS = {
     "anthropic.claude-3-sonnet-20240229-v1:0": 200000,  # AWS Bedrock Claude 3 Sonnet
     "transform": 8000,  # Deprecated, kept for backward compatibility
     "ibm/granite-3-3-8b-instruct": 8192,  # IBM Granite model
+    "models/gemini-2.0-flash": 1000000,  # Gemini 2.0 Flash
 }
 
 # FIXED (Issue 4.4): Normalize context to smallest for fair comparison
