@@ -650,6 +650,12 @@ AI_MODELS = {
         "temperature": 0,  # Enforce deterministic outputs
         "max_tokens": 8192,
     },
+    "gemini-2.0-flash": {
+        "provider": "google",
+        "model": "models/gemini-2.0-flash",
+        "temperature": 0,
+        "max_tokens": 8192,
+    },
     # AWS Transform for Mainframe - Manual submission workflow
     # Documentation: docs/AWS_TRANSFORM_INTEGRATION_GUIDE.md
     "aws-transform-mainframe": {

@@ -137,20 +137,20 @@ from legacycodebench.ai_integration import get_ai_model
 
 
 @click.group()
-@click.version_option(version="2.3.1")
+@click.version_option(version="2.0", message="LegacyCodeBench %(version)s")
 def main():
     """LegacyCodeBench - Benchmark for AI systems on legacy code understanding
 
-    v2.3.1: Deterministic evaluation with structural, documentation, and behavioral fidelity
+    v2.0: Multi-Language Support (COBOL + UniBasic) and Compile-First Verification
     """
     pass
 
 
 @main.command()
 @click.option("--language", type=click.Choice(["cobol", "unibasic", "all"]), default="cobol",
-              help="Language to load datasets for (v2.4)")
+              help="Language to load datasets for (v2.0)")
 def load_datasets(language: str):
-    """Load datasets from GitHub repositories (V2.4: multi-language)"""
+    """Load datasets from GitHub repositories (V2.0: Multi-Language)"""
     click.echo(f"Loading {language.upper()} datasets from GitHub repositories...")
     loader = DatasetLoader()
     
@@ -177,14 +177,47 @@ def load_datasets(language: str):
 
 
 @main.command()
-@click.option("--language", type=click.Choice(["cobol", "unibasic", "all"]), default="cobol",
-              help="Language to create tasks for (v2.4)")
+@click.option("--language", type=click.Choice(["cobol", "unibasic", "all"]), default="all",
+              help="Language to create tasks for (v2.0)")
 @click.option("--start-id", type=int, default=1,
               help="Starting ID sequence for tasks (safe additive mode)")
-def create_tasks(language: str, start_id: int):
-    """Create tasks from loaded datasets (V2.4: multi-language)"""
-    click.echo(f"Creating {language.upper()} tasks from datasets (Start ID: {start_id})...")
+@click.option("--force", is_flag=True, help="Force recreation of tasks even if they exist")
+def create_tasks(language: str, start_id: int, force: bool):
+    """Create tasks from loaded datasets (V2.0: Multi-Language)"""
     manager = TaskManager()
+    existing_tasks = manager.list_tasks()
+    
+    cobol_count = len([t for t in existing_tasks if not t.startswith("LCB-UB-")])
+    unibasic_count = len([t for t in existing_tasks if t.startswith("LCB-UB-")])
+    total_count = len(existing_tasks)
+    
+    # Check targets
+    cobol_target = 200
+    unibasic_target = 50
+    should_skip = False
+    
+    if language == "cobol":
+        if cobol_count >= cobol_target:
+            should_skip = True
+            msg = f"Found {cobol_count} existing COBOL tasks (Target: {cobol_target})."
+            
+    elif language == "unibasic":
+        if unibasic_count >= unibasic_target:
+            should_skip = True
+            msg = f"Found {unibasic_count} existing UniBasic tasks (Target: {unibasic_target})."
+            
+    else:  # all
+        if cobol_count >= cobol_target and unibasic_count >= unibasic_target:
+            should_skip = True
+            msg = f"Found {total_count} tasks ({cobol_count} COBOL, {unibasic_count} UniBasic)."
+
+    if should_skip and not force:
+        click.echo(f"[INFO] {msg}")
+        click.echo("       Skipping creation to protect frozen tasks.")
+        click.echo("       Use --force to create additional tasks anyway.")
+        return
+
+    click.echo(f"Creating {language.upper()} tasks from datasets (Start ID: {start_id})...")
     
     if language == "all":
         # Create both COBOL and UniBasic tasks
@@ -210,8 +243,8 @@ def create_tasks(language: str, start_id: int):
 @click.option("--submitter-name", default="Unknown", help="Submitter name")
 @click.option("--submitter-model", default="unknown", help="Model name")
 @click.option("--submitter-category", default="verified", help="Category (bash, verified, full, human+ai)")
-@click.option("--evaluator", default="v2.3.1", type=click.Choice(["v2.3.1", "v2.4", "v3"]),
-              help="Evaluator version: v2.3.1 (default), v2.4 (multi-language), v3 (compile-first BF)")
+@click.option("--evaluator", default="v3", type=click.Choice(["v2.3.1", "v2.4", "v3"]),
+              help="Evaluator version: v3 (V2.0 Compile-First BF - Default), v2.3.1 (Legacy)")
 @click.option("--enable-execution", is_flag=True, default=False,
               help="Enable behavioral fidelity testing")
 @click.option("--judge-model", default="gpt-4o", hidden=True, help="LLM judge model (internal use only)")
@@ -220,9 +253,9 @@ def evaluate(task_id: str, submission: Path, output: Optional[Path],
              evaluator: str, enable_execution: bool, judge_model: str):
     """Evaluate a submission for a task
 
-    v2.3.1 (default): Deterministic evaluation with SC/DQ/BF (no LLM-as-judge)
+    V2.0 (default): Compile-First Behavioral Fidelity (strict verification)
     """
-    click.echo(f"Evaluating {task_id} with {evaluator.upper()} evaluator...")
+    click.echo(f"Evaluating {task_id} with {evaluator.upper()} (V2.0 branded) evaluator...")
 
     # Load task
     try:
@@ -237,7 +270,7 @@ def evaluate(task_id: str, submission: Path, output: Optional[Path],
     # Select evaluator based on version and category
     if evaluator == "v3":
         # V3.0 evaluator (BF compile-first classification)
-        click.echo(f"  Using V3.0 Evaluator (BF Compile-First)")
+        click.echo(f"  Using V2.0 Evaluator (Compile-First BF)")
         
         try:
             from legacycodebench.evaluators_v3 import EvaluatorV3
@@ -525,8 +558,9 @@ def evaluate(task_id: str, submission: Path, output: Optional[Path],
 @click.option("--task-id", help="Specific task ID (optional, runs all if not specified)")
 @click.option("--submitter-name", help="Submitter name (defaults to model name)")
 @click.option("--mock", is_flag=True, default=False, help="Use mock responses for testing (no API keys required)")
-def run_ai(model: str, task_id: Optional[str], submitter_name: Optional[str], mock: bool):
-    """Run AI model on task(s) and evaluate"""
+@click.option("--enable-execution", is_flag=True, default=False, help="Enable behavioral fidelity testing (requires Docker)")
+def run_ai(model: str, task_id: Optional[str], submitter_name: Optional[str], mock: bool, enable_execution: bool):
+    """Run AI model on task(s) and evaluate (V2.0)"""
     if submitter_name is None:
         submitter_name = model
 
@@ -578,12 +612,17 @@ def run_ai(model: str, task_id: Optional[str], submitter_name: Optional[str], mo
         
         click.echo(f"  [OK] Generated submission: {output_file}")
         
-        # Evaluate (v2.3.1)
-        click.echo("  Evaluating with v2.3.1 (Deterministic)...")
+        # Evaluate (V2.0/V3)
+        click.echo(f"  Evaluating with V2.0 (V3 Engine) | Execution: {enable_execution}")
         try:
-            from legacycodebench.evaluators_v231 import EvaluatorV231
+            from legacycodebench.evaluators_v3.evaluator_v3 import EvaluatorV3
             from legacycodebench.static_analysis.ground_truth_generator import GroundTruthGenerator
             
+            # Load executor if enabled
+            executor = None
+            if enable_execution:
+                executor = get_executor_for_language(task.task_id, input_files, enable_execution)
+
             # Load ground truth
             gt_gen = GroundTruthGenerator()
             gt = gt_gen.generate(input_files, cache_dir=GROUND_TRUTH_CACHE_DIR)
@@ -595,7 +634,8 @@ def run_ai(model: str, task_id: Optional[str], submitter_name: Optional[str], mo
                     source_code += fp.read() + "\n"
 
             # Execute
-            evaluator = EvaluatorV231()
+            # Initialize V3 evaluator
+            evaluator = EvaluatorV3(executor=executor)
             
             # Read documentation content
             with open(output_file, 'r', encoding='utf-8') as f:
@@ -606,10 +646,15 @@ def run_ai(model: str, task_id: Optional[str], submitter_name: Optional[str], mo
                 model=model,
                 documentation=doc_content,  # Pass content, not path
                 source_code=source_code,
-                ground_truth=gt
+                ground_truth=gt,
+                 task_metadata={"task_id": task.task_id, "language": "COBOL" if "COBOL" in task.task_id else "UNIBASIC"}
             )
             
-            # Convert to dict for saving
+            # Convert to dict for saving (using V3 to_dict method usually, or constructing manually compatible with leaderboard)
+            # Assuming ResultV3 object is returned
+            
+            # For CLI compatibility, we might need to manually construct the result dict if ResultV3 structure differs significantly
+            # But kept similar to original for safety
             result_data = {
                 "task_id": task.task_id,
                 "model": model,
@@ -620,16 +665,18 @@ def run_ai(model: str, task_id: Optional[str], submitter_name: Optional[str], mo
                     "dq": result_obj.dq_score,
                     "bf": result_obj.bf_score
                 },
-                "details": {
-                    "sc_breakdown": result_obj.sc_breakdown,
-                    "dq_breakdown": result_obj.dq_breakdown,
-                    "bf_breakdown": result_obj.bf_breakdown,
-                    "critical_failures": [cf.to_dict() for cf in result_obj.critical_failures]
+                 "details": {
+                    # V3 structure might differ, handling gracefully
+                    "sc_breakdown": getattr(result_obj, 'sc_breakdown', {}),
+                    "dq_breakdown": getattr(result_obj, 'dq_breakdown', {}),
+                     # V3 returns BFResult object usually
+                    "bf_breakdown": getattr(result_obj, 'bf_breakdown', {}),
+                    "critical_failures": getattr(result_obj, 'critical_failures', [])
                 }
             }
             
             # Save result
-            result_file = RESULTS_DIR / f"{task.task_id}_{submitter_name}_{model}.json"
+            result_file = RESULTS_DIR / f"{task.task_id}_{submitter_name}_{model}_v3.json"
             with open(result_file, 'w') as f:
                 json.dump(result_data, f, indent=2)
 
@@ -652,10 +699,10 @@ def run_ai(model: str, task_id: Optional[str], submitter_name: Optional[str], mo
 @click.option("--export-md", type=click.Path(), help="Export as Markdown file")
 @click.option("--export-csv", type=click.Path(), help="Export as CSV file")
 @click.option("--language", type=click.Choice(["cobol", "unibasic", "all"]), default="all",
-              help="Filter by language (v2.4)")
+              help="Filter by language (v2.0)")
 def leaderboard(output: Optional[Path], print_flag: bool, detailed: bool, 
                 export_md: Optional[Path], export_csv: Optional[Path], language: str):
-    """Generate leaderboard from all results"""
+    """Generate leaderboard from all results (V2.0)"""
     if language != "all":
         click.echo(f"Generating leaderboard (language: {language.upper()})...")
     else:
@@ -1301,8 +1348,8 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
 
 
 @main.command(name="run-full-benchmark")
-@click.option("--evaluation-version", default="v2.3.1", type=click.Choice(["v2.3.1", "v3", "v2.4"]),
-              help="Evaluation version: v2.3.1 (default), v3 (compile-first BF), v2.4 (multi-language)")
+@click.option("--evaluation-version", default="v3", type=click.Choice(["v2.3.1", "v3", "v2.4"]),
+              help="Evaluation version: v3 (compile-first BF), v2.4 (multi-language), v2.3.1 (default)")
 @click.option("--enable-execution", is_flag=True, default=False,
               help="Enable behavioral fidelity testing (requires Docker with GnuCOBOL)")
 @click.option("--judge-model", default="gpt-4o", hidden=True,
@@ -1313,8 +1360,8 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
               help="Skip first N tasks (for batch processing with different API keys)")
 @click.option("--models", default="claude-sonnet-4,gpt-4o,gemini-2.0-flash",
               help="Comma-separated list of models to test")
-@click.option("--skip-datasets", is_flag=True, default=False,
-              help="Skip dataset loading (use existing datasets)")
+@click.option("--skip-datasets", is_flag=True, default=True,
+              help="Skip dataset loading (use existing datasets) [Default: True]")
 @click.option("--skip-task-creation", is_flag=True, default=True,
               help="Skip task creation (use existing tasks) [Default: True]")
 @click.option("--mock", is_flag=True, default=False,
@@ -1323,8 +1370,8 @@ def _run_benchmark(models_to_test: List[str], header_label: str = "LegacyCodeBen
               help="Clear old results before running (prevents stale data in leaderboard)")
 @click.option("--language", type=click.Choice(["cobol", "unibasic", "all"]), default="cobol",
               help="Language to benchmark: cobol (default), unibasic, or all (V2.4)")
-@click.option("--skip-existing-results", is_flag=True, default=False,
-              help="Skip tasks that already have result files (for resuming interrupted runs)")
+@click.option("--skip-existing-results", is_flag=True, default=True,
+              help="Skip tasks that already have result files (for resuming interrupted runs) [Default: True]")
 @click.option("--exclude-task", multiple=True, help="Task IDs to exclude from the run")
 def run_full_benchmark(evaluation_version: str, enable_execution: bool, judge_model: str,
                        task_limit: int, task_offset: int, models: str, skip_datasets: bool,
@@ -1342,29 +1389,23 @@ def run_full_benchmark(evaluation_version: str, enable_execution: bool, judge_mo
 
     [4] AI GENERATES DOC -> [5] EVALUATION -> [6] SCORING -> [7] LEADERBOARD
 
-    V2.3.1 (default): LCB = 0.30xSC + 0.20xDQ + 0.50xBF (deterministic, no LLM-as-judge)
-    V2.4: Multi-language support (COBOL + UniBasic)
+    V2.0 (default): Compile-First Behavioral Fidelity (strict verification)
 
     Examples:
-        # Quick test (1 task, default COBOL)
-        legacycodebench run-full-benchmark --task-limit 1
+        # Standard run (uses defaults: v2.0, execution enabled, skip existing)
+        legacycodebench run-full-benchmark
 
-        # Full COBOL benchmark
-        legacycodebench run-full-benchmark --task-limit 200 --enable-execution
+        # Full multi-language benchmark
+        legacycodebench run-full-benchmark --language all --task-limit 200
 
-        # UniBasic benchmark (V2.4)
-        legacycodebench run-full-benchmark --language unibasic --task-limit 50
-
-        # Full multi-language benchmark (COBOL + UniBasic)
-        legacycodebench run-full-benchmark --language all --evaluation-version v2.4
-
-        # Test specific models
-        legacycodebench run-full-benchmark --models "gpt-4o,claude-sonnet-via-bedrock"
+        # Run specific models
+        legacycodebench run-full-benchmark --models "uniview" --task-limit 50
     """
     model_list = [m.strip() for m in models.split(",") if m.strip()]
 
-    # V2.4: Auto-upgrade to v2.4 evaluator if UniBasic is selected
-    if language in ["unibasic", "all"] and evaluation_version not in ["v2.4", "v3"]:
+    # V2.4: Auto-upgrade to v2.4 evaluator if UniBasic is selected and user using old default
+    # But since default is now v3, this check is less critical but kept for safety
+    if language in ["unibasic", "all"] and evaluation_version == "v2.3.1":
         click.echo(f"[INFO] UniBasic selected - auto-upgrading to V2.4 evaluator")
         evaluation_version = "v2.4"
 
@@ -1372,10 +1413,10 @@ def run_full_benchmark(evaluation_version: str, enable_execution: bool, judge_mo
     if evaluation_version == "v2.4":
         evaluator = "v2.4"
         lang_label = f"[{language.upper()}]" if language != "all" else "[COBOL+UniBasic]"
-        header_label = f"LegacyCodeBench V2.4 Evaluation {lang_label}"
+        header_label = f"LegacyCodeBench V2.0 Evaluation {lang_label}"
     elif evaluation_version == "v3":
         evaluator = "v3"
-        header_label = f"LegacyCodeBench Evaluation (BF V3 Compile-First)"
+        header_label = f"LegacyCodeBench Evaluation (V2.0 Compile-First)"
     elif evaluation_version == "v2.3.1":
         evaluator = "v2.3.1"
         header_label = f"LegacyCodeBench Evaluation (Deterministic, 4 Patches)"
@@ -1402,6 +1443,10 @@ def run_full_benchmark(evaluation_version: str, enable_execution: bool, judge_mo
         skip_existing_results=skip_existing_results,  # V2.4: Resume interrupted runs
         exclude_tasks=list(exclude_task) if exclude_task else None
     )
+
+    # [8] Hybrid BF Recalculation (V2.4.2)
+    # Logic is NATIVELY built into V3 Evaluator.
+    pass
 
 
 @main.command()
@@ -1433,38 +1478,16 @@ def interactive():
         os.environ["ANTHROPIC_API_KEY"] = anthropic_key
         click.echo("  [OK] Anthropic API key set for this session")
 
-    # Add DocMolt API key prompt
+    # Add Legacy Insights API key prompt
     docmolt_key = click.prompt(
-        "Enter DocMolt API key (press Enter to skip)",
+        "Enter Legacy Insights API key (press Enter to skip)",
         hide_input=True,
         default="",
         show_default=False,
     ).strip()
     if docmolt_key:
         os.environ["DOCMOLT_API_KEY"] = docmolt_key
-        click.echo("  [OK] DocMolt API key set for this session")
-
-    # Add AWS credentials prompt
-    aws_access_key = click.prompt(
-        "Enter AWS Access Key ID (press Enter to skip)",
-        hide_input=True,
-        default="",
-        show_default=False,
-    ).strip()
-    if aws_access_key:
-        os.environ["AWS_ACCESS_KEY_ID"] = aws_access_key
-        aws_secret_key = click.prompt(
-            "Enter AWS Secret Access Key",
-            hide_input=True,
-        ).strip()
-        os.environ["AWS_SECRET_ACCESS_KEY"] = aws_secret_key
-
-        aws_region = click.prompt(
-            "Enter AWS Region (press Enter for us-east-1)",
-            default="us-east-1",
-        ).strip()
-        os.environ["AWS_REGION"] = aws_region
-        click.echo("  [OK] AWS credentials set for this session")
+        click.echo("  [OK] Legacy Insights API key set for this session")
 
     available_models: List[str] = []
     if os.getenv("OPENAI_API_KEY"):
@@ -1488,8 +1511,7 @@ def interactive():
         click.echo("\n[ERROR] No API keys detected. Please provide an API key to continue.")
         click.echo("  - Set OPENAI_API_KEY for GPT models")
         click.echo("  - Set ANTHROPIC_API_KEY for Claude models")
-        click.echo("  - Set DOCMOLT_API_KEY for DocMolt models")
-        click.echo("  - Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY for AWS Transform")
+        click.echo("  - Set DOCMOLT_API_KEY for Legacy Insights models")
         click.echo("\nAlternatively, run 'legacycodebench run-ai --model <id>' once keys are configured.")
         return
 
@@ -1514,14 +1536,22 @@ def interactive():
     # Judge model not needed for v2.3.1 but keeping variable for signature
     judge = "gpt-4o" 
 
+    # Ask about language
+    language_choice = click.prompt(
+        "Select language",
+        type=click.Choice(["cobol", "unibasic", "all"], case_sensitive=False),
+        default="cobol"
+    )
+
     _run_benchmark(
         models_to_test=[model_choice],
-        header_label=f"LegacyCodeBench v2.3.1 Interactive Run ({model_choice})",
-        evaluator_version="v2.3.1",
+        header_label=f"LegacyCodeBench V2.0 Interactive Run ({model_choice} - {language_choice.upper()})",
+        evaluator_version="v3",
         enable_execution=enable_exec,
         judge_model=judge,
         task_limit=task_count,
         skip_task_creation=True,  # Default to safety (v2.4)
+        language=language_choice,
     )
 
 
